@@ -507,7 +507,7 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
 .app.with-sliders { grid-template-columns: 280px minmax(0, 1fr);
   grid-template-areas: "sl head" "sl controls" "sl map" "sl caption"; }
 /* the sortable pitcher table: beside the map on wide screens, under it otherwise; folded away while a card is open */
-.app.with-sliders.with-table { grid-template-areas: "sl head" "sl controls" "sl map" "sl tbl" "sl caption"; }
+.app.with-sliders.with-table:not(.has-sel) { grid-template-areas: "sl head" "sl controls" "sl map" "sl tbl" "sl caption"; }
 @media (min-width: 1400px) {
   .app.with-sliders.with-table:not(.has-sel) { grid-template-columns: 280px minmax(360px, 540px) minmax(0, 1fr);
     grid-template-areas: "sl head head" "sl controls controls" "sl tbl map" "sl tbl caption"; }
@@ -522,6 +522,10 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
 .mt-in { display: flex; flex-direction: column; min-height: 0; }
 .mt-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 12px 12px 0; }
 .mt-title { font: 600 20px/1.1 var(--font-serif); color: var(--ink); }
+.mtable input.mt-search { display: block; width: calc(100% - 24px); margin: 0 12px 8px; padding: 6px 10px; border: 1px solid var(--ink2);
+  border-radius: 6px; background: var(--field); font: 400 14px var(--font-ui); color: var(--ink); }
+.mtable input.mt-search:focus-visible { outline: 2px solid var(--focus); outline-offset: 0; border-color: var(--focus); }
+@media (pointer: coarse) { .mtable input.mt-search { font-size: 16px; } }
 .mt-sub { margin: 4px 12px 8px; font: 400 13px var(--font-ui); color: var(--muted); }
 .mt-scroll { overflow: auto; max-height: 440px; overscroll-behavior: contain; border-top: 1px solid var(--line); }
 .mt { width: 100%; border-collapse: collapse; font: 400 14px var(--font-ui); color: var(--ink); font-variant-numeric: tabular-nums lining-nums; }
@@ -910,6 +914,7 @@ tr.self td { font-weight: 600; background: none; }
       <button type="button" class="link" id="mtHide">Hide table</button>
     </div>
     <p class="mt-sub" id="mtSub"></p>
+    <input id="mtSearch" class="mt-search" type="search" placeholder="Find a pitcher in this table" autocomplete="off" aria-label="Find a pitcher in this table">
     <div class="mt-scroll" id="mtScroll"><table class="mt"><thead id="mtHeadRow"></thead><tbody id="mtBody"></tbody></table></div>
   </div></section>
   <header class="head">
@@ -1277,6 +1282,7 @@ const state = {
   rangeMode: "pct",
   archetype: "",      // id from D.archetypes; "" = none
   slidersOpen: false,
+  tblQuery: "",             // name search inside the measure table
   tblGroup: null,            // measure category shown in the table (null = no table)
   tblSort: { key: null, dir: -1 },   // measure table: column key ("name" or a measure) and direction
   slGroupsOpen: new Set(),   // measure-filter sections the user has opened (all start closed)
@@ -1418,6 +1424,10 @@ function render() {
   const cardOpen = state.sel !== null && state.sel !== undefined && !state.preview;
   if (cardOpen !== !!state.cardOpen) {
     if (cardOpen) { state.mbPrev = !!state.mbHidden; state.mbHidden = true; } else state.mbHidden = !!state.mbPrev;
+    // the card takes over the screen: the measure filters (and their table) tuck away while it's open,
+    // still applied to the map, and come back as they were when it closes
+    if (cardOpen) { state.slPrev = state.slidersOpen; if (state.slidersOpen) setSlidersOpen(false, true); }
+    else if (state.slPrev) { state.slPrev = false; setSlidersOpen(true, true); }
     state.cardOpen = cardOpen;
   }
   const rows = visibleRows(view);
@@ -3369,7 +3379,7 @@ function filterSliderList() {
     sec.querySelector(".slgroup").setAttribute("aria-expanded", String(open));
   });
 }
-function setSlidersOpen(open) {
+function setSlidersOpen(open, quiet) {   // quiet: no focus move (used when a card opens/closes)
   state.slidersOpen = open;
   $("#sliders").hidden = !open;
   $("#app").classList.toggle("with-sliders", open);
@@ -3377,7 +3387,7 @@ function setSlidersOpen(open) {
   if (open) {
     const set = state.ranges[varKind(state.view)];
     sliderVars().forEach(v => { if (set[v.key]) state.slGroupsOpen.add(v.group); });
-    buildSliders(); $("#slSearch").focus({ preventScroll: true });
+    buildSliders(); if (!quiet) $("#slSearch").focus({ preventScroll: true });
   }
   syncTable();
   relayout();   // the map's width changed: let Plotly re-measure
@@ -3387,7 +3397,7 @@ function setSlidersOpen(open) {
 // Opened from a category's "Show table" button: one column per measure in that category.
 // Rows = every dot still lit on the map. Percentile mode shows percentiles (same pools and flips as the
 // sliders), Raw shows values.
-const TABLE_CAP = 300;
+const TABLE_CAP = 300;   // rows drawn per scroll step
 const relayout = () => requestAnimationFrame(() => { try { Plotly.Plots.resize(plotEl); } catch (e) {} });
 function syncTable() {
   const on = state.slidersOpen && !!state.tblGroup && sliderVars().some(v => v.group === state.tblGroup);
@@ -3436,11 +3446,30 @@ function renderTable() {
     if (pct) { const p = Math.round(x); return `<td><span class="mt-pct" style="background:${savantColor(p)};color:${savantInk(p)}">${p}</span></td>`; }
     return `<td>${x.toFixed(v.dec ?? 2)}</td>`;
   };
-  $("#mtBody").innerHTML = sorted.slice(0, TABLE_CAP).map(r => {
+  const rowHTML = r => {
     const pt = T.pitch_type[r], vs = vals.get(r);
     const meta = `${T.season[r]} · ${esc(teamStr(r))}${view === "all" ? ` · <i class="psw" style="background:${SAVANT_PITCH[pt] || "#999"}"></i>${esc(PTN[pt])}` : ""}`;
     return `<tr data-r="${r}" tabindex="0"${r === state.sel ? ' class="on"' : ""}><td><div class="mt-name">${esc(T.name[r])}</div><div class="mt-meta">${meta}</div></td>${cols.map((v, k) => cell(v, vs[k])).join("")}</tr>`;
-  }).join("") + (sorted.length > TABLE_CAP ? `<tr><td class="mt-more" colspan="${cols.length + 1}">Showing the top ${TABLE_CAP} of ${sorted.length.toLocaleString()}. Tighten a filter or re-sort to see others.</td></tr>` : "");
+  };
+  // the whole list, drawn TABLE_CAP rows at a time as you scroll; a re-render with the same list
+  // (e.g. clicking a row) keeps as many rows as were already drawn so the scroll position holds
+  const words = fold(state.tblQuery).split(/\s+/).filter(Boolean);
+  const shownRows = words.length ? sorted.filter(r => { const n = fold(T.name[r]); return words.every(w => n.includes(w)); }) : sorted;
+  const sig = [state.tblGroup, sk, dir, state.rangeMode, view, lit.length, words.join(" ")].join("|");
+  const keep = sig === tbl.sig ? tbl.shown : TABLE_CAP;
+  Object.assign(tbl, { sig, sorted: shownRows, rowHTML, shown: Math.min(shownRows.length, keep) });
+  $("#mtBody").innerHTML = shownRows.slice(0, tbl.shown).map(rowHTML).join("") +
+    (words.length && !shownRows.length ? `<tr><td class="mt-more" colspan="${cols.length + 1}">No pitcher named “${esc(state.tblQuery.trim())}” among these ${lit.length.toLocaleString()}.</td></tr>` : "");
+  if (sig !== tbl.drawnSig) { $("#mtScroll").scrollTop = 0; tbl.drawnSig = sig; }
+}
+const tbl = { sig: "", drawnSig: "", sorted: [], rowHTML: null, shown: 0 };
+const fold = s => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+function moreTableRows() {
+  const box = $("#mtScroll");
+  if (!tbl.rowHTML || tbl.shown >= tbl.sorted.length || box.scrollTop + box.clientHeight < box.scrollHeight - 400) return;
+  const next = tbl.sorted.slice(tbl.shown, tbl.shown + TABLE_CAP);
+  tbl.shown += next.length;
+  $("#mtBody").insertAdjacentHTML("beforeend", next.map(tbl.rowHTML).join(""));
 }
 // column headers: short names so columns stay narrow (the full name is the header's tooltip)
 const COL_SHORT = {
@@ -3469,6 +3498,12 @@ function wireTable() {
     const tr = e.target.closest("tr[data-r]"); if (!tr) return;
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(tr); }
     else if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); const n = e.key === "ArrowDown" ? tr.nextElementSibling : tr.previousElementSibling; if (n && n.dataset.r) n.focus(); }
+  });
+  $("#mtScroll").addEventListener("scroll", moreTableRows, { passive: true });
+  $("#mtSearch").addEventListener("input", e => { state.tblQuery = e.target.value; renderTable(); });
+  $("#mtSearch").addEventListener("keydown", e => {
+    if (e.key === "Escape" && e.target.value) { e.preventDefault(); e.target.value = ""; state.tblQuery = ""; renderTable(); }
+    else if (e.key === "ArrowDown" || e.key === "Enter") { const tr = $("#mtBody").querySelector("tr[data-r]"); if (tr) { e.preventDefault(); if (e.key === "Enter") tr.click(); else tr.focus(); } }
   });
   $("#mtHide").addEventListener("click", () => {
     const g = state.tblGroup; state.tblGroup = null; syncTable(); relayout();
