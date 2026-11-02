@@ -809,7 +809,7 @@ tr.self td { font-weight: 600; background: none; }
       </div>
       <div class="find find-meas">
         <span class="find-lbl" id="measLabel">Filter by measures</span>
-        <button type="button" class="measbtn" id="slOpen" aria-expanded="false" aria-controls="sliders" aria-describedby="measLabel">Choose measures</button>
+        <button type="button" class="measbtn" id="slOpen" aria-expanded="false" aria-controls="sliders" aria-describedby="measLabel">Choose...</button>
       </div>
       <div class="find find-fa">
         <span class="find-lbl" id="faLabel">Find free agents</span>
@@ -1545,7 +1545,7 @@ function render() {
   // only touch the live region when the text changes, so screen readers don't repeat it on every drag
   if ($("#matchCount").textContent !== countText) $("#matchCount").textContent = countText;
   $("#slCount").textContent = countText;
-  $("#slOpen").textContent = nR ? `${nR} filter${nR > 1 ? "s" : ""} on` : "Choose measures";
+  $("#slOpen").textContent = nR ? `${nR} filter${nR > 1 ? "s" : ""} on` : "Choose...";
   $("#slOpen").classList.toggle("on", !!nR);
   $("#slClear").hidden = !nR;
   $("#slReset").disabled = !nR;
