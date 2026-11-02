@@ -43,16 +43,6 @@ mlbpitch pitcher 645261 --live    # inspect one pitcher, compare to live Savant
 Equivalently `python -m mlbpitch.ingest <cmd>`. Nothing is scheduled — run
 `refresh` yourself, or see `scripts/refresh.sbatch`.
 
-<details>
-<summary>USC CARC specifics</summary>
-
-The interpreter is a venv at `/project2/hassy_472/brendajm/envs/mlb/bin/python`
-(`--system-site-packages` over the module python 3.11.9). A conda/mamba solve
-gets OOM-killed in a 4 GB OnDemand allocation, which is why it is a venv.
-Set `MLBPITCH_PYTHON` to override the interpreter used by `refresh.sbatch`.
-
-</details>
-
 Querying:
 
 ```python
