@@ -1463,8 +1463,10 @@ function render() {
         textfont: { family: UI_FONT, size: 12, color: pal.ink, shadow: halo } });
       traces.push(t);
     });
-    traces.push({ type: "scatter", mode: "markers", x: [sx], y: [sy], customdata: [sel], hoverinfo: "text",
-      hovertext: [hoverHTML(sel)], marker: { size: 36, symbol: "circle-open", color: pal.ink, line: { width: 3.5 } }, showlegend: false });
+    // a white ring around each of his pitches on the map (just this one in a one-type universe)
+    const ringed = arsenal.filter((r, i) => r === sel || srcs[i]), rc = pt(ringed);
+    traces.push({ type: "scatter", mode: "markers", ...rc, customdata: ringed, hoverinfo: "text",
+      hovertext: ringed.map(r => hoverHTML(r)), marker: { size: 36, symbol: "circle-open", color: pal.ink, line: { width: 3.5 } }, showlegend: false });
     if (state.showName) annotations = [{ x: sx, y: sy, xref: "x", yref: "y", text: "<b>" + esc(rowName(view, sel)) + "</b>",
       showarrow: true, arrowhead: 0, arrowwidth: 1, arrowcolor: pal.ink, ax: 0, ay: -36, standoff: 13,
       font: { family: UI_FONT, size: 13, color: pal.ink }, bgcolor: tint(pal.bg, 0.85), borderpad: 2 }];
