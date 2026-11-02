@@ -145,7 +145,7 @@ button, input, select { font: inherit; color: inherit; }
 /* "See full player info": after a search the map shows him first; this opens his card. Bottom centre, light on
    the slate so it is the most obvious thing on the map; the button pulses a few times when it appears. */
 .selcta { position: absolute; z-index: 7; left: calc(50% - 6px); bottom: calc(var(--mi) + 4px); transform: translateX(-50%);
-  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; max-width: calc(100% - 4 * var(--mi)); padding: 8px 8px 8px 20px;
+  display: flex; align-items: center; gap: 16px; max-width: calc(100% - 4 * var(--mi)); padding: 8px 8px 8px 20px;
   border-radius: var(--r-lg); background: var(--field); color: var(--ink); box-shadow: 0 0 0 2px var(--map-ink), 0 8px 28px rgba(0, 0, 0, 0.5); }
 .selcta :focus-visible { outline-color: var(--focus); }
 .cta-name { display: flex; flex-direction: column; min-width: 0; }
@@ -153,8 +153,6 @@ button, input, select { font: inherit; color: inherit; }
 .cta-name span { font: 500 14px var(--font-ui); color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ctabtn { flex: none; display: inline-flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 24px; border: 0; border-radius: var(--r);
   background: var(--ink); color: var(--field); font: 700 20px var(--font-ui); cursor: pointer; animation: ctaPulse 1.6s ease-out 0.2s 3; }
-.ctabtn.alt { background: var(--field); color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); animation: none; }
-.ctabtn.alt:hover { background: var(--wash); }
 .ctabtn .arr { font-size: 24px; line-height: 1; transition: transform 160ms; }
 .ctabtn:hover { background: var(--ink2); }
 .ctabtn:hover .arr { transform: translateX(4px); }
@@ -1077,7 +1075,6 @@ tr.self td { font-weight: 600; background: none; }
     <div class="selcta" id="selCta" role="region" aria-label="Selected pitcher" hidden>
       <div class="cta-name"><b id="ctaName"></b><span id="ctaSub"></span></div>
       <button type="button" class="ctabtn" id="ctaOpen">See full player info <span class="arr" aria-hidden="true">→</span></button>
-      <button type="button" class="ctabtn alt" id="ctaSim">Similar pitchers <span class="arr" aria-hidden="true">→</span></button>
       <button type="button" class="ctaclose" id="ctaClose" aria-label="Clear the selection" title="Clear">×</button>
     </div>
   </main>
@@ -1572,7 +1569,8 @@ function render() {
 
   // Pitch-type names sit on their islands in All pitches whatever the color, filters, sliders or
   // selection: positions come from every dot of the type, so a label never moves or disappears.
-  if (view === "all") {
+  // With a pitcher selected his own pitch labels take over, so these step aside instead of colliding.
+  if (view === "all" && (state.sel === null || state.sel === undefined)) {
     const lx = [], ly = [], lt = [], shown = {};
     on.forEach(r => { shown[T.pitch_type[r]] = (shown[T.pitch_type[r]] || 0) + 1; });
     TYPES.forEach(c => {
@@ -3085,15 +3083,11 @@ function mostUsedRow(r) {
   const rows = TYPES.map(t => tRow(T.pitcher[r], T.season[r], t)).filter(x => x !== undefined && T.n[x] >= state.minN);
   return rows.sort((a, b) => (T.usage[b] || 0) - (T.usage[a] || 0))[0] ?? r;
 }
-function openCard(comps) {
+function openCard() {
   const r = state.sel; if (r === null || r === undefined) return;
   const m = mostUsedRow(r);
   state.preview = false;
   setView(T.pitch_type[m], m);
-  if (comps) {   // straight to his similar pitchers
-    state.showComps = true; render(); renderDetail();
-    const c = $("#compsIn"); if (c && c.scrollIntoView) { c.scrollIntoView({ block: "start", behavior: reduced() ? "auto" : "smooth" }); return; }
-  }
   focusCard();
 }
 // one-time tips, remembered in this browser (works without storage too: they just come back next visit)
@@ -3611,8 +3605,7 @@ function buildStatic() {
   wireSaved();
   { const mf = $("#mapFilt"), mapEl = document.querySelector(".map");
     new ResizeObserver(() => mapEl.style.setProperty("--fh", mf.offsetHeight + "px")).observe(mf); }
-  $("#ctaOpen").addEventListener("click", () => openCard(false));
-  $("#ctaSim").addEventListener("click", () => openCard(true));
+  $("#ctaOpen").addEventListener("click", openCard);
   $("#ctaClose").addEventListener("click", () => select(null));
   if (window.claude && typeof window.claude.use === "function") {
     window.claude.use("downloads").then(d => { DOWNLOADS = d; $("#dlBtn").hidden = !d; }, () => {});
