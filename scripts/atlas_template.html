@@ -2119,7 +2119,7 @@ function render3D(traces, view, pal, layout, groups = []) {
     geo.setAttribute("position", new THREE.BufferAttribute(pos, 3)); geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
     const kind = m.symbol === "circle-open" ? "ring" : String(m.symbol || "").startsWith("diamond") ? "diamond" : "disc";
     const overlayTrace = kind !== "disc" || (m.size || 0) >= 14 || t.meta === "seldot";
-    const mat = new THREE.PointsMaterial({ size: (m.size || 6) * dpr * (overlayTrace ? 1 : 1.35), sizeAttenuation: false, vertexColors: true,
+    const mat = new THREE.PointsMaterial({ size: (m.size || 6) * dpr, sizeAttenuation: false, vertexColors: true,
       map: sprite(kind), alphaTest: 0.5, depthTest: !overlayTrace });
     const pts = new THREE.Points(geo, mat);
     pts.renderOrder = overlayTrace ? 10 : 0;
