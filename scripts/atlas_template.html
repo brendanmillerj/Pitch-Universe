@@ -92,6 +92,40 @@ button, input, select { font: inherit; color: inherit; }
 .mbmore { padding: 6px 10px; font: 400 12.5px var(--font-ui); color: var(--muted); }
 .mbshow { position: absolute; z-index: 6; top: 70px; right: 22px; font: 700 17px var(--font-ui); padding: 11px 20px; border-radius: 10px;
   border: 1px solid var(--line); background: var(--field); color: var(--ink); cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); }
+/* saved ellipses: "Save as ellipse" in the pitcher list; the saved list is its own panel, bottom right of the map.
+   The pitcher list and the color key leave room for it via --svh / --svw, set on .map by renderSaved(). */
+.matchbox { max-height: calc(100% - 56px - var(--svh, 0px)); }
+.svbtn { display: block; margin: 0 10px 8px; padding: 8px 12px; min-height: 38px; border-radius: 10px; cursor: pointer;
+  background: var(--field); color: var(--ink); border: 2px solid var(--ink); font: 700 15px var(--font-ui); text-align: center; }
+.svbtn:hover { background: var(--wash); }
+.svbtn[hidden] { display: none; }
+.savedbox { position: absolute; z-index: 6; right: 22px; bottom: 12px; width: min(300px, 42%); max-height: 42%;
+  display: flex; flex-direction: column; border-radius: 12px; background: var(--map-chrome); border: 1.5px solid var(--map-muted);
+  color: var(--map-ink); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4); overflow: hidden; }
+.savedbox[hidden] { display: none; }
+.sv-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 8px 12px 6px; }
+.sv-head b { font: 700 15px var(--font-ui); }
+.savedbox .link { color: var(--map-ink); font-weight: 700; }
+#svList { list-style: none; margin: 0; padding: 0 0 4px; overflow-y: auto; overscroll-behavior: contain; }
+#svList li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 2px 8px;
+  padding: 6px 10px; border-top: 1px solid rgba(255, 255, 255, 0.12); }
+#svList li.off .sv-name, #svList li.off .sv-meta { opacity: 0.55; }
+.sv-sw { width: 20px; height: 20px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.45);
+  position: relative; cursor: pointer; overflow: hidden; }
+.sv-sw input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; padding: 0; border: 0; cursor: pointer; }
+.sv-name { min-width: 0; font: 600 14px var(--font-ui); color: var(--map-ink); background: none; border: 1px solid transparent;
+  border-radius: 5px; padding: 2px 4px; text-overflow: ellipsis; }
+.sv-name:hover { border-color: rgba(255, 255, 255, 0.25); }
+.sv-name:focus { border-color: var(--map-ink); background: rgba(0, 0, 0, 0.25); outline: none; }
+.sv-tog, .sv-del { font: 700 12.5px var(--font-ui); color: var(--map-ink); background: none; border: 1px solid var(--map-muted);
+  border-radius: 6px; padding: 3px 7px; cursor: pointer; }
+.sv-del { border-color: transparent; font-size: 16px; line-height: 1; padding: 2px 5px; }
+.sv-tog:hover, .sv-del:hover { background: var(--map-hover); }
+.sv-meta { grid-column: 2 / -1; font: 400 12px var(--font-ui); color: var(--map-ink2); padding-left: 5px; }
+.sv-undo { padding: 6px 12px 8px; font: 500 12.5px var(--font-ui); color: var(--map-ink2); border-top: 1px solid rgba(255, 255, 255, 0.12); }
+.sv-undo[hidden] { display: none; }
+.savedbox.folded #svList, .savedbox.folded .sv-undo { display: none; }
+.app.has-sel .savedbox { right: 18px; bottom: 8px; width: min(250px, 42%); }
 .g3-overlay { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .g3-label { position: absolute; left: 0; top: 0; white-space: nowrap; font: 600 12px var(--font-ui); color: var(--map-ink);
   text-shadow: 0 0 3px var(--map), 0 0 3px var(--map), 0 0 2px var(--map); will-change: transform; }
@@ -630,7 +664,7 @@ tr.self td { font-weight: 600; background: none; }
 .app.has-sel .matchbox, .app.has-sel .mbshow { top: 50px; }
 .app.has-sel .mbshow { font-size: 14px; padding: 8px 14px; }
 .app.has-sel .dlbtn { font-size: 14px; min-height: 38px; padding: 8px 12px; }
-.app.has-sel .mapkey { left: 8px; bottom: 8px; padding: 8px 10px 9px; max-width: min(300px, calc(100% - 32px)); }
+.app.has-sel .mapkey { left: 8px; bottom: 8px; padding: 8px 10px 9px; max-width: min(300px, calc(100% - 32px - var(--svw, 0px))); }
 .app.has-sel .mk-title { font-size: 15px; } .app.has-sel .mk-sub { font-size: 12px; }
 .app.has-sel .mk-dual, .app.has-sel .mk-ticks { width: 220px; } .app.has-sel .mk-dual { margin: 9px 0 4px; }
 .app.has-sel .mk-range { font-size: 12.5px; }
@@ -674,7 +708,7 @@ tr.self td { font-weight: 600; background: none; }
 .mapfilt { position: absolute; z-index: 6; top: 12px; right: 24px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; max-width: 60%; }
 .mseg button { font-size: 18px; padding: 10px 14px; }
 #seasonChips button[aria-pressed="false"] { color: var(--map-muted); text-decoration: line-through; text-decoration-thickness: 1.5px; }
-.mapkey { position: absolute; z-index: 6; left: 12px; bottom: 12px; max-width: min(460px, calc(100% - 48px)); padding: 12px 16px 14px;
+.mapkey { position: absolute; z-index: 6; left: 12px; bottom: 12px; max-width: min(460px, calc(100% - 48px - var(--svw, 0px))); padding: 12px 16px 14px;
   border-radius: 12px; background: var(--map-chrome); border: 1.5px solid var(--map-muted); color: var(--map-ink);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4); }
 .mapkey[hidden] { display: none; }
@@ -853,10 +887,16 @@ tr.self td { font-weight: 600; background: none; }
       <div class="mb-head"><b id="mbTitle"></b><button type="button" class="link" id="mbHide">Hide</button></div>
       <button type="button" class="dlbtn" id="dlBtn" hidden>Download these pitchers (CSV)</button>
       <p class="dlmsg" id="dlMsg" role="status" aria-live="polite"></p>
+      <button type="button" class="svbtn" id="svBtn" hidden title="Keep an ellipse around these pitchers on every map, whatever you filter next">Save as ellipse</button>
       <input id="mbSearch" type="search" placeholder="Filter names" autocomplete="off" aria-label="Filter the list by name">
       <ol id="mbList"></ol>
     </aside>
     <button type="button" class="mbshow" id="mbShow" hidden></button>
+    <aside class="savedbox" id="savedBox" aria-label="Saved ellipses" hidden>
+      <div class="sv-head"><b id="svTitle">Saved ellipses</b><button type="button" class="link" id="svFold" aria-expanded="true">Hide</button></div>
+      <ul id="svList"></ul>
+      <p class="sv-undo" id="svUndo" hidden></p>
+    </aside>
   </main>
 
   <div class="caption">
@@ -1332,6 +1372,7 @@ function render() {
   }
 
   if (state.ellipses) traces.push(...ellipseTraces(view, cg, on, match, pal));
+  traces.push(...savedTraces(view, pal));   // saved groups: always drawn, whatever the filters
 
   // Pitch-type names sit on their islands in All pitches whatever the color, filters, sliders or
   // selection: positions come from every dot of the type, so a label never moves or disappears.
@@ -1448,7 +1489,7 @@ function render() {
     delete outLayout.xaxis; delete outLayout.yaxis; delete outLayout.dragmode;
   }
   if (is3D() && window.THREE && THREE.OrbitControls) {
-    render3D(outTraces, view, pal, outLayout, state.ellipses ? ellipseGroups(view, cg, on, match, pal) : []);
+    render3D(outTraces, view, pal, outLayout, (state.ellipses ? ellipseGroups(view, cg, on, match, pal) : []).concat(savedGroups(view)));
   } else {
   if (G3) dispose3D();
   Plotly.react(plotEl, outTraces, outLayout, config).then(() => {
@@ -1467,6 +1508,7 @@ function render() {
   if (!keyIn) state.keyLabel = "";
   const listMatch = keyIn ? andMatch(match, r => keyIn.has(r)) : match;   // the list (and CSV) follow the key's range too
   updateMatchBox(view, rows, listMatch, cg);
+  refreshSavedMeta();
 
   // Caption under the map
   $("#keySel").hidden = !hasSel;
@@ -1549,6 +1591,126 @@ function ellipseTraces(view, cg, on, match, pal) {
     return { type: "scatter", mode: "lines", x: X, y: Y, fill: "toself", fillcolor: rgba(g.color, 0.16),
       line: { color: rgba(g.color, 0.5), width: 0.75 }, hoverinfo: "skip", showlegend: false, name: g.name };
   });
+}
+// ------------------------------------------------------- saved ellipses
+// "Save as ellipse" (in the highlighted-pitcher list) freezes the current group as a set of pitcher-seasons.
+// A saved ellipse follows those pitchers onto every map (one per pitch type in All pitches, an ellipsoid
+// in 3D), ignores later filters and the season/hand toggles, and is kept in this browser's storage.
+const SAVED_STORE = "atlas.savedEllipses.v1";
+const SAVED_COLORS = ["#ffffff", "#f5d90a", "#22d3ee", "#ff6ad5", "#a3e635", "#fb923c", "#c4b5fd"];
+let saved = [], svDeleted = null;
+try {
+  const s = JSON.parse(localStorage.getItem(SAVED_STORE) || "[]");
+  if (Array.isArray(s)) saved = s.filter(e => e && typeof e.id === "string" && Array.isArray(e.keys) && /^#[0-9a-f]{6}$/i.test(e.color))
+    .map(e => ({ id: e.id, name: String(e.name || "Saved group").slice(0, 60), color: e.color, on: e.on !== false, keys: e.keys.map(String) }));
+} catch (e) {}
+const persistSaved = () => { try { localStorage.setItem(SAVED_STORE, JSON.stringify(saved)); } catch (e) {} };
+const svRowCache = new Map();   // id|view -> rows; a saved group never changes, so this never goes stale
+function savedRows(e, view) {
+  const ck = e.id + "|" + view;
+  if (!svRowCache.has(ck)) { const ks = new Set(e.keys); svRowCache.set(ck, viewRows(view).filter(r => ks.has(T.pitcher[r] + "|" + T.season[r]))); }
+  return svRowCache.get(ck);
+}
+function savedPieces(e, view) {
+  const rows = savedRows(e, view);
+  const parts = view === "all"
+    ? TYPES.map(t => ({ rows: rows.filter(r => T.pitch_type[r] === t), name: `${e.name} · ${PTN[t]}` }))
+    : [{ rows, name: e.name }];
+  return parts.filter(p => p.rows.length >= MIN_ELL).map(p => ({ ...p, color: e.color, saved: e }));
+}
+const savedGroups = view => saved.filter(e => e.on).flatMap(e => savedPieces(e, view));
+function savedTraces(view, pal) {
+  const k = ELL_K[state.ellP] || ELL_K[68], out = [], labels = new Map();
+  savedGroups(view).forEach(g => {
+    const { X, Y } = ellipseXY(view, g.rows, k);
+    out.push({ type: "scatter", mode: "lines", x: X, y: Y, fill: "toself", fillcolor: rgba(g.color, 0.07),
+      line: { color: g.color, width: 2.5 }, hoverinfo: "skip", showlegend: false, name: g.name });
+    // one name label per saved group, on top of its biggest piece
+    const top = Y.indexOf(Math.max(...Y)), best = labels.get(g.saved.id);
+    if (!best || g.rows.length > best.n) labels.set(g.saved.id, { n: g.rows.length, x: X[top], y: Y[top], name: g.saved.name, color: g.color });
+  });
+  const L = [...labels.values()];
+  if (L.length) out.push({ type: "scatter", mode: "text", x: L.map(l => l.x), y: L.map(l => l.y), text: L.map(l => `<b>${esc(l.name)}</b>`),
+    textposition: "top center", hoverinfo: "skip", showlegend: false,
+    textfont: { family: UI_FONT, size: 13, color: L.map(l => l.color), shadow: `0 0 3px ${pal.bg}, 0 0 3px ${pal.bg}, 0 0 2px ${pal.bg}` } });
+  return out;
+}
+function saveCurrentGroup() {
+  const rows = state.dlRows || []; if (!rows.length) return;
+  const keys = [...new Set(rows.map(r => T.pitcher[r] + "|" + T.season[r]))];
+  let base = (state.mbTitle || "Highlighted").slice(0, 48), name = base, n = 2;
+  while (saved.some(e => e.name === name)) name = `${base} ${n++}`;
+  const used = new Set(saved.map(e => e.color.toLowerCase()));
+  const color = SAVED_COLORS.find(c => !used.has(c)) || SAVED_COLORS[saved.length % SAVED_COLORS.length];
+  saved.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, color, on: true, keys });
+  persistSaved(); svDeleted = null;
+  $("#savedBox").classList.remove("folded");
+  const pitchers = new Set(keys.map(k => k.split("|")[0])).size;
+  $("#dlMsg").textContent = `Saved “${name}” (${pitchers.toLocaleString()} pitcher${pitchers === 1 ? "" : "s"}). Rename, recolor or hide it in the panel at the bottom right of the map.`;
+  renderSaved(); render();
+}
+function savedMeta(e, view) {
+  const pitchers = new Set(e.keys.map(k => k.split("|")[0])).size;
+  const seasons = [...new Set(e.keys.map(k => k.split("|")[1]))].sort().join(", ");
+  const drawn = savedPieces(e, view).length;
+  return `${pitchers.toLocaleString()} pitcher${pitchers === 1 ? "" : "s"} · ${seasons}` + (drawn ? "" : ` · too few on this map (needs ${MIN_ELL} pitches)`);
+}
+// Structure only on save / delete / undo / fold; render() refreshes the per-map notes in place.
+function renderSaved() {
+  const box = $("#savedBox"), mapEl = document.querySelector(".map");
+  box.hidden = !saved.length && !svDeleted;
+  $("#svTitle").textContent = `Saved ellipses (${saved.length})`;
+  const folded = box.classList.contains("folded");
+  $("#svFold").textContent = folded ? "Show" : "Hide"; $("#svFold").setAttribute("aria-expanded", String(!folded));
+  $("#svList").innerHTML = saved.map(e => `<li data-id="${esc(e.id)}" class="${e.on ? "" : "off"}">`
+    + `<label class="sv-sw" style="--c:${e.color}" title="Change color"><input type="color" value="${e.color}" data-color aria-label="Color for ${esc(e.name)}"></label>`
+    + `<input class="sv-name" type="text" value="${esc(e.name)}" maxlength="60" data-name aria-label="Name" title="Click to rename">`
+    + `<button type="button" class="sv-tog" data-tog aria-pressed="${e.on}">${e.on ? "Hide" : "Show"}</button>`
+    + `<button type="button" class="sv-del" data-del aria-label="Delete ${esc(e.name)}" title="Delete">×</button>`
+    + `<span class="sv-meta">${esc(savedMeta(e, state.view))}</span></li>`).join("");
+  const u = $("#svUndo");
+  u.hidden = !svDeleted;
+  if (svDeleted) u.innerHTML = `Deleted “${esc(svDeleted.e.name)}”. <button type="button" class="link" data-undo>Undo</button>`;
+  // keep the pitcher list and the color key clear of the panel
+  requestAnimationFrame(() => {
+    mapEl.style.setProperty("--svh", box.hidden ? "0px" : (box.offsetHeight + 12) + "px");
+    mapEl.style.setProperty("--svw", box.hidden ? "0px" : (box.offsetWidth + 12) + "px");
+  });
+}
+function refreshSavedMeta() {
+  $("#svList").querySelectorAll("li[data-id]").forEach(li => {
+    const e = saved.find(x => x.id === li.dataset.id), m = li.querySelector(".sv-meta");
+    if (e && m) m.textContent = savedMeta(e, state.view);
+  });
+}
+function wireSaved() {
+  $("#svBtn").addEventListener("click", saveCurrentGroup);
+  $("#svFold").addEventListener("click", () => { $("#savedBox").classList.toggle("folded"); renderSaved(); });
+  const list = $("#svList"), of = el => saved.find(e => e.id === (el.closest("li[data-id]") || {}).dataset?.id);
+  list.addEventListener("click", ev => {
+    const e = of(ev.target); if (!e) return;
+    if (ev.target.closest("[data-tog]")) { e.on = !e.on; persistSaved(); renderSaved(); render(); }
+    else if (ev.target.closest("[data-del]")) {
+      svDeleted = { e, at: saved.indexOf(e) }; saved = saved.filter(x => x !== e);
+      persistSaved(); renderSaved(); render();
+    }
+  });
+  list.addEventListener("change", ev => {
+    const e = of(ev.target); if (!e) return;
+    if (ev.target.matches("[data-color]") && /^#[0-9a-f]{6}$/i.test(ev.target.value)) e.color = ev.target.value;
+    else if (ev.target.matches("[data-name]")) e.name = ev.target.value.trim().slice(0, 60) || e.name;
+    else return;
+    persistSaved(); renderSaved(); render();
+  });
+  // live swatch while the color picker is open; the map redraws once it closes ("change")
+  list.addEventListener("input", ev => { if (ev.target.matches("[data-color]")) ev.target.parentElement.style.setProperty("--c", ev.target.value); });
+  list.addEventListener("keydown", ev => { if (ev.key === "Enter" && ev.target.matches("[data-name]")) ev.target.blur(); });
+  $("#svUndo").addEventListener("click", ev => {
+    if (!ev.target.closest("[data-undo]") || !svDeleted) return;
+    saved.splice(Math.min(svDeleted.at, saved.length), 0, svDeleted.e); svDeleted = null;
+    persistSaved(); renderSaved(); render();
+  });
+  renderSaved();
 }
 // ------------------------------------------------------- pitcher types
 // Each archetype (scripts/pitcher_types.json) is a list of conditions on one pitcher-season.
@@ -2174,6 +2336,8 @@ function updateMatchBox(view, rows, match, cg) {
     title = [...state.teamPick].map(t => TEAM_NAMES[t] || t).join(", ");
   }
   state.dlRows = lit;   // "Download these pitchers" exports every highlighted dot
+  state.mbTitle = title;   // default name for "Save as ellipse"
+  $("#svBtn").hidden = !lit || !lit.length;
   if (!lit) { box.hidden = true; show.hidden = true; state.mbRows = null; return; }
   // one entry per pitcher: his most recent highlighted season (his pitches that season); earlier seasons are noted
   const by = new Map();
@@ -3017,6 +3181,7 @@ function buildStatic() {
   $("#howShow").addEventListener("click", () => setHow(false, true));
   // download: shown once this view can save files (framed in claude.ai), or always on a standalone copy
   $("#dlBtn").addEventListener("click", downloadCSV);
+  wireSaved();
   if (window.claude && typeof window.claude.use === "function") {
     window.claude.use("downloads").then(d => { DOWNLOADS = d; $("#dlBtn").hidden = !d; }, () => {});
   } else $("#dlBtn").hidden = false;
