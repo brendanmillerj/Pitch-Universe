@@ -248,6 +248,13 @@ button, input, select { font: inherit; color: inherit; }
   background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
   background-position: calc(100% - 20px) 52%, calc(100% - 14px) 52%; background-size: 6px 6px; background-repeat: no-repeat; }
 .find-box select option { color: var(--ink); background: var(--field); }
+/* clear (×) inside a finder box, left of its dropdown arrow */
+.boxclear { position: absolute; right: 36px; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; padding: 0; border: 0;
+  border-radius: 50%; background: var(--wash); color: var(--ink); font: 400 22px/1 var(--font-ui); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; }
+.boxclear:hover { background: var(--ink); color: var(--field); }
+.boxclear[hidden] { display: none; }
+.find-box:has(.boxclear:not([hidden])) select { padding-right: 76px; }
 .fa-row { display: flex; flex-wrap: nowrap; gap: 8px; min-width: 0; }
 .fa-row .fa-which { flex: 1 1 0; min-width: 0; }   /* beside Off | On, so turning it on never pushes the header down */
 .fa-which select { font-size: 17px; text-overflow: ellipsis; white-space: nowrap; padding-right: 30px; }
@@ -504,7 +511,21 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
 .sl-head { display: flex; justify-content: space-between; align-items: baseline; }
 .sl-title { font: 600 20px/1.1 var(--font-serif); color: var(--ink); }
 .sl-count { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--rule); padding-bottom: 6px; }
-.slgroup { font: 700 13px var(--font-ui); color: var(--ink); margin-top: 10px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+.slsec { border-bottom: 1px solid var(--line); }
+.slsec[hidden] { display: none; }
+.slgroup { display: flex; align-items: center; gap: 8px; width: 100%; padding: 12px 4px; border: 0; background: none; cursor: pointer;
+  font: 700 15px var(--font-ui); color: var(--ink); text-align: left; }
+.slgroup:hover { background: var(--wash); }
+.slgroup .chev { flex: none; width: 8px; height: 8px; margin: 0 4px 0 2px; border-right: 2px solid var(--ink2); border-bottom: 2px solid var(--ink2);
+  transform: rotate(-45deg); transition: transform 0.15s; }
+.slgroup[aria-expanded="true"] .chev { transform: rotate(45deg); }
+.slg-name { flex: 1; min-width: 0; }
+.slg-n { font: 400 13px var(--font-ui); color: var(--muted); font-variant-numeric: tabular-nums; }
+.slg-on { font: 700 13px var(--font-ui); color: var(--field); background: var(--ink); border-radius: 999px; padding: 2px 8px; }
+.slg-on:empty { display: none; }
+.slbody { padding: 0 0 12px; }
+.slbody[hidden] { display: none; }
+.sl-all { display: flex; gap: 12px; }
 .slrow { padding: 4px 0 2px; }
 .sltop { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
 .sltop label { font: 400 13px var(--font-ui); color: var(--ink2); min-width: 0; }
@@ -816,6 +837,7 @@ tr.self td { font-weight: 600; background: none; }
     </div>
     <input id="slSearch" type="search" placeholder="Search measures" autocomplete="off" aria-label="Search measures">
     <div class="sl-count"><span class="count" id="slCount"></span><button type="button" class="link" id="slReset">Reset all</button></div>
+    <div class="sl-all"><button type="button" class="link" id="slExpand">Open all</button><button type="button" class="link" id="slCollapse">Close all</button></div>
     <div id="slList"></div>
   </aside>
   <header class="head">
@@ -832,8 +854,8 @@ tr.self td { font-weight: 600; background: none; }
       </form>
       <div class="find find-type">
         <label class="find-lbl" for="ptype">Find a type of pitcher</label>
-        <div class="find-box"><select id="ptype"></select></div>
-        <p class="ptype-meta"><span class="count" id="ptypeCount" aria-live="polite"></span><button type="button" class="link" id="ptypeClear" hidden>Clear</button></p>
+        <div class="find-box"><select id="ptype"></select><button type="button" class="boxclear" id="ptypeClear" aria-label="Clear pitcher type" title="Clear" hidden>×</button></div>
+        <p class="ptype-meta"><span class="count" id="ptypeCount" aria-live="polite"></span></p>
         <p class="help" id="ptypeDef"></p>
       </div>
       <div class="find find-meas">
@@ -1183,6 +1205,7 @@ const state = {
   rangeMode: "pct",
   archetype: "",      // id from D.archetypes; "" = none
   slidersOpen: false,
+  slGroupsOpen: new Set(),   // measure-filter sections the user has opened (all start closed)
   seasons: new Set(D.seasons),
   throws: "all",
   team: "all",
@@ -3185,9 +3208,16 @@ function buildSliders() {
   ["slPct", "slRaw"].forEach(id => $("#" + id).setAttribute("aria-pressed", String($("#" + id).dataset.v === state.rangeMode)));
   ["slGray", "slHide"].forEach(id => $("#" + id).setAttribute("aria-pressed", String(($("#" + id).dataset.v === "hide") === state.hideOff)));
   list.classList.toggle("pct", state.rangeMode === "pct");
-  let html = "", g = null;
+  let html = "", g = null, gi = -1;
+  const counts = {}; sliderVars().forEach(v => { counts[v.group] = (counts[v.group] || 0) + 1; });
   sliderVars().forEach((v, n) => {
-    if (v.group !== g) { g = v.group; html += `<div class="slgroup">${esc(g)}</div>`; }
+    if (v.group !== g) {
+      if (g !== null) html += `</div></section>`;
+      g = v.group; gi++;
+      html += `<section class="slsec" data-g="${esc(g)}"><button type="button" class="slgroup" aria-expanded="false" aria-controls="slsec-${gi}">
+        <i class="chev" aria-hidden="true"></i><span class="slg-name">${esc(g)}</span><span class="slg-on"></span><span class="slg-n">${counts[g]}</span></button>
+        <div class="slbody" id="slsec-${gi}">`;
+    }
     const { min, max, step } = sliderSpec(v), cur = state.ranges[kind][v.key] || [min, max];
     html += `<div class="slrow" data-k="${esc(v.key)}" data-n="${n}">
       <div class="sltop"><label for="sl-lo-${n}">${esc(v.label)}</label><span class="slval"></span></div>
@@ -3196,7 +3226,13 @@ function buildSliders() {
         <input type="range" id="sl-hi-${n}" min="${min}" max="${max}" step="${step}" value="${cur[1]}" aria-label="${esc(v.label)}, high end">
       </div></div>`;
   });
+  if (g !== null) html += `</div></section>`;
   list.innerHTML = html;
+  list.querySelectorAll(".slgroup").forEach(b => b.addEventListener("click", () => {
+    const name = b.parentElement.dataset.g, open = b.getAttribute("aria-expanded") !== "true";
+    if (open) state.slGroupsOpen.add(name); else state.slGroupsOpen.delete(name);
+    filterSliderList();
+  }));
   const vars = sliderVars();
   list.querySelectorAll(".slrow").forEach(row => {
     const v = vars[+row.dataset.n], [lo, hi] = row.querySelectorAll("input");
@@ -3207,32 +3243,46 @@ function buildSliders() {
       // let the low thumb sit on top once it is pushed to the far right, so it can be pulled back
       lo.style.zIndex = a > min + 0.9 * (max - min) ? 3 : 1;
       if (a <= min && b >= max) delete state.ranges[kind][v.key]; else state.ranges[kind][v.key] = [a, b];
-      paintSlider(row, v); scheduleRender();
+      paintSlider(row, v); paintGroups(); scheduleRender();
     };
     lo.addEventListener("input", () => update("lo"));
     hi.addEventListener("input", () => update("hi"));
     paintSlider(row, v);
   });
-  filterSliderList();
+  paintGroups(); filterSliderList();
+}
+// each section header says how many of its filters are set
+function paintGroups() {
+  $("#slList").querySelectorAll(".slsec").forEach(sec => {
+    const n = sec.querySelectorAll(".slrow.on").length;
+    sec.querySelector(".slg-on").textContent = n ? `${n} on` : "";
+  });
 }
 function filterSliderList() {
   const words = (state.slSearch || "").toLowerCase().split(/\s+/).filter(Boolean), vars = sliderVars();
-  let lastGroup = null, groupHas = false;
-  const groups = [];
-  $("#slList").querySelectorAll(".slgroup, .slrow").forEach(el => {
-    if (el.classList.contains("slgroup")) { groups.push([el, false]); return; }
-    const v = vars[+el.dataset.n], hay = (v.label + " " + v.group).toLowerCase();
-    const show = !words.length || words.every(w => hay.includes(w));
-    el.hidden = !show; if (show && groups.length) groups[groups.length - 1][1] = true;
+  $("#slList").querySelectorAll(".slsec").forEach(sec => {
+    let has = false;
+    sec.querySelectorAll(".slrow").forEach(el => {
+      const v = vars[+el.dataset.n], hay = (v.label + " " + v.group).toLowerCase();
+      const show = !words.length || words.every(w => hay.includes(w));
+      el.hidden = !show; has = has || show;
+    });
+    const open = words.length ? has : state.slGroupsOpen.has(sec.dataset.g);
+    sec.hidden = !has;
+    sec.querySelector(".slbody").hidden = !open;
+    sec.querySelector(".slgroup").setAttribute("aria-expanded", String(open));
   });
-  groups.forEach(([el, has]) => { el.hidden = !has; });
 }
 function setSlidersOpen(open) {
   state.slidersOpen = open;
   $("#sliders").hidden = !open;
   $("#app").classList.toggle("with-sliders", open);
   $("#slOpen").setAttribute("aria-expanded", String(open));
-  if (open) { buildSliders(); $("#slSearch").focus({ preventScroll: true }); }
+  if (open) {
+    const set = state.ranges[varKind(state.view)];
+    sliderVars().forEach(v => { if (set[v.key]) state.slGroupsOpen.add(v.group); });
+    buildSliders(); $("#slSearch").focus({ preventScroll: true });
+  }
   // the map's width changed: let Plotly re-measure
   requestAnimationFrame(() => { try { Plotly.Plots.resize(plotEl); } catch (e) {} });
 }
@@ -3375,6 +3425,8 @@ function buildStatic() {
   $("#slOff").querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
     state.hideOff = b.dataset.v === "hide"; buildSliders(); render();
   }));
+  $("#slExpand").addEventListener("click", () => { sliderVars().forEach(v => state.slGroupsOpen.add(v.group)); filterSliderList(); });
+  $("#slCollapse").addEventListener("click", () => { state.slGroupsOpen.clear(); filterSliderList(); });
   $("#slSearch").addEventListener("input", e => { state.slSearch = e.target.value; filterSliderList(); });
 
   // "More options" drawer remembers whether it was open (per viewer; storage may be unavailable)
