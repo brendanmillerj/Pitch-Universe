@@ -527,7 +527,9 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
 .mt { width: 100%; border-collapse: collapse; font: 400 14px var(--font-ui); color: var(--ink); font-variant-numeric: tabular-nums lining-nums; }
 .mt th { position: sticky; top: 0; z-index: 1; background: var(--panel); border-bottom: 1px solid var(--line); padding: 0; vertical-align: bottom; }
 .mt th button { display: flex; align-items: flex-end; justify-content: flex-end; gap: 4px; width: 100%; padding: 8px; border: 0; background: none;
-  font: 600 13px/1.2 var(--font-ui); color: var(--ink2); text-align: right; cursor: pointer; }
+  font: 600 13px/1.2 var(--font-ui); color: var(--ink2); text-align: right; cursor: pointer; white-space: normal; }
+.mt th button .mt-h { min-width: 0; overflow-wrap: break-word; }
+.mt th button .mt-h .tm { white-space: nowrap; }
 .mt th:first-child button { justify-content: flex-start; text-align: left; }
 .mt th button:hover { background: var(--wash); color: var(--ink); }
 .mt th[aria-sort] button { color: var(--ink); }
@@ -538,7 +540,7 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
 .mt th:first-child { z-index: 2; background: var(--panel); }
 .mt tbody tr:hover td:first-child { background: var(--wash); }
 .mt tbody tr.on td:first-child { background: var(--ink); }
-.mt th button { min-width: 64px; max-width: 110px; margin-left: auto; }
+.mt th:not(:first-child) { min-width: 72px; }
 .mt th:first-child button { max-width: none; margin-left: 0; }
 .mt tbody tr { cursor: pointer; }
 .mt tbody tr:hover { background: var(--wash); }
@@ -3428,7 +3430,7 @@ function renderTable() {
   const ariaSort = k => k === sk ? ` aria-sort="${dir < 0 ? "descending" : "ascending"}"` : "";
   const unitTxt = v => pct ? "" : v.unit ? ` <span class="tm">(${esc(v.unit)})</span>` : "";
   $("#mtHeadRow").innerHTML = `<tr><th scope="col"${ariaSort("name")}><button type="button" data-k="name">Pitcher${arrow("name")}</button></th>` +
-    cols.map(v => `<th scope="col"${ariaSort(v.key)}><button type="button" data-k="${esc(v.key)}" title="${esc(v.label)}">${esc(shortLabel(v.label))}${unitTxt(v)}${arrow(v.key)}</button></th>`).join("") + "</tr>";
+    cols.map(v => `<th scope="col"${ariaSort(v.key)}><button type="button" data-k="${esc(v.key)}" title="${esc(v.label)}"><span class="mt-h">${esc(shortLabel(v))}${unitTxt(v)}</span>${arrow(v.key)}</button></th>`).join("") + "</tr>";
   const cell = (v, x) => {
     if (x === null) return `<td>—</td>`;
     if (pct) { const p = Math.round(x); return `<td><span class="mt-pct" style="background:${savantColor(p)};color:${savantInk(p)}">${p}</span></td>`; }
@@ -3440,8 +3442,20 @@ function renderTable() {
     return `<tr data-r="${r}" tabindex="0"${r === state.sel ? ' class="on"' : ""}><td><div class="mt-name">${esc(T.name[r])}</div><div class="mt-meta">${meta}</div></td>${cols.map((v, k) => cell(v, vs[k])).join("")}</tr>`;
   }).join("") + (sorted.length > TABLE_CAP ? `<tr><td class="mt-more" colspan="${cols.length + 1}">Showing the top ${TABLE_CAP} of ${sorted.length.toLocaleString()}. Tighten a filter or re-sort to see others.</td></tr>` : "");
 }
-// header labels: drop the parenthetical so columns stay narrow (full name is the tooltip)
-const shortLabel = s => s.replace(/\s*\(.*\)\s*$/, "").replace(/^Dynamic Dead Zone: /, "DDZ: ");
+// column headers: short names so columns stay narrow (the full name is the header's tooltip)
+const COL_SHORT = {
+  velo: "Velo", ivb: "IVB", hb: "HB", spin: "Spin", spin_eff: "Spin eff.", spin_axis: "Spin axis", ax: "Accel. x", az: "Accel. z", ssw: "SSW",
+  ddz_az: "DDZ ride", ddz_az_velo: "DDZ ride (velo)", ddz_ax: "DDZ run",
+  vaa: "VAA vs exp.", haa: "HAA vs exp.", vra: "VRA vs exp.", hra: "HRA vs exp.",
+  arm_angle: "Arm angle", rel_height: "Release ht.", rel_side: "Release side", extension: "Extension", scaled_ext: "Ext. ÷ ht.", release_spread: "Release spread",
+  loc_inside: "Inside", loc_height: "Loc. height", zone_pct: "Zone%",
+  release_sd: "Release SD", movement_sd: "Move SD", velo_sd: "Velo SD",
+  usage: "Usage", usage_ahead: "Ahead", usage_behind: "Behind", usage_vs_lhb: "vs LHB", usage_vs_rhb: "vs RHB",
+  whiff: "Whiff%", whiff_sv: "Whiff%", csw: "CSW%", xwoba_con: "xwOBAcon", xwoba: "xwOBA", rv100: "RV/100", uniq_z: "Unique", n: "Pitches",
+  xera: "xERA", era: "ERA", luck: "ERA − xERA", look_xera: "Lookalike xERA", look_gap: "xERA gap", look_gap_3y: "xERA gap 3y",
+  look_era: "Lookalike ERA", look_era_gap: "ERA gap", k_pct: "K%", bb_pct: "BB%", k9: "K/9", bb9: "BB/9", ip: "IP",
+};
+const shortLabel = v => COL_SHORT[v.key.replace(/^[A-Za-z]+:/, "")] || v.label.replace(/\s*\(.*\)\s*$/, "");
 function wireTable() {
   $("#mtHeadRow").addEventListener("click", e => {
     const b = e.target.closest("button[data-k]"); if (!b) return;
