@@ -1365,7 +1365,7 @@ function colorGetter(kind) {
   //   ratio      = pA / (pA + pB)   0..1, 0.5 = equal standing on both
   //   difference = pA - pB          -100..100
   const pctIn = (v, r) => { const x = v.get(r); if (!isNum(x)) return null; const pt = T.pitch_type[r];
-    return pctRank(poolSorted("t" + pt, typeRows[pt], v), x); };
+    const q = pctRank(poolSorted("t" + pt, typeRows[pt], v), x); return gloveFlip(v, pt) ? 100 - q : q; };
   const get = state.op === "div"
     ? r => { const x = pctIn(a, r), y = pctIn(b, r); return isNum(x) && isNum(y) && x + y > 0 ? x / (x + y) : null; }
     : r => { const x = pctIn(a, r), y = pctIn(b, r); return isNum(x) && isNum(y) ? x - y : null; };
@@ -1393,10 +1393,10 @@ function ruleMatcher(kind, rows) {
   const tests = act.map(([key, [lo, hi]]) => {
     const v = VMAP[kind][key];
     if (state.rangeMode === "raw") return r => { const x = v.get(r); return isNum(x) && x >= lo && x <= hi; };
-    const arrFor = groupedSorted(rows, v.get, byType(state.view, key)), flip = lowGoodVar(v);
+    const arrFor = groupedSorted(rows, v.get, byType(state.view, key));
     return r => {
       const x = v.get(r); if (!isNum(x)) return false;
-      const q = pctRank(arrFor(r), x), pp = flip ? 100 - q : q;
+      const q = pctRank(arrFor(r), x), pp = pctFlip(v, T.pitch_type[r]) ? 100 - q : q;
       return pp >= lo && pp <= hi;
     };
   });
@@ -1498,9 +1498,10 @@ function render() {
       const grouped = byType(view, cg.v ? cg.v.key : "");
       const arrFor = groupedSorted(withV, cg.get, grouped);
       const flip = !cg.combo && lowGoodVar(cg.v);
-      colorVals = withV.map((r, k) => { const q = pctRank(arrFor(r), vals[k]); return flip ? 100 - q : q; });
+      colorVals = withV.map((r, k) => { const q = pctRank(arrFor(r), vals[k]); return !cg.combo && pctFlip(cg.v, T.pitch_type[r]) ? 100 - q : q; });
       cmin = 0; cmax = 100; cs = SAVANT_SCALE;
-      sub = (grouped ? "Percentile within pitch type" : `Percentile among ${PLURAL[view] || "pitches"}`) + (flip ? " · red = better (lower)" : " · red = higher");
+      sub = (grouped ? "Percentile within pitch type" : `Percentile among ${PLURAL[view] || "pitches"}`) + (flip ? " · red = better (lower)" : " · red = higher")
+        + (!cg.combo && cg.v && HORIZ_KEYS.has(baseKey(cg.v.key)) ? " · glove-side pitches ranked by glove-side break" : "");
     } else if (cg.div) {
       const absq = sorted.map(Math.abs).sort((a, b) => a - b), m = quantile(absq, 0.98) || 1;
       cmin = -m; cmax = m; cs = scale(pal.div);
@@ -2395,6 +2396,15 @@ const SAVANT_STOPS = [[0, [50, 90, 161]], [25, [139, 166, 209]], [50, [205, 205,
 const LOW_GOOD = new Set(["xera", "era", "bb_pct", "bb9", "xwoba", "xwoba_con", "release_sd", "movement_sd", "velo_sd"]);
 const baseKey = k => String(k).replace(/^[A-Za-z]+:/, "");
 const lowGoodVar = v => !!v && LOW_GOOD.has(baseKey(v.key));
+// Horizontal movement is stored arm-side positive. Cutters, sliders, sweepers and curveballs break to the
+// glove side (negative), so for them more break is a more negative number: their horizontal percentiles
+// run the other way, and a big sweeper ranks high, not low.
+const GLOVE_SIDE = new Set(["FC", "SL", "ST", "CU"]);
+const HORIZ_KEYS = new Set(["hb", "ax", "ddz_ax"]);
+const gloveFlip = (v, pt) => !!v && GLOVE_SIDE.has(pt) && HORIZ_KEYS.has(baseKey(v.key));
+const pctFlip = (v, pt) => lowGoodVar(v) !== gloveFlip(v, pt);   // flip the raw percentile for this pitch type?
+const flipNote = (v, pt) => gloveFlip(v, pt) ? " (glove-side pitch: more glove-side break ranks higher)"
+  : lowGoodVar(v) ? " (lower is better, so the scale is flipped)" : "";
 function savantRGB(p) {
   const x = Math.max(0, Math.min(100, p));
   for (let k = 1; k < SAVANT_STOPS.length; k++) {
@@ -2881,14 +2891,14 @@ const SHORT = { velo: "Velocity", ivb: "Ride (IVB)", hb: "Horizontal break", spi
 function measureItems(vars, r, poolName, rows) {
   return vars.filter(v => !v.cat).map(v => {
     const x = v.get(r); if (!isNum(x)) return { v, x, p: -1 };
-    const raw = pctRank(poolSorted(poolName, rows, v), x), flip = lowGoodVar(v);
-    return { v, x, p: flip ? 100 - raw : raw, flip };
+    const raw = pctRank(poolSorted(poolName, rows, v), x), pt = T.pitch_type[r];
+    return { v, x, p: pctFlip(v, pt) ? 100 - raw : raw, flip: lowGoodVar(v), note: flipNote(v, pt) };
   });
 }
 const mName = v => SHORT[baseKey(v.key)] || v.label;
-function mRow({ v, x, p, flip }) {
+function mRow({ v, x, p, note }) {
   const bar = p < 0 ? `<span></span>` : (() => { const w = Math.max(0, Math.min(100, p)).toFixed(0);
-    return `<span class="pbar" title="${ord(p)} percentile${flip ? " (lower is better, so the scale is flipped)" : ""}"><span class="track"></span>`
+    return `<span class="pbar" title="${ord(p)} percentile${note || ""}"><span class="track"></span>`
       + `<i style="width:${w}%;background:${savantColor(p)}"></i><b style="left:${w}%;background:${savantColor(p)};color:${savantInk(p)}">${Math.round(p)}</b></span>`; })();
   return `<div class="mrow" title="${esc(v.label)}"><span class="ml">${esc(mName(v))}</span><span class="mv">${fmt(x, v.dec, v.unit)}</span>${bar}</div>`;
 }
@@ -2916,9 +2926,9 @@ const ipTxt = x => isNum(x) ? `${Math.floor(x)}${x % 1 > 0.5 ? ".2" : x % 1 > 0.
 
 const HERO_HI = 90, HERO_LO = 10, HERO_MIN = 5, HERO_MAX = 8;
 function heroRow(it) {
-  const { v, x, p, flip } = it, hi = p >= 50, w = Math.abs(p - 50).toFixed(1), c = savantColor(p);
+  const { v, x, p, note } = it, hi = p >= 50, w = Math.abs(p - 50).toFixed(1), c = savantColor(p);
   const fill = hi ? `left:50%;width:${w}%` : `right:50%;width:${w}%`;
-  return `<div class="hrow" title="${esc(v.label)}: ${ord(p)} percentile${flip ? " (lower is better, so the scale is flipped)" : ""}">
+  return `<div class="hrow" title="${esc(v.label)}: ${ord(p)} percentile${note || ""}">
     <span class="hlab">${esc(mName(v))}</span>
     <span class="hbar"><span class="hmid"></span><i style="${fill};background:${c}"></i><b style="left:${p.toFixed(1)}%;background:${c};color:${savantInk(p)}">${Math.round(p)}</b></span>
     <span class="hv">${fmt(x, v.dec, v.unit)}</span></div>`;
@@ -3421,8 +3431,8 @@ function renderTable() {
   // one value getter per column: percentile (ranked like the sliders) or raw
   const getters = cols.map(v => {
     if (!pct) return r => { const x = v.get(r); return isNum(x) ? x : null; };
-    const arrFor = groupedSorted(rows, v.get, byType(view, v.key)), flip = lowGoodVar(v);
-    return r => { const x = v.get(r); if (!isNum(x)) return null; const q = pctRank(arrFor(r), x); return flip ? 100 - q : q; };
+    const arrFor = groupedSorted(rows, v.get, byType(view, v.key));
+    return r => { const x = v.get(r); if (!isNum(x)) return null; const q = pctRank(arrFor(r), x); return pctFlip(v, T.pitch_type[r]) ? 100 - q : q; };
   });
   let sk = state.tblSort.key;
   if (sk !== "name" && !cols.some(v => v.key === sk)) sk = cols.length ? cols[0].key : "name";
