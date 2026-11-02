@@ -41,7 +41,7 @@ mlbpitch pitcher 645261 --live    # inspect one pitcher, compare to live Savant
 ```
 
 Equivalently `python -m mlbpitch.ingest <cmd>`. Nothing is scheduled — run
-`refresh` yourself, or see `scripts/refresh.sbatch`.
+`refresh` yourself (it takes about 10 seconds).
 
 Querying:
 
@@ -257,7 +257,7 @@ data/
   raw/season=2026/date=YYYY-MM-DD.csv.gz
   pitches/season=2026/month=MM/part-0.parquet
   meta/{schedule,manifest,pitcher_dim}_2026.parquet
-scripts/refresh.sbatch
+scripts/        atlas build, comps, embeddings, figures
 ```
 
 Adding another season is `--season 2025 backfill`; the layout is already

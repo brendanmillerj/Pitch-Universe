@@ -9,7 +9,8 @@ data/*
 data/meta/*_2024_2026.parquet
 data/meta/umap_*.parquet
 
-# SLURM job logs
+# SLURM job scripts and logs (cluster-specific: account and interpreter paths)
+scripts/*.sbatch
 *.log
 
 # SLURM job output from scripts/refresh.sbatch also lands in data/meta
