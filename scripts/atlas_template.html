@@ -183,6 +183,12 @@ button, input, select { font: inherit; color: inherit; }
 .measbtn:hover { background: var(--wash); }
 .measbtn.on, .measbtn[aria-expanded="true"] { background: var(--ink); color: var(--field); }
 .measbtn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* "Reset filters": secondary to Choose..., grayed out until something is filtered (so the header never jumps) */
+.resetbtn { align-self: flex-start; font: 700 15px/1 var(--font-ui); min-height: 36px; padding: 0 14px; border: 1.5px solid var(--ink);
+  border-radius: 8px; background: none; color: var(--ink); cursor: pointer; }
+.resetbtn:hover:not(:disabled) { background: var(--wash); }
+.resetbtn:disabled { color: var(--muted); border-color: var(--line); cursor: default; }
+.resetbtn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 /* Chrome draws its own arrow on inputs with a suggestion list; it clashes with the finder style */
 #search::-webkit-calendar-picker-indicator { display: none !important; opacity: 0; }
 .find { display: flex; flex-direction: column; gap: 6px; margin: 0; min-width: 0; }
@@ -810,6 +816,7 @@ tr.self td { font-weight: 600; background: none; }
       <div class="find find-meas">
         <span class="find-lbl" id="measLabel">Filter by measures</span>
         <button type="button" class="measbtn" id="slOpen" aria-expanded="false" aria-controls="sliders" aria-describedby="measLabel">Choose...</button>
+        <button type="button" class="resetbtn" id="resetAll" disabled title="Clears measure filters, pitcher type, free agents, the color-key range, and season and hand">Reset filters</button>
       </div>
       <div class="find find-fa">
         <span class="find-lbl" id="faLabel">Find free agents</span>
@@ -1547,6 +1554,7 @@ function render() {
   $("#slCount").textContent = countText;
   $("#slOpen").textContent = nR ? `${nR} filter${nR > 1 ? "s" : ""} on` : "Choose...";
   $("#slOpen").classList.toggle("on", !!nR);
+  $("#resetAll").disabled = !anyFilter();
   $("#slClear").hidden = !nR;
   $("#slReset").disabled = !nR;
 }
@@ -1846,6 +1854,10 @@ function syncFA() {
   $("#faWhich").hidden = !on;
   if (on) $("#fa").value = state.fa;
 }
+// Anything narrowing the map that "Reset filters" clears
+const anyFilter = () => Object.keys(state.ranges.all).length + Object.keys(state.ranges.t).length > 0 || !!state.archetype
+  || state.fa !== "all" || !!(state.keyRange && (state.keyRange.lo > 0 || state.keyRange.hi < 1))
+  || state.seasons.size !== D.seasons.length || state.throws !== "all";
 const andMatch = (a, b) => a && b ? r => a(r) && b(r) : a || b;
 function typesLine(j) {
   const names = archNames(j);
@@ -3261,6 +3273,16 @@ function buildStatic() {
   const resetSliders = () => { state.ranges[varKind(state.view)] = {}; buildSliders(); render(); };
   $("#slReset").addEventListener("click", resetSliders);
   $("#slClear").addEventListener("click", resetSliders);
+  // "Reset filters" (header): everything that narrows the map; coloring, team colors and saved ellipses stay
+  $("#resetAll").addEventListener("click", () => {
+    state.ranges = { all: {}, t: {} };
+    state.archetype = ""; $("#ptype").value = ""; syncArchetype();
+    state.fa = "all"; syncFA();
+    if (state.keyRange) { state.keyRange.lo = 0; state.keyRange.hi = 1; }
+    state.seasons = new Set(D.seasons); state.throws = "all"; syncSeasons(); syncThrows();
+    if (state.slidersOpen) buildSliders();
+    render(); renderDetail();
+  });
   $("#slMode").querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
     if (state.rangeMode === b.dataset.v) return;
     state.rangeMode = b.dataset.v; state.ranges = { all: {}, t: {} };   // the two scales don't convert
