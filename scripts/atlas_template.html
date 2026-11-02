@@ -169,8 +169,20 @@ button, input, select { font: inherit; color: inherit; }
 .grp { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
 .grp-scale { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 /* the two finders are the front door: big, stacked label over control, side by side */
-.finders { flex: 0 1 auto; display: grid; grid-template-columns: minmax(15rem, 24rem) minmax(13rem, 19rem) minmax(11rem, 15rem); gap: 10px 32px; margin: 0 0 4px; }
-@media (max-width: 1300px) { .finders { grid-template-columns: minmax(15rem, 1.3fr) minmax(12rem, 1fr) minmax(10rem, 0.8fr); } }
+.finders { flex: 0 1 auto; display: grid; grid-template-columns: minmax(15rem, 24rem) minmax(13rem, 19rem) minmax(10rem, 13rem) minmax(11rem, 15rem); gap: 10px 32px; margin: 0 0 4px; }
+@media (max-width: 1300px) { .finders { grid-template-columns: minmax(15rem, 1.3fr) minmax(12rem, 1fr) minmax(9rem, 0.7fr) minmax(10rem, 0.8fr); column-gap: 24px; } }
+/* Four finders need ~1150px of header. The header's width depends on the layout (full page, half beside a
+   player card, minus the measure drawer), so size them to the header itself: two by two, then one column.
+   Declared after the viewport rules above so these win. */
+.head { container: head / inline-size; }
+@container head (max-width: 1150px) { .finders { grid-template-columns: minmax(13rem, 1fr) minmax(11rem, 1fr); } }
+@container head (max-width: 560px) { .finders { flex-basis: 100%; grid-template-columns: minmax(0, 1fr); } .measbtn { width: 100%; } }
+/* "Filter by measures": opens the measure drawer; dark once any measure filter is on */
+.measbtn { font: 700 20px/1 var(--font-ui); min-height: 46px; padding: 0 18px; border: 2px solid var(--ink); border-radius: 8px;
+  background: var(--field); color: var(--ink); cursor: pointer; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.measbtn:hover { background: var(--wash); }
+.measbtn.on, .measbtn[aria-expanded="true"] { background: var(--ink); color: var(--field); }
+.measbtn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 /* Chrome draws its own arrow on inputs with a suggestion list; it clashes with the finder style */
 #search::-webkit-calendar-picker-indicator { display: none !important; opacity: 0; }
 .find { display: flex; flex-direction: column; gap: 6px; margin: 0; min-width: 0; }
@@ -795,6 +807,10 @@ tr.self td { font-weight: 600; background: none; }
         <p class="ptype-meta"><span class="count" id="ptypeCount" aria-live="polite"></span><button type="button" class="link" id="ptypeClear" hidden>Clear</button></p>
         <p class="help" id="ptypeDef"></p>
       </div>
+      <div class="find find-meas">
+        <span class="find-lbl" id="measLabel">Filter by measures</span>
+        <button type="button" class="measbtn" id="slOpen" aria-expanded="false" aria-controls="sliders" aria-describedby="measLabel">Choose measures</button>
+      </div>
       <div class="find find-fa">
         <span class="find-lbl" id="faLabel">Find free agents</span>
         <div class="fa-row">
@@ -862,7 +878,6 @@ tr.self td { font-weight: 600; background: none; }
         <button type="button" id="dim2" data-v="2" title="Flat map">2D</button>
         <button type="button" id="dim3" data-v="3" title="Drag to rotate">3D</button>
       </div>
-      <button type="button" class="slbtn" id="slOpen" aria-expanded="false" aria-controls="sliders">Filter by measures</button>
       <div class="ellrow">
         <button type="button" class="slbtn" id="ellOn" aria-pressed="false">Show ellipses</button>
         <div class="ellp" id="ellP" role="group" aria-label="Ellipse coverage">
@@ -1530,7 +1545,8 @@ function render() {
   // only touch the live region when the text changes, so screen readers don't repeat it on every drag
   if ($("#matchCount").textContent !== countText) $("#matchCount").textContent = countText;
   $("#slCount").textContent = countText;
-  $("#slOpen").textContent = nR ? `Filter by measures · ${nR} on` : "Filter by measures";
+  $("#slOpen").textContent = nR ? `${nR} filter${nR > 1 ? "s" : ""} on` : "Choose measures";
+  $("#slOpen").classList.toggle("on", !!nR);
   $("#slClear").hidden = !nR;
   $("#slReset").disabled = !nR;
 }
