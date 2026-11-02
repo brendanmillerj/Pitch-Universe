@@ -1,0 +1,40 @@
+# Bulk pitch data stays out of the repo: data/raw (cached Savant CSV) and
+# data/pitches (parquet) are fully regenerable via `mlbpitch backfill`.
+# data/meta is tracked only for its small per-season files (fitted baselines,
+# manifest, schedule, bios, leaderboards, free agents). The multi-season derived
+# products -- profiles, embeddings, comps, snapshots, time series; ~190 MB, one
+# file at 95 MB -- are rebuilt by scripts/ and stay out.
+data/*
+!data/meta/
+data/meta/*_2024_2026.parquet
+data/meta/umap_*.parquet
+
+# SLURM job logs
+*.log
+
+# SLURM job output from scripts/refresh.sbatch also lands in data/meta
+data/meta/refresh-*.log
+
+# Personal working notes, not published: session logs, agent instructions,
+# editor workspace, figure-style references
+context/
+CLAUDE.md
+mlb.code-workspace
+figure_aesthetics/
+
+# Built page: published to the Hugging Face Space, rebuilt by scripts/atlas_build.py
+analysis/pitch_atlas.html
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# Tooling
+.pytest_cache/
+.ipynb_checkpoints/
+.DS_Store
