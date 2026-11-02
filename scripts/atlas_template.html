@@ -1281,7 +1281,7 @@ const state = {
   color: { all: "cat:pitch_type", t: "cat:pitch_type" },   // pitch type is always the default
   op: "none", colorB: { all: "t:velo", t: "t:velo" },
   scale: "pct",       // color scale for measures: within-type percentile by default
-  ranges: { all: {}, t: {} },   // key -> [lo, hi] in the current slider scale
+  ranges: {},          // key -> [lo, hi] in the current slider scale; one set shared by every map
   rangeMode: "pct",
   archetype: "",      // id from D.archetypes; "" = none
   slidersOpen: false,
@@ -1292,7 +1292,7 @@ const state = {
   seasons: new Set(D.seasons),
   throws: "all",
   team: "all",
-  dim: 3,              // 3D UMAP by default; 2D keeps ellipses and zoom-sized dots
+  dim: 2,              // 2D UMAP by default; 3D is one click away
   showName: true,
   ellipses: false, ellP: 68,   // ellipses start off
   teamPick: new Set(["CHC"]),   // teams drawn in club colour when colouring by team
@@ -1388,7 +1388,7 @@ function groupedSorted(rows, get, grouped) {
 // Sliders: a dot stays in color only if every moved slider includes it. Percentile sliders rank
 // within pitch type in "All pitches" and are flipped where lower is better (same as the card).
 function ruleMatcher(kind, rows) {
-  const act = Object.entries(state.ranges[kind]).filter(([k]) => VMAP[kind][k]);
+  const act = Object.entries(state.ranges).filter(([k]) => VMAP[kind][k]);
   if (!act.length) return null;
   const tests = act.map(([key, [lo, hi]]) => {
     const v = VMAP[kind][key];
@@ -1699,7 +1699,7 @@ function render() {
   $("#ellP").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.v === state.ellP)));
 
   // Slider line and panel counts
-  const nR = Object.keys(state.ranges[kind]).length;
+  const nR = Object.keys(state.ranges).length;
   const nOn = keyIn ? on.filter(r => keyIn.has(r)).length : on.length;
   const countText = !match && !keyIn ? `${rows.length.toLocaleString()} pitches` : `${nOn.toLocaleString()} of ${rows.length.toLocaleString()} pitches`;
   // only touch the live region when the text changes, so screen readers don't repeat it on every drag
@@ -2012,7 +2012,7 @@ function syncFA() {
   if (on) $("#fa").value = state.fa;
 }
 // Anything narrowing the map that "Reset filters" clears
-const anyFilter = () => Object.keys(state.ranges.all).length + Object.keys(state.ranges.t).length > 0 || !!state.archetype
+const anyFilter = () => Object.keys(state.ranges).length > 0 || !!state.archetype
   || state.fa !== "all" || !!(state.keyRange && (state.keyRange.lo > 0 || state.keyRange.hi < 1))
   || state.seasons.size !== D.seasons.length || state.throws !== "all";
 const andMatch = (a, b) => a && b ? r => a(r) && b(r) : a || b;
@@ -2045,7 +2045,7 @@ function syncArchetype() {
 
 function ellipseHelp() {
   const cg = colorGetter(varKind(state.view));
-  const grouped = (cg.v && cg.v.cat) || Object.keys(state.ranges[varKind(state.view)]).length || state.archetype || state.fa !== "all";
+  const grouped = (cg.v && cg.v.cat) || Object.keys(state.ranges).length || state.archetype || state.fa !== "all";
   let t = grouped ? "" : "Ellipses need groups: color by pitch type, team, free agents, season or hand, or highlight some pitchers. ";
   if (is3D()) t = "In 3D each group gets an ellipsoid. " + t;
   if (state.view === "all") t += "In All pitches, each group gets one ellipse per pitch type. ";
@@ -2545,7 +2545,7 @@ function litDescription() {
   const parts = [];
   const a = ARCH_BY_ID[state.archetype]; if (a) parts.push(a.name);
   if (state.fa !== "all") { const o = ($("#fa").selectedOptions || [])[0]; parts.push(o ? "Free agents: " + o.textContent : "Free agents"); }
-  const nR = Object.keys(state.ranges[varKind(state.view)]).length; if (nR) parts.push(`${nR} measure filter${nR > 1 ? "s" : ""}`);
+  const nR = Object.keys(state.ranges).length; if (nR) parts.push(`${nR} measure filter${nR > 1 ? "s" : ""}`);
   if (state.keyLabel) parts.push(state.keyLabel);
   return parts.join(" + ");
 }
@@ -3125,8 +3125,6 @@ function setView(view, sel) {
   state.sel = sel !== undefined ? sel : mapSelection(prev, view, state.sel);
   state.view = view;
   try { history.replaceState(null, "", "#" + view); } catch (e) { location.hash = view; }
-  // raw slider bounds belong to one map; percentile sliders carry across maps
-  if (prev !== view && state.rangeMode === "raw") state.ranges[varKind(view)] = {};
   buildUniverse(); buildVarSelects(); buildSliders();
   render(); renderDetail();
 }
@@ -3291,13 +3289,13 @@ let sliderFrame = 0;
 const scheduleRender = () => { if (!sliderFrame) sliderFrame = requestAnimationFrame(() => { sliderFrame = 0; render(); }); };
 
 function paintSlider(row, v) {
-  const { min, max } = sliderSpec(v), cur = state.ranges[varKind(state.view)][v.key] || [min, max];
-  const pos = x => (100 * (x - min) / (max - min)).toFixed(2) + "%";
+  const { min, max } = sliderSpec(v), cur = state.ranges[v.key] || [min, max];
+  const pos = x => Math.max(0, Math.min(100, 100 * (x - min) / (max - min))).toFixed(2) + "%";   // raw ranges carried from another map can sit past this one's ends
   row.querySelector(".mask-l").style.width = pos(cur[0]);
   row.querySelector(".mask-r").style.left = pos(cur[1]);
   const show = x => state.rangeMode === "pct" ? String(Math.round(x)) : (+x).toFixed(v.dec ?? 2);
   row.querySelectorAll(".slnum").forEach(inp => { if (document.activeElement !== inp) inp.value = show(inp.dataset.end === "lo" ? cur[0] : cur[1]); });
-  row.classList.toggle("on", !!state.ranges[varKind(state.view)][v.key]);
+  row.classList.toggle("on", !!state.ranges[v.key]);
 }
 
 function buildSliders() {
@@ -3316,7 +3314,7 @@ function buildSliders() {
         <button type="button" class="sltbl" data-g="${esc(g)}" aria-pressed="${state.tblGroup === g}">${state.tblGroup === g ? "Hide table" : "Show table"}</button></div>
         <div class="slbody" id="slsec-${gi}">`;
     }
-    const { min, max, step } = sliderSpec(v), cur = state.ranges[kind][v.key] || [min, max];
+    const { min, max, step } = sliderSpec(v), cur = state.ranges[v.key] || [min, max];
     html += `<div class="slrow" data-k="${esc(v.key)}" data-n="${n}">
       <div class="sltop"><label for="sl-lo-${n}">${esc(v.label)}</label><span class="slval"><input type="number" class="slnum" data-end="lo" min="${min}" max="${max}" step="${step}" inputmode="decimal" aria-label="${esc(v.label)}, low end (type a value)">–<input type="number" class="slnum" data-end="hi" min="${min}" max="${max}" step="${step}" inputmode="decimal" aria-label="${esc(v.label)}, high end (type a value)">${state.rangeMode === "raw" && v.unit ? `<span class="slu">${esc(v.unit === "%" ? "%" : v.unit)}</span>` : ""}</span></div>
       <div class="dual"><span class="rail"></span><span class="mask-l"></span><span class="mask-r"></span>
@@ -3344,7 +3342,7 @@ function buildSliders() {
       if (a > b) { if (which === "lo") { a = b; lo.value = a; } else { b = a; hi.value = b; } }
       // let the low thumb sit on top once it is pushed to the far right, so it can be pulled back
       lo.style.zIndex = a > min + 0.9 * (max - min) ? 3 : 1;
-      if (a <= min && b >= max) delete state.ranges[kind][v.key]; else state.ranges[kind][v.key] = [a, b];
+      if (a <= min && b >= max) delete state.ranges[v.key]; else state.ranges[v.key] = [a, b];
       paintSlider(row, v); paintGroups(); scheduleRender();
     };
     lo.addEventListener("input", () => update("lo"));
@@ -3398,7 +3396,7 @@ function setSlidersOpen(open, quiet) {   // quiet: no focus move (used when a ca
   $("#app").classList.toggle("with-sliders", open);
   $("#slOpen").setAttribute("aria-expanded", String(open));
   if (open) {
-    const set = state.ranges[varKind(state.view)];
+    const set = state.ranges;
     sliderVars().forEach(v => { if (set[v.key]) state.slGroupsOpen.add(v.group); });
     buildSliders(); if (!quiet) $("#slSearch").focus({ preventScroll: true });
   }
@@ -3642,12 +3640,12 @@ function buildStatic() {
   $("#slOpen").addEventListener("click", () => setSlidersOpen(!state.slidersOpen));
   $("#slClose").addEventListener("click", () => { setSlidersOpen(false); $("#slOpen").focus({ preventScroll: true }); });
   $("#measHelp").textContent = `Opens a panel on the left: ${sliderVars().length} measures to slide, and a table to rank pitchers`;
-  const resetSliders = () => { state.ranges[varKind(state.view)] = {}; buildSliders(); render(); };
+  const resetSliders = () => { state.ranges = {}; buildSliders(); render(); };
   $("#slReset").addEventListener("click", resetSliders);
   $("#slClear").addEventListener("click", resetSliders);
   // "Reset filters" (header): everything that narrows the map; coloring, team colors and saved ellipses stay
   $("#resetAll").addEventListener("click", () => {
-    state.ranges = { all: {}, t: {} };
+    state.ranges = {};
     state.archetype = ""; $("#ptype").value = ""; syncArchetype();
     state.fa = "all"; syncFA();
     if (state.keyRange) { state.keyRange.lo = 0; state.keyRange.hi = 1; }
@@ -3657,7 +3655,7 @@ function buildStatic() {
   });
   $("#slMode").querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
     if (state.rangeMode === b.dataset.v) return;
-    state.rangeMode = b.dataset.v; state.ranges = { all: {}, t: {} };   // the two scales don't convert
+    state.rangeMode = b.dataset.v; state.ranges = {};   // the two scales don't convert
     buildSliders(); render();
   }));
   $("#slOff").querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
