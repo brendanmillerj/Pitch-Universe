@@ -1,5 +1,8 @@
 # MLB pitch store
 
+**Live atlas: [Pitch Universe](https://huggingface.co/spaces/brmiller/Pitch-Universe)**,
+built from this store by `scripts/atlas_build.py`.
+
 Every pitch thrown in the 2026 MLB regular season, in a verified local parquet
 store. Built to feed a "single-cell RNA-seq for pitchers" dashboard: each pitch
 is a cell, the biophysical columns (`arm_angle`, `spin_axis`, `release_speed`,
