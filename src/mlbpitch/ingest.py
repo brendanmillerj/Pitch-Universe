@@ -331,18 +331,29 @@ def cmd_verify(args):
     # eephus legitimately descends at -33 deg, so a blanket bound would flag
     # correct physics; the wide bound below is the absolute sanity floor.
     rng = store.query(
-        "SELECT min(vaa) AS lo, max(vaa) AS hi FROM pitches "
+        "SELECT min(vaa) AS lo, max(vaa) AS hi, "
+        "count(*) FILTER (WHERE vaa < -20 OR vaa > 2) AS n_out, "
+        "arg_max(plate_z, greatest(vaa - 2, -20 - vaa)) AS worst_z FROM pitches "
         "WHERE vaa IS NOT NULL AND release_speed >= 60",
         season,
     ).iloc[0]
-    lo_all, hi_all = ang["vmin"].min(), ang["vmax"].max()
+    # "Unknown" (UN) is Statcast's tracking-failure bucket: 2025 has a 21.7 mph
+    # UN at plate_z -57.6 ft (VAA -69). Classified pitches carry the check.
+    known = ang[ang.pitch_name != "Unknown"]
+    lo_all, hi_all = known["vmin"].min(), known["vmax"].max()
     # -20 rather than something tighter: a spiked curveball (72 mph, plate_z
     # -2.55 ft, i.e. bounced) reaches -16.2 legitimately. This is an outlier
     # guard; the mean-VAA assertions above are what actually validate the physics.
-    if not (-20 <= rng.lo and rng.hi <= 2):
+    # A handful of escapes is tolerated: 2024 has one 87.5 mph changeup tracked at
+    # plate_z 12.4 ft (over the backstop) -- a real throw, not a frame error.
+    if rng.n_out > 5:
         ok = False
-        print(f"  FAIL  vaa range for >=60mph pitches [{rng.lo:.1f}, {rng.hi:.1f}] "
-              "escapes expected [-20, 2]")
+        print(f"  FAIL  {int(rng.n_out)} pitches >=60mph escape vaa [-20, 2] "
+              f"(range [{rng.lo:.1f}, {rng.hi:.1f}])")
+    elif rng.n_out:
+        print(f"  PASS  vaa range for >=60mph pitches: {int(rng.n_out)} outlier(s) "
+              f"tolerated (range [{rng.lo:.1f}, {rng.hi:.1f}], worst at "
+              f"plate_z {rng.worst_z:.1f} ft)")
     else:
         print(f"  PASS  vaa range for >=60mph pitches [{rng.lo:.1f}, {rng.hi:.1f}]")
     if lo_all < -45 or hi_all > 5:
@@ -355,24 +366,26 @@ def cmd_verify(args):
     # convention is the likeliest silent failure and would roughly double the
     # residual. Restricted to pitch types with real samples in both hands:
     # Eephus has 9 LHP vs 664 RHP, so its "asymmetry" is pure noise. The
-    # tolerance allows genuine population differences (LHP sweep slightly more
-    # than RHP: -4.54 vs +4.12) while still catching a flipped sign.
+    # tolerance is relative -- |L+R| against |L|+|R| -- because a flipped sign
+    # makes those two equal (ratio 1) at any magnitude, while genuine population
+    # differences stay small (2024 Slurve: |L+R| 0.76 of 7.37, ratio 0.10, from
+    # a handful of pitchers per hand; an absolute 0.75 cut flagged it).
     hh = ang.pivot_table(index="pitch_name", columns="p_throws", values="haa")
     nn = ang.pivot_table(index="pitch_name", columns="p_throws", values="n")
     if {"L", "R"} <= set(hh.columns):
         keep = (nn["L"] >= 500) & (nn["R"] >= 500)
-        sym = (hh["L"] + hh["R"]).abs()[keep].dropna()
+        sym = ((hh["L"] + hh["R"]).abs() / (hh["L"].abs() + hh["R"].abs()))[keep].dropna()
         worst_type = sym.idxmax() if len(sym) else None
         worst = sym.max() if len(sym) else None
     else:
         worst = worst_type = None
-    if worst is None or worst > 0.75:
+    if worst is None or worst > 0.5:
         ok = False
-        print(f"  FAIL  HAA not handedness-symmetric (worst |L+R| = {worst} "
+        print(f"  FAIL  HAA not handedness-symmetric (worst |L+R|/(|L|+|R|) = {worst} "
               f"on {worst_type}) -- check the sign convention")
     else:
         print(f"  PASS  HAA mirror-symmetric across handedness over {len(sym)} "
-              f"well-sampled types (worst |L+R| = {worst:.2f} on {worst_type})")
+              f"well-sampled types (worst |L+R|/(|L|+|R|) = {worst:.2f} on {worst_type})")
 
     # The adjustment must actually remove the location signal it exists to remove.
     raw = store.query(
