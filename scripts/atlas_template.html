@@ -2126,7 +2126,11 @@ function render3D(traces, view, pal, layout, groups = []) {
     pts.userData = { pick: t.hoverinfo !== "skip", rows: t.customdata, tips: t.hovertext || [] };
     g.scene.add(pts); g.objs.push(pts);
     if (mode.includes("text") && Array.isArray(t.text))
-      t.text.forEach((tx, k) => { if (tx) addLabel([t.x[k], t.y[k], t.z[k]], esc(String(tx)), t.textposition === "middle center" ? "g3-badge" : "", t.textposition); });
+      t.text.forEach((tx, k) => {
+        if (!tx) return;
+        const s = String(tx), plain = esc(s.replace(/<\/?b>/g, ""));   // Plotly-style <b> becomes real bold, never literal tags
+        addLabel([t.x[k], t.y[k], t.z[k]], /^<b>/.test(s) ? `<b>${plain}</b>` : plain, t.textposition === "middle center" ? "g3-badge" : "", t.textposition);
+      });
   }
   // clusters: one softly lit, translucent ellipsoid per colored group
   const k3 = ELL_K3[state.ellP] || ELL_K3[68], named = new Set();
