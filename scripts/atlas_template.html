@@ -506,6 +506,45 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
 .app.has-sel #comps { display: none !important; }
 .app.with-sliders { grid-template-columns: 280px minmax(0, 1fr);
   grid-template-areas: "sl head" "sl controls" "sl map" "sl caption"; }
+/* the sortable pitcher table: beside the map on wide screens, under it otherwise; folded away while a card is open */
+.app.with-sliders.with-table { grid-template-areas: "sl head" "sl controls" "sl map" "sl tbl" "sl caption"; }
+@media (min-width: 1400px) {
+  .app.with-sliders.with-table:not(.has-sel) { grid-template-columns: 280px minmax(340px, 420px) minmax(0, 1fr);
+    grid-template-areas: "sl head head" "sl controls controls" "sl tbl map" "sl tbl caption"; }
+  .app.with-table:not(.has-sel) .mtable { position: relative; margin: 0 16px 0 0; }
+  .app.with-table:not(.has-sel) .mt-in { position: absolute; inset: 0; display: flex; flex-direction: column; }
+  .app.with-table:not(.has-sel) .mt-scroll { flex: 1; max-height: none; }
+}
+.app.has-sel .mtable { display: none; }
+.mtable { grid-area: tbl; min-width: 0; min-height: 0; margin: 12px 12px 0 0; background: var(--field); border: 1px solid var(--line);
+  border-radius: var(--r-lg); box-shadow: var(--sh1); overflow: hidden; }
+.mtable[hidden] { display: none; }
+.mt-in { display: flex; flex-direction: column; min-height: 0; }
+.mt-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 12px 12px 0; }
+.mt-title { font: 600 20px/1.1 var(--font-serif); color: var(--ink); }
+.mt-sub { margin: 4px 12px 8px; font: 400 13px var(--font-ui); color: var(--muted); }
+.mt-scroll { overflow: auto; max-height: 440px; overscroll-behavior: contain; border-top: 1px solid var(--line); }
+.mt { width: 100%; border-collapse: collapse; font: 400 14px var(--font-ui); color: var(--ink); font-variant-numeric: tabular-nums lining-nums; }
+.mt th { position: sticky; top: 0; z-index: 1; background: var(--panel); border-bottom: 1px solid var(--line); padding: 0; vertical-align: bottom; }
+.mt th button { display: flex; align-items: flex-end; justify-content: flex-end; gap: 4px; width: 100%; padding: 8px; border: 0; background: none;
+  font: 600 13px/1.2 var(--font-ui); color: var(--ink2); text-align: right; cursor: pointer; }
+.mt th:first-child button { justify-content: flex-start; text-align: left; }
+.mt th button:hover { background: var(--wash); color: var(--ink); }
+.mt th[aria-sort] button { color: var(--ink); }
+.mt th button .ar { flex: none; width: 10px; font-size: 11px; }
+.mt td { padding: 6px 8px; border-bottom: 1px solid var(--rule); text-align: right; white-space: nowrap; }
+.mt td:first-child { text-align: left; white-space: normal; }
+.mt tbody tr { cursor: pointer; }
+.mt tbody tr:hover { background: var(--wash); }
+.mt tbody tr.on { background: var(--ink); color: var(--field); }
+.mt tbody tr.on .mt-meta { color: var(--field); opacity: 0.8; }
+.mt tbody tr:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.mt-name { font-weight: 700; }
+.mt-meta { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.mt-meta .psw { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+.mt-pct { display: inline-block; min-width: 30px; padding: 2px 6px; border-radius: 999px; text-align: center; font-weight: 700; font-size: 13px; }
+.mt-more { padding: 8px 12px; font: 400 13px var(--font-ui); color: var(--muted); }
+.sl-links { display: inline-flex; gap: 12px; }
 .sliders { grid-area: sl; overflow-y: auto; overscroll-behavior: contain; border-right: 1px solid var(--line);
   padding: 18px 16px 32px 16px; margin-right: 20px; min-width: 0; display: flex; flex-direction: column; gap: 10px; background: var(--panel); }
 .sl-head { display: flex; justify-content: space-between; align-items: baseline; }
@@ -692,6 +731,8 @@ tr.self td { font-weight: 600; background: none; }
 /* sliders on tablets and phones: a drawer over the page instead of a fourth column */
 @media (max-width: 1099px) {
   .app.with-sliders, .app.with-sliders.has-sel { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "controls" "map" "caption" "dhead" "dtraits" "detail" "comps"; }
+  .app.with-sliders.with-table { grid-template-areas: "head" "controls" "map" "tbl" "caption" "dhead" "dtraits" "detail" "comps"; }
+  .mtable { margin: 12px 0 0; }
   .sliders { position: fixed; z-index: 60; top: 0; bottom: 0; left: 0; width: min(340px, 88vw); margin: 0;
     padding: calc(16px + env(safe-area-inset-top, 0px)) 18px calc(24px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
     box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.18); }
@@ -825,7 +866,7 @@ tr.self td { font-weight: 600; background: none; }
   <aside class="sliders" id="sliders" aria-label="Filter by measures" hidden>
     <div class="sl-head">
       <span class="sl-title">Filter by measures</span>
-      <button type="button" class="link" id="slClose">Close</button>
+      <span class="sl-links"><button type="button" class="link" id="mtShow" hidden>Show table</button><button type="button" class="link" id="slClose">Close</button></span>
     </div>
     <div class="tg" id="slMode" role="group" aria-label="Slider scale">
       <button type="button" id="slPct" data-v="pct" data-label="Percentile">Percentile</button>
@@ -840,6 +881,14 @@ tr.self td { font-weight: 600; background: none; }
     <div class="sl-all"><button type="button" class="link" id="slExpand">Open all</button><button type="button" class="link" id="slCollapse">Close all</button></div>
     <div id="slList"></div>
   </aside>
+  <section class="mtable" id="mTable" aria-label="Pitchers by measure" hidden><div class="mt-in">
+    <div class="mt-head">
+      <span class="mt-title" id="mtTitle"></span>
+      <button type="button" class="link" id="mtHide">Hide table</button>
+    </div>
+    <p class="mt-sub" id="mtSub"></p>
+    <div class="mt-scroll" id="mtScroll"><table class="mt"><thead id="mtHeadRow"></thead><tbody id="mtBody"></tbody></table></div>
+  </div></section>
   <header class="head">
     <h1>Pitch Universe</h1>
     <div class="finders">
@@ -1205,6 +1254,8 @@ const state = {
   rangeMode: "pct",
   archetype: "",      // id from D.archetypes; "" = none
   slidersOpen: false,
+  tableOff: false,           // the user hid the measure table
+  tblSort: { key: null, dir: -1 },   // measure table: column key ("name" or a measure) and direction
   slGroupsOpen: new Set(),   // measure-filter sections the user has opened (all start closed)
   seasons: new Set(D.seasons),
   throws: "all",
@@ -1592,6 +1643,7 @@ function render() {
   if (!keyIn) state.keyLabel = "";
   const listMatch = keyIn ? andMatch(match, r => keyIn.has(r)) : match;   // the list (and CSV) follow the key's range too
   updateMatchBox(view, rows, listMatch, cg);
+  state.tblData = { view, rows, match: listMatch }; renderTable();
   refreshSavedMeta();
   syncCta();
 
@@ -3283,8 +3335,88 @@ function setSlidersOpen(open) {
     sliderVars().forEach(v => { if (set[v.key]) state.slGroupsOpen.add(v.group); });
     buildSliders(); $("#slSearch").focus({ preventScroll: true });
   }
+  syncTable();
   // the map's width changed: let Plotly re-measure
   requestAnimationFrame(() => { try { Plotly.Plots.resize(plotEl); } catch (e) {} });
+}
+
+// ------------------------------------------------ measure table (open with the measure filters)
+// Rows = every dot still lit on the map; columns = the measures with a filter set (a few defaults until
+// one is). Percentile mode shows percentiles (same pools and flips as the sliders), Raw shows values.
+const TABLE_CAP = 300;
+const TABLE_DEFAULTS = ["velo", "ivb", "hb", "spin"];
+function syncTable() {
+  const on = state.slidersOpen && !state.tableOff;
+  $("#mTable").hidden = !on;
+  $("#mtShow").hidden = !state.slidersOpen || !state.tableOff;
+  $("#app").classList.toggle("with-table", on);
+  if (on) renderTable();
+}
+function tableColumns(kind) {
+  const vars = sliderVars(), set = state.ranges[kind];
+  let cols = vars.filter(v => set[v.key]);
+  if (!cols.length) cols = TABLE_DEFAULTS.map(k => vars.find(v => v.key === k || v.key.endsWith(":" + k))).filter(Boolean);
+  if (!cols.length) cols = vars.slice(0, 4);
+  return cols;
+}
+function renderTable() {
+  if (!state.slidersOpen || state.tableOff || !state.tblData) return;
+  const { view, rows, match } = state.tblData, kind = varKind(view), pct = state.rangeMode === "pct";
+  const lit = match ? rows.filter(match) : rows, cols = tableColumns(kind);
+  // one value getter per column: percentile (ranked like the sliders) or raw
+  const getters = cols.map(v => {
+    if (!pct) return r => { const x = v.get(r); return isNum(x) ? x : null; };
+    const arrFor = groupedSorted(rows, v.get, byType(view, v.key)), flip = lowGoodVar(v);
+    return r => { const x = v.get(r); if (!isNum(x)) return null; const q = pctRank(arrFor(r), x); return flip ? 100 - q : q; };
+  });
+  let sk = state.tblSort.key;
+  if (sk !== "name" && !cols.some(v => v.key === sk)) sk = cols.length ? cols[0].key : "name";
+  const dir = state.tblSort.dir, ci = cols.findIndex(v => v.key === sk);
+  const vals = new Map(lit.map(r => [r, getters.map(g => g(r))]));
+  const sorted = lit.slice().sort((a, b) => {
+    if (sk === "name") return dir * (T.name[a] < T.name[b] ? -1 : T.name[a] > T.name[b] ? 1 : T.season[b] - T.season[a]);
+    const x = vals.get(a)[ci], y = vals.get(b)[ci];
+    if (x === null) return y === null ? 0 : 1; if (y === null) return -1;   // blanks always last
+    return dir * (x - y);
+  });
+  const unit = view === "all" ? "pitches" : "pitchers";
+  $("#mtTitle").textContent = `${lit.length.toLocaleString()} ${unit}`;
+  const sortName = sk === "name" ? "name" : cols[ci].label;
+  $("#mtSub").textContent = `${match ? "Matching your filters" : "Everyone on the map"}${view === "all" ? " · one row per pitch type" : " · " + PTN[view]}. Sorted by ${sortName}${pct ? " (percentile)" : ""}. Click a row to find him on the map.`;
+  const arrow = k => k === sk ? `<span class="ar" aria-hidden="true">${dir < 0 ? "▼" : "▲"}</span>` : `<span class="ar"></span>`;
+  const ariaSort = k => k === sk ? ` aria-sort="${dir < 0 ? "descending" : "ascending"}"` : "";
+  const unitTxt = v => pct ? "" : v.unit ? ` <span class="tm">(${esc(v.unit)})</span>` : "";
+  $("#mtHeadRow").innerHTML = `<tr><th scope="col"${ariaSort("name")}><button type="button" data-k="name">Pitcher${arrow("name")}</button></th>` +
+    cols.map(v => `<th scope="col"${ariaSort(v.key)}><button type="button" data-k="${esc(v.key)}" title="${esc(v.label)}">${esc(shortLabel(v.label))}${unitTxt(v)}${arrow(v.key)}</button></th>`).join("") + "</tr>";
+  const cell = (v, x) => {
+    if (x === null) return `<td>—</td>`;
+    if (pct) { const p = Math.round(x); return `<td><span class="mt-pct" style="background:${savantColor(p)};color:${savantInk(p)}">${p}</span></td>`; }
+    return `<td>${x.toFixed(v.dec ?? 2)}</td>`;
+  };
+  $("#mtBody").innerHTML = sorted.slice(0, TABLE_CAP).map(r => {
+    const pt = T.pitch_type[r], vs = vals.get(r);
+    const meta = `${T.season[r]} · ${esc(teamStr(r))}${view === "all" ? ` · <i class="psw" style="background:${SAVANT_PITCH[pt] || "#999"}"></i>${esc(PTN[pt])}` : ""}`;
+    return `<tr data-r="${r}" tabindex="0"${r === state.sel ? ' class="on"' : ""}><td><div class="mt-name">${esc(T.name[r])}</div><div class="mt-meta">${meta}</div></td>${cols.map((v, k) => cell(v, vs[k])).join("")}</tr>`;
+  }).join("") + (sorted.length > TABLE_CAP ? `<tr><td class="mt-more" colspan="${cols.length + 1}">Showing the top ${TABLE_CAP} of ${sorted.length.toLocaleString()}. Tighten a filter or re-sort to see others.</td></tr>` : "");
+}
+// header labels: drop the parenthetical so columns stay narrow (full name is the tooltip)
+const shortLabel = s => s.replace(/\s*\(.*\)\s*$/, "").replace(/^Dynamic Dead Zone: /, "DDZ: ");
+function wireTable() {
+  $("#mtHeadRow").addEventListener("click", e => {
+    const b = e.target.closest("button[data-k]"); if (!b) return;
+    const k = b.dataset.k, cur = state.tblSort;
+    state.tblSort = { key: k, dir: cur.key === k ? -cur.dir : (k === "name" ? 1 : -1) };
+    renderTable();
+  });
+  const pick = tr => { const r = +tr.dataset.r; if (Number.isInteger(r)) preview(r); };
+  $("#mtBody").addEventListener("click", e => { const tr = e.target.closest("tr[data-r]"); if (tr) pick(tr); });
+  $("#mtBody").addEventListener("keydown", e => {
+    const tr = e.target.closest("tr[data-r]"); if (!tr) return;
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(tr); }
+    else if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); const n = e.key === "ArrowDown" ? tr.nextElementSibling : tr.previousElementSibling; if (n && n.dataset.r) n.focus(); }
+  });
+  $("#mtHide").addEventListener("click", () => { state.tableOff = true; syncTable(); requestAnimationFrame(() => { try { Plotly.Plots.resize(plotEl); } catch (e) {} }); $("#mtShow").focus(); });
+  $("#mtShow").addEventListener("click", () => { state.tableOff = false; syncTable(); requestAnimationFrame(() => { try { Plotly.Plots.resize(plotEl); } catch (e) {} }); });
 }
 
 
@@ -3425,6 +3557,7 @@ function buildStatic() {
   $("#slOff").querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
     state.hideOff = b.dataset.v === "hide"; buildSliders(); render();
   }));
+  wireTable();
   $("#slExpand").addEventListener("click", () => { sliderVars().forEach(v => state.slGroupsOpen.add(v.group)); filterSliderList(); });
   $("#slCollapse").addEventListener("click", () => { state.slGroupsOpen.clear(); filterSliderList(); });
   $("#slSearch").addEventListener("input", e => { state.slSearch = e.target.value; filterSliderList(); });
