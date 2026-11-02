@@ -94,7 +94,7 @@ button, input, select { font: inherit; color: inherit; }
   border-radius: var(--r-lg); box-shadow: var(--shmap); overflow: hidden; }
 .mb-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 12px 4px; }
 .mb-head b { font: 700 15px var(--font-ui); color: var(--map-ink); }
-.matchbox input[type=search] { margin: 0 12px 8px; width: auto; font: 400 14px var(--font-ui); padding: 4px 8px; border: 1px solid var(--map-muted);
+.matchbox input[type=search] { flex: none; margin: 0 12px 8px; width: auto; font: 400 14px var(--font-ui); padding: 4px 8px; border: 1px solid var(--map-muted);
   border-radius: 6px; background: rgba(0, 0, 0, 0.25); color: var(--map-ink); }
 .matchbox input[type=search]::placeholder { color: var(--map-muted); }
 #mbList { list-style: none; margin: 0; padding: 0 0 8px; overflow-y: auto; overscroll-behavior: contain; }
@@ -108,7 +108,7 @@ button, input, select { font: inherit; color: inherit; }
 .mbshow { position: absolute; z-index: 6; top: calc(2 * var(--mi) + var(--fh, 46px)); right: var(--mx); font: 700 17px var(--font-ui); padding: 12px 20px;
   border-radius: var(--r); border: 1.5px solid var(--map-muted); background: var(--map-chrome); color: var(--map-ink); cursor: pointer; box-shadow: var(--shmap); }
 .mbshow:hover { background: var(--map-hover); }
-.svbtn { display: block; margin: 0 12px 8px; padding: 8px 12px; min-height: 40px; border-radius: var(--r); cursor: pointer;
+.svbtn { display: block; flex: none; margin: 0 12px 8px; padding: 8px 12px; min-height: 40px; border-radius: var(--r); cursor: pointer;
   background: none; color: var(--map-ink); border: 2px solid var(--map-ink); font: 700 15px var(--font-ui); text-align: center; }
 .svbtn:hover { background: var(--map-hover); }
 .svbtn[hidden] { display: none; }
@@ -719,11 +719,15 @@ tr.self td { font-weight: 600; background: none; }
 .resetcolor span { font-size: 20px; line-height: 1; }
 .resetcolor:hover:not(:disabled) { background: var(--wash); }
 .resetcolor:disabled { color: var(--muted); border-color: var(--line); box-shadow: none; cursor: default; }
-#colorAWrap select { font: 700 17px var(--font-ui); padding: 10px 46px 10px 16px; min-height: 48px; max-width: min(46ch, 100%);
-  color: var(--ink); background: var(--field); border: 2px solid var(--ink); border-radius: var(--r); box-shadow: var(--sh1); }
-#colorAWrap select:hover { background: var(--wash); }
+#colorAWrap { font: 700 17px var(--font-ui); max-width: min(46ch, 100%); color: var(--ink); background: var(--field);
+  border: 2px solid var(--ink); border-radius: var(--r); box-shadow: var(--sh1); }
+#colorAWrap select { display: block; width: 100%; max-width: 100%; font: inherit; padding: 10px 46px 10px 16px; min-height: 44px;
+  color: inherit; background: transparent; border: 0; border-radius: inherit; }
+#colorAWrap:hover { background: var(--wash); }
+#colorAWrap:has(select:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+#colorAWrap select:focus-visible { outline: none; }
 #colorAWrap::after { right: 18px; width: 9px; height: 9px; border-right-width: 2.5px; border-bottom-width: 2.5px; border-color: var(--ink); }
-#colorAWrap.on select { background: var(--ink); color: var(--field); }
+#colorAWrap.on { background: var(--ink); color: var(--field); }
 #colorAWrap.on::after { border-color: var(--field); }
 /* on-map: ellipse toggle (under the filter button), seasons + hand (top right), color key (bottom left) */
 .ellrow { display: flex; align-items: center; gap: 6px; }
@@ -772,7 +776,7 @@ tr.self td { font-weight: 600; background: none; }
 .mk-item i { width: 18px; height: 18px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1.5px var(--map-ring); }
 .mk-item.muted { color: var(--map-muted); }
 .mk-n { font-weight: 400; font-size: 14px; color: var(--map-muted); font-variant-numeric: tabular-nums; }
-.dlbtn { display: block; margin: 4px 12px 8px; padding: 12px 16px; min-height: 46px; border: 0; border-radius: var(--r); cursor: pointer;
+.dlbtn { display: block; flex: none; line-height: 1.25; margin: 4px 12px 8px; padding: 12px 16px; min-height: 46px; border: 0; border-radius: var(--r); cursor: pointer;
   background: var(--field); color: var(--ink); font: 700 17px var(--font-ui); text-align: center; }
 .dlbtn:hover { background: var(--wash); }
 .dlmsg { margin: 0 12px 8px; font: 500 13px var(--font-ui); color: var(--map-ink2); }
@@ -928,7 +932,7 @@ tr.self td { font-weight: 600; background: none; }
     <p class="maphint" id="mapnote"></p>
     <aside class="matchbox" id="matchBox" aria-label="Highlighted pitchers" hidden>
       <div class="mb-head"><b id="mbTitle"></b><button type="button" class="link" id="mbHide">Hide</button></div>
-      <button type="button" class="dlbtn" id="dlBtn" hidden>Download these pitchers (CSV)</button>
+      <button type="button" class="dlbtn" id="dlBtn" hidden>Download CSV</button>
       <p class="dlmsg" id="dlMsg" role="status" aria-live="polite"></p>
       <button type="button" class="svbtn" id="svBtn" hidden title="Keep an ellipse around these pitchers on every map, whatever you filter next">Save as ellipse</button>
       <input id="mbSearch" type="search" placeholder="Filter names" autocomplete="off" aria-label="Filter the list by name">
@@ -2432,7 +2436,7 @@ function updateMatchBox(view, rows, match, cg) {
     lit = rows.filter(r => state.teamPick.has(tMain[r]));
     title = [...state.teamPick].map(t => TEAM_NAMES[t] || t).join(", ");
   }
-  state.dlRows = lit;   // "Download these pitchers" exports every highlighted dot
+  state.dlRows = lit;   // "Download CSV" exports every highlighted dot
   state.mbTitle = title;   // default name for "Save as ellipse"
   $("#svBtn").hidden = !lit || !lit.length;
   if (!lit) { box.hidden = true; show.hidden = true; state.mbRows = null; return; }
