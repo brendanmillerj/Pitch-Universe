@@ -169,26 +169,27 @@ button, input, select { font: inherit; color: inherit; }
 .grp { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
 .grp-scale { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 /* the two finders are the front door: big, stacked label over control, side by side */
-.finders { flex: 0 1 auto; display: grid; grid-template-columns: minmax(15rem, 24rem) minmax(13rem, 19rem) minmax(10rem, 13rem) minmax(11rem, 15rem); gap: 10px 32px; margin: 0 0 4px; }
-@media (max-width: 1300px) { .finders { grid-template-columns: minmax(15rem, 1.3fr) minmax(12rem, 1fr) minmax(9rem, 0.7fr) minmax(10rem, 0.8fr); column-gap: 24px; } }
+.finders { flex: 0 1 auto; display: grid; grid-template-columns: minmax(15rem, 24rem) minmax(13rem, 19rem) minmax(12.5rem, 15rem) minmax(11rem, 15rem); gap: 10px 32px; margin: 0 0 4px; }
+@media (max-width: 1300px) { .finders { grid-template-columns: minmax(15rem, 1.3fr) minmax(12rem, 1fr) minmax(12rem, 0.8fr) minmax(10rem, 0.8fr); column-gap: 24px; } }
 /* Four finders need ~1150px of header. The header's width depends on the layout (full page, half beside a
    player card, minus the measure drawer), so size them to the header itself: two by two, then one column.
    Declared after the viewport rules above so these win. */
 .head { container: head / inline-size; }
 @container head (max-width: 1150px) { .finders { grid-template-columns: minmax(13rem, 1fr) minmax(11rem, 1fr); } }
-@container head (max-width: 560px) { .finders { flex-basis: 100%; grid-template-columns: minmax(0, 1fr); } .measbtn { width: 100%; } }
-/* "Filter by measures": opens the measure drawer; dark once any measure filter is on */
-.measbtn { font: 700 20px/1 var(--font-ui); min-height: 46px; padding: 0 18px; border: 2px solid var(--ink); border-radius: 8px;
-  background: var(--field); color: var(--ink); cursor: pointer; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@container head (max-width: 560px) { .finders { flex-basis: 100%; grid-template-columns: minmax(0, 1fr); } .measseg { width: 100%; } }
+/* "Filter by measures": one control split in two, like the free-agent Off/On switch.
+   Choose... opens the measure drawer (dark once a measure filter is on); Reset clears every filter and
+   stays grayed out until something is filtered, so the header never jumps. */
+.measseg { display: flex; min-height: 46px; border: 2px solid var(--ink); border-radius: 8px; overflow: hidden; background: var(--field); }
+.measbtn { flex: 1 1 auto; min-width: 0; font: 700 20px/1 var(--font-ui); padding: 0 16px; border: 0; background: none; color: var(--ink);
+  cursor: pointer; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .measbtn:hover { background: var(--wash); }
 .measbtn.on, .measbtn[aria-expanded="true"] { background: var(--ink); color: var(--field); }
-.measbtn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-/* "Reset filters": secondary to Choose..., grayed out until something is filtered (so the header never jumps) */
-.resetbtn { align-self: flex-start; font: 700 15px/1 var(--font-ui); min-height: 36px; padding: 0 14px; border: 1.5px solid var(--ink);
-  border-radius: 8px; background: none; color: var(--ink); cursor: pointer; }
+.resetbtn { flex: none; font: 700 15px/1 var(--font-ui); padding: 0 13px; border: 0; border-left: 2px solid var(--ink);
+  background: none; color: var(--ink); cursor: pointer; }
 .resetbtn:hover:not(:disabled) { background: var(--wash); }
-.resetbtn:disabled { color: var(--muted); border-color: var(--line); cursor: default; }
-.resetbtn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.resetbtn:disabled { color: var(--muted); cursor: default; }
+.measbtn:focus-visible, .resetbtn:focus-visible { outline: 2px solid var(--focus); outline-offset: -4px; }
 /* Chrome draws its own arrow on inputs with a suggestion list; it clashes with the finder style */
 #search::-webkit-calendar-picker-indicator { display: none !important; opacity: 0; }
 .find { display: flex; flex-direction: column; gap: 6px; margin: 0; min-width: 0; }
@@ -815,8 +816,10 @@ tr.self td { font-weight: 600; background: none; }
       </div>
       <div class="find find-meas">
         <span class="find-lbl" id="measLabel">Filter by measures</span>
-        <button type="button" class="measbtn" id="slOpen" aria-expanded="false" aria-controls="sliders" aria-describedby="measLabel">Choose...</button>
-        <button type="button" class="resetbtn" id="resetAll" disabled title="Clears measure filters, pitcher type, free agents, the color-key range, and season and hand">Reset filters</button>
+        <div class="measseg" role="group" aria-labelledby="measLabel">
+          <button type="button" class="measbtn" id="slOpen" aria-expanded="false" aria-controls="sliders">Choose...</button>
+          <button type="button" class="resetbtn" id="resetAll" disabled title="Reset filters: measures, pitcher type, free agents, the color-key range, season and hand">Reset</button>
+        </div>
       </div>
       <div class="find find-fa">
         <span class="find-lbl" id="faLabel">Find free agents</span>
