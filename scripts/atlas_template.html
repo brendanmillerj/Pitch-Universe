@@ -568,7 +568,17 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
 .slrow { padding: 4px 0 2px; }
 .sltop { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
 .sltop label { font: 400 13px var(--font-ui); color: var(--ink2); min-width: 0; }
-.slval { font: 400 13px var(--font-ui); color: var(--muted); font-variant-numeric: tabular-nums lining-nums; white-space: nowrap; }
+.slval { display: inline-flex; align-items: center; gap: 2px; font: 400 13px var(--font-ui); color: var(--muted); font-variant-numeric: tabular-nums lining-nums; white-space: nowrap; }
+/* typed ends of a slider's range */
+.slval input.slnum { width: 7ch; padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--field);
+  font: 600 13px var(--font-ui); color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; -moz-appearance: textfield; appearance: textfield; }
+#slList.pct .slval input.slnum { width: 4.5ch; }
+.slval input.slnum::-webkit-inner-spin-button, .slval input.slnum::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.slval input.slnum:hover { border-color: var(--ink2); }
+.slval input.slnum:focus-visible { outline: 2px solid var(--focus); outline-offset: 0; border-color: var(--focus); }
+.slrow.on .slval input.slnum { border-color: var(--ink); }
+.slu { margin-left: 2px; }
+@media (pointer: coarse) { .slval input.slnum { font-size: 16px; } }   /* 16px+ keeps iOS from zooming on focus */
 .slrow.on .sltop label { color: var(--ink); font-weight: 700; }
 .slrow.on .slval { color: var(--ink); font-weight: 600; }
 .dual { position: relative; height: 22px; margin: 0 7px; }
@@ -3240,8 +3250,6 @@ function sliderSpec(v) {
   const step = Math.pow(10, -Math.max(0, Math.min(3, v.dec ?? 2)));
   return { min: lo, max: hi, step: Math.min(step, span / 100) };
 }
-const fmtRange = (v, lo, hi) => state.rangeMode === "pct" ? `${Math.round(lo)}–${Math.round(hi)}`
-  : `${lo.toFixed(v.dec ?? 2)}–${hi.toFixed(v.dec ?? 2)}${v.unit ? (v.unit === "%" ? "%" : " " + v.unit) : ""}`;
 
 let sliderFrame = 0;
 const scheduleRender = () => { if (!sliderFrame) sliderFrame = requestAnimationFrame(() => { sliderFrame = 0; render(); }); };
@@ -3251,7 +3259,8 @@ function paintSlider(row, v) {
   const pos = x => (100 * (x - min) / (max - min)).toFixed(2) + "%";
   row.querySelector(".mask-l").style.width = pos(cur[0]);
   row.querySelector(".mask-r").style.left = pos(cur[1]);
-  row.querySelector(".slval").textContent = fmtRange(v, cur[0], cur[1]);
+  const show = x => state.rangeMode === "pct" ? String(Math.round(x)) : (+x).toFixed(v.dec ?? 2);
+  row.querySelectorAll(".slnum").forEach(inp => { if (document.activeElement !== inp) inp.value = show(inp.dataset.end === "lo" ? cur[0] : cur[1]); });
   row.classList.toggle("on", !!state.ranges[varKind(state.view)][v.key]);
 }
 
@@ -3272,7 +3281,7 @@ function buildSliders() {
     }
     const { min, max, step } = sliderSpec(v), cur = state.ranges[kind][v.key] || [min, max];
     html += `<div class="slrow" data-k="${esc(v.key)}" data-n="${n}">
-      <div class="sltop"><label for="sl-lo-${n}">${esc(v.label)}</label><span class="slval"></span></div>
+      <div class="sltop"><label for="sl-lo-${n}">${esc(v.label)}</label><span class="slval"><input type="number" class="slnum" data-end="lo" min="${min}" max="${max}" step="${step}" inputmode="decimal" aria-label="${esc(v.label)}, low end (type a value)">–<input type="number" class="slnum" data-end="hi" min="${min}" max="${max}" step="${step}" inputmode="decimal" aria-label="${esc(v.label)}, high end (type a value)">${state.rangeMode === "raw" && v.unit ? `<span class="slu">${esc(v.unit === "%" ? "%" : v.unit)}</span>` : ""}</span></div>
       <div class="dual"><span class="rail"></span><span class="mask-l"></span><span class="mask-r"></span>
         <input type="range" id="sl-lo-${n}" min="${min}" max="${max}" step="${step}" value="${cur[0]}" aria-label="${esc(v.label)}, low end">
         <input type="range" id="sl-hi-${n}" min="${min}" max="${max}" step="${step}" value="${cur[1]}" aria-label="${esc(v.label)}, high end">
@@ -3287,7 +3296,7 @@ function buildSliders() {
   }));
   const vars = sliderVars();
   list.querySelectorAll(".slrow").forEach(row => {
-    const v = vars[+row.dataset.n], [lo, hi] = row.querySelectorAll("input");
+    const v = vars[+row.dataset.n], [lo, hi] = row.querySelectorAll("input[type=range]");
     const { min, max } = sliderSpec(v);
     const update = which => {
       let a = +lo.value, b = +hi.value;
@@ -3299,6 +3308,23 @@ function buildSliders() {
     };
     lo.addEventListener("input", () => update("lo"));
     hi.addEventListener("input", () => update("hi"));
+    // typing a value: applied on Enter or when the box loses focus; out-of-range values clamp
+    row.querySelectorAll(".slnum").forEach(inp => {
+      const apply = () => {
+        const x = parseFloat(inp.value);
+        if (!Number.isFinite(x)) { paintSlider(row, v); return; }
+        const c = Math.max(min, Math.min(max, x)), isLo = inp.dataset.end === "lo";
+        let a = isLo ? c : +lo.value, b = isLo ? +hi.value : c;
+        if (a > b) { if (isLo) b = max; else a = min; }   // the typed end wins; the other end opens back to its limit
+        lo.value = a; hi.value = b;
+        update(inp.dataset.end);
+        const snapped = inp.dataset.end === "lo" ? +lo.value : +hi.value;   // the box keeps focus, so paintSlider skips it
+        inp.value = state.rangeMode === "pct" ? String(Math.round(snapped)) : snapped.toFixed(v.dec ?? 2);
+      };
+      inp.addEventListener("change", apply);
+      inp.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); apply(); inp.select(); } });
+      inp.addEventListener("focus", () => inp.select());
+    });
     paintSlider(row, v);
   });
   paintGroups(); filterSliderList();
