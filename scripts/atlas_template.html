@@ -1419,17 +1419,11 @@ function render() {
   const sel = state.sel, hasSel = sel !== null && sel !== undefined;
   let annotations = [];
   if (hasSel) {
-    // In "All pitches": the rest of this pitcher's arsenal that season, as pitch codes
-    if (view === "all") {
-      const mates = TYPES.map(t => tRow(T.pitcher[sel], T.season[sel], t)).filter(r => r !== undefined && r !== sel);
-      if (mates.length) {
-        const c = pt(mates);
-        traces.push({ type: "scatter", mode: "markers+text", ...c, text: mates.map(r => T.pitch_type[r]),
-          textposition: "top center", textfont: { size: 11, color: pal.ink, family: UI_FONT },
-          customdata: mates, hoverinfo: "text", hovertext: mates.map(r => hoverHTML(r) + "<br>same pitcher, same season"),
-          marker: { size: 18, symbol: "diamond", color: pal.surface, line: { width: 2.5, color: pal.ink } }, showlegend: false });
-      }
-    }
+    // In "All pitches" the whole arsenal that season is "him": every one of his pitches is redrawn at full
+    // strength below (the card's All pitches chip says so); in a one-type universe it is just this pitch
+    const arsenal = view === "all"
+      ? [sel, ...TYPES.map(t => tRow(T.pitcher[sel], T.season[sel], t)).filter(r => r !== undefined && r !== sel)]
+      : [sel];
     const same = viewRows(view).filter(r => T.pitcher[r] === T.pitcher[sel]
       && T.pitch_type[r] === T.pitch_type[sel]).sort((a, b) => T.season[a] - T.season[b]);
     nSame = same.length;
@@ -1450,17 +1444,25 @@ function render() {
         marker: { size: 26, color: pal.ink, line: { width: 2, color: pal.surface } }, showlegend: false });
     }
     const [sx, sy] = xy(view, sel);
-    // everything drawn so far (other dots, his other pitches and seasons, comps) drops to half strength
-    const src = traces.find(t => Array.isArray(t.customdata) && t.marker && t.customdata.includes(sel));
+    // everything drawn so far (other dots, his other seasons, comps) drops to 65% strength...
+    const srcOf = r => traces.find(t => Array.isArray(t.customdata) && t.marker && t.customdata.includes(r));
+    const srcs = arsenal.map(srcOf);
     traces.forEach(t => { if (t.meta !== "typelabels" && t.fill !== "toself") { t.opacity = SEL_DIM; t.dimK = SEL_DIM; } });
-    // ...and the selected pitch is redrawn on top at full strength in its own color
-    if (src) {
-      const k = src.customdata.indexOf(sel), m = src.marker, sz = Math.max(14, size * 1.7);
-      traces.push({ meta: "seldot", type: "scatter", mode: "markers", x: [sx], y: [sy], customdata: [sel], hoverinfo: "text", hovertext: [hoverHTML(sel)], showlegend: false,
-        marker: Array.isArray(m.color)
-          ? { size: sz, color: [m.color[k]], colorscale: m.colorscale, cmin: m.cmin, cmax: m.cmax, showscale: false, opacity: 1, line: { width: 1.5, color: pal.surface } }
-          : { size: sz, color: m.color, opacity: 1, line: { width: 1.5, color: pal.surface } } });
-    }
+    // ...and his pitch(es) are redrawn on top at full strength in their own colors; in All pitches each
+    // carries its pitch code (the selected one below the dot, clear of the name label above it)
+    const sz = Math.max(14, size * 1.7), halo = `0 0 3px ${pal.bg}, 0 0 3px ${pal.bg}, 0 0 2px ${pal.bg}`;
+    arsenal.forEach((r, i) => {
+      const src = srcs[i]; if (!src) return;   // not on the map at all (under the 40-pitch minimum)
+      const [x, y] = xy(view, r), k = src.customdata.indexOf(r), m = src.marker;
+      const marker = Array.isArray(m.color)
+        ? { size: sz, color: [m.color[k]], colorscale: m.colorscale, cmin: m.cmin, cmax: m.cmax, showscale: false, opacity: 1, line: { width: 1.5, color: pal.surface } }
+        : { size: sz, color: m.color, opacity: 1, line: { width: 1.5, color: pal.surface } };
+      const t = { meta: "seldot", type: "scatter", mode: "markers", x: [x], y: [y], customdata: [r], hoverinfo: "text",
+        hovertext: [hoverHTML(r) + (r === sel ? "" : "<br>same pitcher, same season")], showlegend: false, marker };
+      if (view === "all") Object.assign(t, { mode: "markers+text", text: [T.pitch_type[r]], textposition: r === sel ? "bottom center" : "top center",
+        textfont: { family: UI_FONT, size: 12, color: pal.ink, shadow: halo } });
+      traces.push(t);
+    });
     traces.push({ type: "scatter", mode: "markers", x: [sx], y: [sy], customdata: [sel], hoverinfo: "text",
       hovertext: [hoverHTML(sel)], marker: { size: 36, symbol: "circle-open", color: pal.ink, line: { width: 3.5 } }, showlegend: false });
     if (state.showName) annotations = [{ x: sx, y: sy, xref: "x", yref: "y", text: "<b>" + esc(rowName(view, sel)) + "</b>",
