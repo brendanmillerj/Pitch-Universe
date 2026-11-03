@@ -148,12 +148,17 @@ button, input, select { font: inherit; color: inherit; }
 .mb-acts { display: inline-flex; gap: 12px; }
 .sv-why { grid-column: 2 / -1; justify-self: start; border: 0; background: none; padding: 2px 4px; cursor: pointer;
   font: 600 13px var(--font-ui); color: var(--map-ink); text-decoration: underline; text-underline-offset: 3px; }
-.sv-traits { grid-column: 1 / -1; padding: 2px 4px 4px; font: 400 13px/1.4 var(--font-ui); color: var(--map-ink); }
+.sv-traits { grid-column: 1 / -1; padding: 2px 4px 4px; font: 400 14px/1.45 var(--font-ui); color: var(--map-ink); }
 .sv-traits[hidden] { display: none; }
-.sv-tr-head { margin: 0 0 4px; font-weight: 700; }
-.sv-tr { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 3px; }
+.sv-tr-head { margin: 0 0 2px; font-weight: 700; }
+.sv-tr { margin: 0; padding: 0; list-style: none; }
+/* trait rows are plain lines: they must not inherit the saved-row grid from #svList li */
+#svList .sv-tr li { display: block; padding: 4px 0; border-top: 1px solid var(--map-hair); }
+.sv-tr b { font-weight: 700; }
 .sv-tr .tm { color: var(--map-ink2); }
 .sv-tr-note { margin: 4px 0 0; color: var(--map-ink2); }
+.mb-acts { white-space: nowrap; }
+.mb-acts .link:disabled { text-decoration: none; color: var(--map-ink2); cursor: default; }
 .sv-undo { padding: 8px 12px; font: 500 13px var(--font-ui); color: var(--map-ink2); border-top: 1px solid var(--map-hair); }
 .sv-undo .link { color: var(--map-ink); font-weight: 700; }
 .sv-undo[hidden] { display: none; }
@@ -1142,19 +1147,19 @@ tr.self td { font-weight: 600; background: none; }
       <div class="mb-head"><b id="mbTitle"></b><button type="button" class="link" id="mbHide">Hide</button></div>
       <button type="button" class="dlbtn" id="dlBtn" hidden>Download CSV</button>
       <p class="dlmsg" id="dlMsg" role="status" aria-live="polite"></p>
-      <button type="button" class="svbtn" id="svBtn" hidden title="Keep an ellipse around these pitchers on every map, whatever you filter next">Save as ellipse</button>
+      <button type="button" class="svbtn" id="svBtn" hidden title="Keep these pitchers as a named group, circled on every map whatever you filter next">Keep as a group</button>
       <input id="mbSearch" type="search" placeholder="Filter names" autocomplete="off" aria-label="Filter the list by name">
       <ol id="mbList"></ol>
     </aside>
     <button type="button" class="mbshow" id="mbShow" hidden></button>
     <aside class="matchbox compbox" id="compBox" aria-label="Similar pitchers" hidden>
-      <div class="mb-head"><b id="cbTitle"></b><span class="mb-acts"><button type="button" class="link" id="cbSave" title="Keep him and these comps as a named ellipse on every map, with what they share">Save as ellipse</button><button type="button" class="link" id="cbHide">Hide</button></span></div>
+      <div class="mb-head"><b id="cbTitle"></b><span class="mb-acts"><button type="button" class="link" id="cbSave" title="Keep him and these comps as a named group, circled on every map, with what they share">Keep as a group</button><button type="button" class="link" id="cbHide">Hide</button></span></div>
       <div class="cbchips" id="cbChips" role="group" aria-label="Comps for which of his pitches"></div>
       <p class="cbhelp" id="cbHelp"></p>
       <ol id="cbList"></ol>
     </aside>
-    <aside class="savedbox" id="savedBox" aria-label="Saved ellipses" hidden>
-      <div class="sv-head"><b id="svTitle">Saved ellipses</b><button type="button" class="link" id="svFold" aria-expanded="true">Hide</button></div>
+    <aside class="savedbox" id="savedBox" aria-label="Groups" hidden>
+      <div class="sv-head"><b id="svTitle">Groups</b><button type="button" class="link" id="svFold" aria-expanded="true">Hide</button></div>
       <ul id="svList"></ul>
       <p class="sv-undo" id="svUndo" hidden></p>
     </aside>
@@ -1890,7 +1895,7 @@ function ellipseTraces(view, cg, on, match, pal) {
   });
 }
 // ------------------------------------------------------- saved ellipses
-// "Save as ellipse" (in the highlighted-pitcher list) freezes the current group as a set of pitcher-seasons.
+// "Keep as a group" (in the highlighted-pitcher list) freezes the current group as a set of pitcher-seasons.
 // A saved ellipse follows those pitchers onto every map (one per pitch type in All pitches, an ellipsoid
 // in 3D), ignores later filters and the season/hand toggles, and is kept in this browser's storage.
 const SAVED_STORE = "atlas.savedEllipses.v1";
@@ -1957,7 +1962,7 @@ function saveGroup(rows, base, comps) {
 function saveCurrentGroup() {
   const e = saveGroup(state.dlRows || [], state.mbTitle || "Highlighted"); if (!e) return;
   const pitchers = new Set(e.keys.map(k => k.split("|")[0])).size;
-  $("#dlMsg").textContent = `Saved “${e.name}” (${pitchers.toLocaleString()} pitcher${pitchers === 1 ? "" : "s"}). Rename, recolor or hide it in the panel at the bottom right of the map.`;
+  $("#dlMsg").textContent = `Kept “${e.name}” (${pitchers.toLocaleString()} pitcher${pitchers === 1 ? "" : "s"}) as a group, circled on every map. Rename, recolor or hide it in the Groups panel.`;
 }
 // Him + his closest comps as one ellipse (once per pitcher-season-pitch); both save buttons then read "Saved"
 const compsKey = r => T.pitcher[r] + "|" + T.season[r] + "|" + T.pitch_type[r];
@@ -1971,9 +1976,9 @@ function saveCompsGroup(r) {
   syncCompsSaveButtons();
 }
 function syncCompsSaveButtons() {
-  document.querySelectorAll("[data-svcomps]").forEach(b => { const done = !!compsSavedId(+b.dataset.svcomps); b.disabled = done; b.textContent = done ? "Saved as an ellipse" : b.dataset.label; });
+  document.querySelectorAll("[data-svcomps]").forEach(b => { const done = !!compsSavedId(+b.dataset.svcomps); b.disabled = done; b.textContent = done ? "Kept as a group" : b.dataset.label; });
   const sb = $("#cbSave"), r = state.sel;
-  if (sb && r !== null && r !== undefined) { const done = !!compsSavedId(r); sb.disabled = done; sb.textContent = done ? "Saved as an ellipse" : "Save as ellipse"; }
+  if (sb && r !== null && r !== undefined) { const done = !!compsSavedId(r); sb.disabled = done; sb.textContent = done ? "Kept as a group" : "Keep as a group"; }
 }
 
 // What a saved group shares: the map measures on which its pitches are both tight (their spread well
@@ -2024,7 +2029,7 @@ function savedMeta(e, view) {
 function renderSaved() {
   const box = $("#savedBox"), mapEl = document.querySelector(".map");
   box.hidden = !saved.length && !svDeleted;
-  $("#svTitle").textContent = `Saved ellipses (${saved.length})`;
+  $("#svTitle").textContent = `Groups (${saved.length})`;
   const folded = box.classList.contains("folded");
   $("#svFold").textContent = folded ? "Show" : "Hide"; $("#svFold").setAttribute("aria-expanded", String(!folded));
   $("#svList").innerHTML = saved.map(e => `<li data-id="${esc(e.id)}" class="${e.on ? "" : "off"}">`
@@ -2718,7 +2723,7 @@ function compsPanel(view, j) {
     <p class="cmprow"><label class="flbl" for="cmpSel">Compare with</label><span class="sel"><select id="cmpSel">${opts}</select></span></p>
     <div class="cmpkey" id="cmpKey"></div>
     <div id="cmpPlot" class="moveplot" role="img" aria-label="Pitch movement of ${esc(T.name[j])} compared with a comp"></div></section>` : ""}
-    <section class="sec"><div class="sechead"><h3>Closest ${PTN[t].toLowerCase()} comps</h3>${comps.length ? `<button type="button" class="svcomps" data-svcomps="${j}" data-label="Save him + these ${comps.length} as an ellipse"${compsSavedId(j) ? " disabled" : ""} title="Keep them as a named ellipse on every map, with what they share">${compsSavedId(j) ? "Saved as an ellipse" : `Save him + these ${comps.length} as an ellipse`}</button>` : ""}</div><p class="help">Nearest other pitchers'${PTN[t].toLowerCase()}s on shape, angles, delivery, command, consistency and usage, any season. Only ${T.p_throws[j] === "R" ? "right" : "left"}-handers with an arm angle within ±${isNum(T.comp_tol[j]) && isFinite(T.comp_tol[j]) ? T.comp_tol[j] : "any"}° of his${isNum(T.comp_tol[j]) && T.comp_tol[j] > 7.5 ? " (window widened: too few pitchers within ±7.5°)" : ""}. Whiff% is on this pitch; xERA is the comp's whole season.</p>
+    <section class="sec"><div class="sechead"><h3>Closest ${PTN[t].toLowerCase()} comps</h3>${comps.length ? `<button type="button" class="svcomps" data-svcomps="${j}" data-label="Keep him + these ${comps.length} as a group"${compsSavedId(j) ? " disabled" : ""} title="Keep them as a named group, circled on every map, with what they share">${compsSavedId(j) ? "Kept as a group" : `Keep him + these ${comps.length} as a group`}</button>` : ""}</div><p class="help">Nearest other pitchers' ${PTN[t].toLowerCase()}s on shape, angles, delivery, command, consistency and usage, any season. Only ${T.p_throws[j] === "R" ? "right" : "left"}-handers with an arm angle within ±${isNum(T.comp_tol[j]) && isFinite(T.comp_tol[j]) ? T.comp_tol[j] : "any"}° of his${isNum(T.comp_tol[j]) && T.comp_tol[j] > 7.5 ? " (window widened: too few pitchers within ±7.5°)" : ""}. Whiff% is on this pitch; xERA is the comp's whole season.</p>
     <div class="tablewrap"><table><thead><tr><th></th><th>Pitcher</th><th>Season</th><th title="${FIT_TIP}">Fit</th><th class="num" title="${esc(EXPLAIN.whiff)}">Whiff%</th><th class="num" title="${esc(EXPLAIN["P:xera"])}">xERA</th></tr></thead><tbody>
     <tr class="self"><td><span class="badge self"></span></td><td>${esc(T.name[j])}</td><td>${T.season[j]} <span class="tm">${esc(teamStr(j))}</span></td><td></td><td class="num">${fmt(T.whiff[j], 1)}</td><td class="num">${i === undefined ? "—" : fmt(P.xera[i], 2)}</td></tr>`;
   comps.forEach(([c, q], k) => {
@@ -2769,7 +2774,7 @@ function updateMatchBox(view, rows, match, cg) {
     title = [...state.teamPick].map(t => TEAM_NAMES[t] || t).join(", ");
   }
   state.dlRows = lit;   // "Download CSV" exports every highlighted dot
-  state.mbTitle = title;   // default name for "Save as ellipse"
+  state.mbTitle = title;   // default name for "Keep as a group"
   $("#svBtn").hidden = !lit || !lit.length;
   if (!lit) { box.hidden = true; show.hidden = true; state.mbRows = null; return; }
   // one entry per pitcher: his most recent highlighted season (his pitches that season); earlier seasons are noted
