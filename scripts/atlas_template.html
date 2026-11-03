@@ -157,8 +157,11 @@ button, input, select { font: inherit; color: inherit; }
 .sv-tr b { font-weight: 700; }
 .sv-tr .tm { color: var(--map-ink2); }
 .sv-tr-note { margin: 4px 0 0; color: var(--map-ink2); }
-.mb-acts { white-space: nowrap; }
-.mb-acts .link:disabled { text-decoration: none; color: var(--map-ink2); cursor: default; }
+/* the big "Keep similar pitchers as a group" buttons: light on the dark comps box, ink-filled on the card */
+.keepbtn[hidden] { display: none; }
+.keepbtn:disabled { background: var(--map-hover); color: var(--map-ink2); cursor: default; }
+.keepcard { display: block; width: 100%; min-height: 52px; font-size: 20px; margin: 2px 0 6px; }
+.keepcard:disabled { background: var(--wash); color: var(--muted); border-color: var(--line); cursor: default; }
 .sv-undo { padding: 8px 12px; font: 500 13px var(--font-ui); color: var(--map-ink2); border-top: 1px solid var(--map-hair); }
 .sv-undo .link { color: var(--map-ink); font-weight: 700; }
 .sv-undo[hidden] { display: none; }
@@ -1165,9 +1168,10 @@ tr.self td { font-weight: 600; background: none; }
     </aside>
     <button type="button" class="mbshow" id="mbShow" hidden></button>
     <aside class="matchbox compbox" id="compBox" aria-label="Similar pitchers" hidden>
-      <div class="mb-head"><b id="cbTitle"></b><span class="mb-acts"><button type="button" class="link" id="cbSave" title="Keep him and these comps as a named group, circled on every map, with what they share">Keep as a group</button><button type="button" class="link" id="cbHide">Hide</button></span></div>
+      <div class="mb-head"><b id="cbTitle"></b><button type="button" class="link" id="cbHide">Hide</button></div>
       <div class="cbchips" id="cbChips" role="group" aria-label="Comps for which of his pitches"></div>
       <p class="cbhelp" id="cbHelp"></p>
+      <button type="button" class="dlbtn keepbtn" id="cbSave" title="Keep him and these comps as a named group, circled on every map, with what they share">Keep similar pitchers as a group</button>
       <ol id="cbList"></ol>
     </aside>
     <aside class="savedbox" id="savedBox" aria-label="Groups" hidden>
@@ -1990,7 +1994,7 @@ function saveCompsGroup(r) {
 function syncCompsSaveButtons() {
   document.querySelectorAll("[data-svcomps]").forEach(b => { const done = !!compsSavedId(+b.dataset.svcomps); b.disabled = done; b.textContent = done ? "Kept as a group" : b.dataset.label; });
   const sb = $("#cbSave"), r = state.sel;
-  if (sb && r !== null && r !== undefined) { const done = !!compsSavedId(r); sb.disabled = done; sb.textContent = done ? "Kept as a group" : "Keep as a group"; }
+  if (sb && r !== null && r !== undefined) { const done = !!compsSavedId(r); sb.disabled = done; sb.textContent = done ? "Kept as a group" : "Keep similar pitchers as a group"; }
 }
 
 // What a saved group shares: the map measures on which its pitches are both tight (their spread well
@@ -2737,7 +2741,7 @@ function compsPanel(view, j) {
     <p class="cmprow"><label class="flbl" for="cmpSel">Compare with</label><span class="sel"><select id="cmpSel">${opts}</select></span></p>
     <div class="cmpkey" id="cmpKey"></div>
     <div id="cmpPlot" class="moveplot" role="img" aria-label="Pitch movement of ${esc(T.name[j])} compared with a comp"></div></section>` : ""}
-    <section class="sec"><div class="sechead"><h3>Closest ${PTN[t].toLowerCase()} comps</h3>${comps.length ? `<button type="button" class="svcomps" data-svcomps="${j}" data-label="Keep him + these ${comps.length} as a group"${compsSavedId(j) ? " disabled" : ""} title="Keep them as a named group, circled on every map, with what they share">${compsSavedId(j) ? "Kept as a group" : `Keep him + these ${comps.length} as a group`}</button>` : ""}</div><p class="help">Nearest other pitchers' ${PTN[t].toLowerCase()}s on shape, angles, delivery, command, consistency and usage, any season. Only ${T.p_throws[j] === "R" ? "right" : "left"}-handers with an arm angle within ±${isNum(T.comp_tol[j]) && isFinite(T.comp_tol[j]) ? T.comp_tol[j] : "any"}° of his${isNum(T.comp_tol[j]) && T.comp_tol[j] > 7.5 ? " (window widened: too few pitchers within ±7.5°)" : ""}. Whiff% is on this pitch; xERA is the comp's whole season.</p>
+    <section class="sec"><h3>Closest ${PTN[t].toLowerCase()} comps</h3>${comps.length ? `<button type="button" class="bigbtn primary keepcard" data-svcomps="${j}" data-label="Keep similar pitchers as a group"${compsSavedId(j) ? " disabled" : ""} title="Keep him and these ${comps.length} as a named group, circled on every map, with what they share">${compsSavedId(j) ? "Kept as a group" : "Keep similar pitchers as a group"}</button>` : ""}<p class="help">Nearest other pitchers'${PTN[t].toLowerCase()}s on shape, angles, delivery, command, consistency and usage, any season. Only ${T.p_throws[j] === "R" ? "right" : "left"}-handers with an arm angle within ±${isNum(T.comp_tol[j]) && isFinite(T.comp_tol[j]) ? T.comp_tol[j] : "any"}° of his${isNum(T.comp_tol[j]) && T.comp_tol[j] > 7.5 ? " (window widened: too few pitchers within ±7.5°)" : ""}. Whiff% is on this pitch; xERA is the comp's whole season.</p>
     <div class="tablewrap"><table><thead><tr><th></th><th>Pitcher</th><th>Season</th><th title="${FIT_TIP}">Fit</th><th class="num" title="${esc(EXPLAIN.whiff)}">Whiff%</th><th class="num" title="${esc(EXPLAIN["P:xera"])}">xERA</th></tr></thead><tbody>
     <tr class="self"><td><span class="badge self"></span></td><td>${esc(T.name[j])}</td><td>${T.season[j]} <span class="tm">${esc(teamStr(j))}</span></td><td></td><td class="num">${fmt(T.whiff[j], 1)}</td><td class="num">${i === undefined ? "—" : fmt(P.xera[i], 2)}</td></tr>`;
   comps.forEach(([c, q], k) => {
