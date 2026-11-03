@@ -105,6 +105,18 @@ button, input, select { font: inherit; color: inherit; }
 .mbn { display: block; font: 600 15px var(--font-ui); color: var(--map-ink); }
 .mbm { display: block; font: 400 13px var(--font-ui); color: var(--map-ink2); }
 .mbmore { padding: 8px 12px; font: 400 13px var(--font-ui); color: var(--map-muted); }
+/* similar pitchers on the map (from the search card): same slot and look as the pitcher list, numbered like the map badges */
+.cbchips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 8px; }
+.cbchips[hidden] { display: none; }
+.cbchips button { font: 600 13px var(--font-ui); padding: 4px 10px; border-radius: 999px; border: 1px solid var(--map-muted); background: none; color: var(--map-ink); cursor: pointer; }
+.cbchips button:hover { background: var(--map-hover); }
+.cbchips button[aria-pressed="true"] { background: var(--field); border-color: var(--field); color: var(--ink); }
+.cbhelp { margin: 0 12px 6px; font: 400 13px/1.35 var(--font-ui); color: var(--map-ink2); }
+#cbList { list-style: none; margin: 0; padding: 0 0 8px; overflow-y: auto; overscroll-behavior: contain; }
+#cbList button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 0; background: none; padding: 5px 12px; cursor: pointer; border-top: 1px solid var(--map-hair); }
+#cbList button:hover { background: var(--map-hover); }
+.cbn { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--map-ink); color: var(--map); font: 700 13px var(--font-ui); }
 .mbshow { position: absolute; z-index: 6; top: calc(2 * var(--mi) + var(--fh, 46px)); right: var(--mx); font: 700 17px var(--font-ui); padding: 12px 20px;
   border-radius: var(--r); border: 1.5px solid var(--map-muted); background: var(--map-chrome); color: var(--map-ink); cursor: pointer; box-shadow: var(--shmap); }
 .mbshow:hover { background: var(--map-hover); }
@@ -945,9 +957,9 @@ tr.self td { font-weight: 600; background: none; }
         <label class="find-lbl" for="search">Find a pitcher</label>
         <div class="find-box">
           <svg class="find-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-          <input id="search" type="search" list="names" placeholder="Type a name, e.g. Shota Imanaga" autocomplete="off">
+          <input id="search" type="search" placeholder="Type a name, e.g. Shota Imanaga" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sugg">
+          <ul class="sugg" id="sugg" role="listbox" aria-label="Matching pitchers" hidden></ul>
         </div>
-        <datalist id="names"></datalist>
         <span class="help" id="searchMsg" role="status" aria-live="polite"></span>
       </form>
       <div class="find find-type">
@@ -987,8 +999,14 @@ tr.self td { font-weight: 600; background: none; }
   <section class="controls" id="controls" aria-label="Map controls">
     <div class="bar">
       <div class="grp grp-color">
-        <label class="colorlbl" id="colorLbl" for="colorA">Color pitchers by</label>
-        <span class="sel" id="colorAWrap"><select id="colorA"></select></span>
+        <label class="colorlbl" id="colorLbl" for="colorBtn">Color pitchers by</label>
+        <span class="sel" id="colorAWrap">
+          <button type="button" class="colorbtn" id="colorBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="colorMenu"><span id="colorBtnTxt">Pitch type</span></button>
+          <div class="colormenu" id="colorMenu" hidden>
+            <input type="search" class="cm-search" id="cmSearch" placeholder="Search measures" aria-label="Search measures" autocomplete="off">
+            <div class="cm-list" id="cmList" role="listbox" aria-labelledby="colorLbl"></div>
+          </div>
+        </span>
         <span class="combo" id="comboWrap" hidden>
           <span class="sel" id="opWrap"><select id="op" aria-label="Combine with a second measure">
             <option value="none">on its own</option>
@@ -1043,6 +1061,7 @@ tr.self td { font-weight: 600; background: none; }
     </div>
     <div class="mapkey" id="mapKey" hidden></div>
     <p class="maphint" id="mapnote"></p>
+    <p class="zoomtip" id="zoomTip" role="status" aria-live="polite" hidden></p>
     <aside class="matchbox" id="matchBox" aria-label="Highlighted pitchers" hidden>
       <div class="mb-head"><b id="mbTitle"></b><button type="button" class="link" id="mbHide">Hide</button></div>
       <button type="button" class="dlbtn" id="dlBtn" hidden>Download CSV</button>
@@ -1052,6 +1071,12 @@ tr.self td { font-weight: 600; background: none; }
       <ol id="mbList"></ol>
     </aside>
     <button type="button" class="mbshow" id="mbShow" hidden></button>
+    <aside class="matchbox compbox" id="compBox" aria-label="Similar pitchers" hidden>
+      <div class="mb-head"><b id="cbTitle"></b><button type="button" class="link" id="cbHide">Hide</button></div>
+      <div class="cbchips" id="cbChips" role="group" aria-label="Comps for which of his pitches"></div>
+      <p class="cbhelp" id="cbHelp"></p>
+      <ol id="cbList"></ol>
+    </aside>
     <aside class="savedbox" id="savedBox" aria-label="Saved ellipses" hidden>
       <div class="sv-head"><b id="svTitle">Saved ellipses</b><button type="button" class="link" id="svFold" aria-expanded="true">Hide</button></div>
       <ul id="svList"></ul>
@@ -1077,6 +1102,10 @@ tr.self td { font-weight: 600; background: none; }
       <p><b>How to read it.</b> Each dot is one pitcher’s pitch type over one season. Pitches that are alike in movement, release, delivery, command and usage sit near each other, and the farther apart two dots are, the less alike the pitches. The axes have no units.</p>
       <button type="button" class="howhide" id="howHide" aria-controls="howto">Hide</button>
     </section>
+    <details class="gloss" id="gloss">
+      <summary>Glossary: what the terms mean</summary>
+      <div class="gloss-in" id="glossIn"></div>
+    </details>
     <button type="button" class="link howshow" id="howShow" aria-controls="howto" hidden>How to read the map</button>
     <p class="legendkey" id="keySel">
       <span><i class="k-ring"></i>Selected</span>
@@ -1695,7 +1724,7 @@ function render() {
   updateMatchBox(view, rows, listMatch, cg);
   state.tblData = { view, rows, match: listMatch }; renderTable();
   refreshSavedMeta();
-  syncCta();
+  syncCta(); renderCompBox();
 
   // Caption under the map
   $("#keySel").hidden = !hasSel;
@@ -2562,7 +2591,7 @@ function litDescription() {
   return parts.join(" + ");
 }
 function updateMatchBox(view, rows, match, cg) {
-  const box = $("#matchBox"), show = $("#mbShow");
+  const box = $("#matchBox"), show = $("#mbShow"), cmp = compsOnMap();
   let lit = null, title = "";
   if (match) { lit = rows.filter(match); title = litDescription(); }
   else if (cg && cg.v && cg.v.key === "cat:team") {
@@ -2585,7 +2614,7 @@ function updateMatchBox(view, rows, match, cg) {
   state.mbRows = items;
   $("#mbTitle").textContent = `${title || "Highlighted"} · ${items.length.toLocaleString()} pitcher${items.length === 1 ? "" : "s"}`;
   show.textContent = `Show pitcher list (${items.length.toLocaleString()})`;
-  box.hidden = !!state.mbHidden; show.hidden = !state.mbHidden;
+  box.hidden = !!state.mbHidden || cmp; show.hidden = !state.mbHidden || cmp;   // the comps panel takes this slot while it is up
   renderMatchList();
 }
 function renderMatchList() {
@@ -3085,15 +3114,29 @@ function openCard() {
   setView(T.pitch_type[m], m);
   focusCard();
 }
-// "Show similar pitchers" from the search card: open his card on the same pitch as "See full player info",
-// with the ten comps numbered on the map and their list open under the card.
-function openComps() {
-  const r = state.sel; if (r === null || r === undefined) return;
-  const m = mostUsedRow(r);
-  state.preview = false; state.showComps = true;
-  setView(T.pitch_type[m], m);
-  const b = $("#simBtn"); if (b) b.focus({ preventScroll: true });
-  const c = $("#compsIn"); if (c && c.scrollIntoView) c.scrollIntoView({ block: "start", behavior: reduced() ? "auto" : "smooth" });
+// "Show similar pitchers" on the search card: the ten comps appear as numbered dots on the map you are on,
+// with their list in the pitcher list's slot. The card stays closed. In All pitches the chips pick which of
+// his pitches the comps are for (search starts on his primary fastball).
+const compsOnMap = () => !!state.preview && !!state.showComps && state.sel !== null && state.sel !== undefined;
+function toggleComps() {
+  if (state.sel === null || state.sel === undefined) return;
+  state.showComps = !state.showComps; render();
+}
+function renderCompBox() {
+  const box = $("#compBox"), r = state.sel, on = compsOnMap();
+  box.hidden = !on; if (!on) return;
+  const t = T.pitch_type[r], comps = compsOf(state.view, r);
+  $("#cbTitle").textContent = `Closest ${PTN[t].toLowerCase()} comps`;
+  const mine = state.view === "all"
+    ? TYPES.map(x => tRow(T.pitcher[r], T.season[r], x)).filter(x => x !== undefined && (x === r || T.n[x] >= state.minN)) : [];
+  $("#cbChips").hidden = mine.length < 2;
+  $("#cbChips").innerHTML = mine.length < 2 ? "" : mine.map(x => `<button type="button" data-cb="${x}" aria-pressed="${x === r}">${PTN[T.pitch_type[x]]}</button>`).join("");
+  const tol = T.comp_tol[r], tolTxt = isNum(tol) && isFinite(tol) ? `within ±${tol}° of his arm angle` : "any arm angle";
+  $("#cbHelp").textContent = comps.length
+    ? `${T.p_throws[r] === "R" ? "Right" : "Left"}-handers ${tolTxt}, any season. Click a name to show him.`
+    : "No comps for this pitch.";
+  $("#cbList").innerHTML = comps.map(([c, q], k) => `<li><button type="button" data-cbp="${c}"><span class="cbn">${k + 1}</span>`
+    + `<span><span class="mbn">${esc(T.name[c])}</span><span class="mbm">${T.season[c]} · ${esc(teamStr(c))} · ${fitOf(q)[1]} fit</span></span></button></li>`).join("");
 }
 function syncCta() {
   const r = state.sel, on = !!state.preview && r !== null && r !== undefined, box = $("#selCta");
@@ -3101,6 +3144,9 @@ function syncCta() {
   const n = TYPES.filter(t => { const x = tRow(T.pitcher[r], T.season[r], t); return x !== undefined && T.n[x] >= state.minN; }).length;
   $("#ctaName").textContent = T.name[r];
   $("#ctaSub").textContent = `${T.season[r]} · ${teamStr(r)} · ${n} pitch${n === 1 ? "" : "es"}`;
+  const sim = $("#ctaSim");
+  sim.textContent = state.showComps ? "Hide similar pitchers" : "Show similar pitchers";
+  sim.setAttribute("aria-pressed", String(!!state.showComps));
 }
 
 function mapSelection(from, to, r) {
@@ -3600,7 +3646,10 @@ function buildStatic() {
   { const mf = $("#mapFilt"), mapEl = document.querySelector(".map");
     new ResizeObserver(() => mapEl.style.setProperty("--fh", mf.offsetHeight + "px")).observe(mf); }
   $("#ctaOpen").addEventListener("click", openCard);
-  $("#ctaSim").addEventListener("click", openComps);
+  $("#ctaSim").addEventListener("click", toggleComps);
+  $("#cbHide").addEventListener("click", () => { state.showComps = false; render(); $("#ctaSim").focus({ preventScroll: true }); });
+  $("#cbChips").addEventListener("click", e => { const b = e.target.closest("[data-cb]"); if (b) { state.sel = +b.dataset.cb; render(); } });
+  $("#cbList").addEventListener("click", e => { const b = e.target.closest("[data-cbp]"); if (b) preview(+b.dataset.cbp); });
   $("#ctaClose").addEventListener("click", () => select(null));
   if (window.claude && typeof window.claude.use === "function") {
     window.claude.use("downloads").then(d => { DOWNLOADS = d; $("#dlBtn").hidden = !d; }, () => {});
