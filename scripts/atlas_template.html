@@ -156,6 +156,8 @@ button, input, select { font: inherit; color: inherit; }
 .ctabtn .arr { font-size: 24px; line-height: 1; transition: transform 160ms; }
 .ctabtn:hover { background: var(--ink2); }
 .ctabtn:hover .arr { transform: translateX(4px); }
+.ctasim { background: var(--field); color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); animation: none; font-size: 18px; padding: 0 20px; }
+.ctasim:hover { background: var(--wash); }
 .ctaclose { flex: none; width: 40px; height: 40px; border: 0; border-radius: 6px; background: none; color: var(--ink2); font: 400 24px/1 var(--font-ui); cursor: pointer; }
 .ctaclose:hover { background: var(--wash); color: var(--ink); }
 @keyframes ctaPulse { 0% { box-shadow: 0 0 0 0 rgba(27, 36, 48, 0.55); } 100% { box-shadow: 0 0 0 16px rgba(27, 36, 48, 0); } }
@@ -166,6 +168,7 @@ button, input, select { font: inherit; color: inherit; }
   .selcta { flex-wrap: wrap; padding: 12px; gap: 8px 12px; }
   .cta-name { flex: 1 1 60%; }
   .ctabtn { order: 3; flex: 1 1 100%; justify-content: center; }
+  .ctasim { order: 4; }
 }
 .g3-overlay { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .g3-label { position: absolute; left: 0; top: 0; white-space: nowrap; font: 600 13px var(--font-ui); color: var(--map-ink);
@@ -561,7 +564,13 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
 .sl-links { display: inline-flex; gap: 12px; }
 .sliders { grid-area: sl; overflow-y: auto; overscroll-behavior: contain; border-right: 1px solid var(--line);
   padding: 18px 16px 32px 16px; margin-right: 20px; min-width: 0; display: flex; flex-direction: column; gap: 10px; background: var(--panel); }
-.sl-head { display: flex; justify-content: space-between; align-items: baseline; }
+.sl-head { display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  position: sticky; top: -18px; z-index: 2; margin: -18px -16px 0; padding: 14px 16px 10px; background: var(--panel); border-bottom: 1px solid var(--line); }
+/* large, obvious close: always in view at the top of the panel */
+.slx { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0;
+  border: 1.5px solid var(--ink); border-radius: 8px; background: var(--bg); color: var(--ink); cursor: pointer; }
+.slx:hover { background: var(--ink); color: var(--bg); }
+.slx:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .sl-title { font: 600 20px/1.1 var(--font-serif); color: var(--ink); }
 .sl-count { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--rule); padding-bottom: 6px; }
 .slsec { border-bottom: 1px solid var(--line); }
@@ -765,6 +774,8 @@ tr.self td { font-weight: 600; background: none; }
   .sliders { position: fixed; z-index: 60; top: 0; bottom: 0; left: 0; width: min(340px, 88vw); margin: 0;
     padding: calc(16px + env(safe-area-inset-top, 0px)) 18px calc(24px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
     box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.18); }
+  .sl-head { top: calc(-16px - env(safe-area-inset-top, 0px)); padding-top: calc(12px + env(safe-area-inset-top, 0px));
+    margin: calc(-16px - env(safe-area-inset-top, 0px)) -18px 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px))); }
 }
 /* ---------------------------------------------------- on-map controls (top left) */
 .mapctl { position: absolute; z-index: 6; top: var(--mi); left: var(--mi); display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
@@ -895,7 +906,7 @@ tr.self td { font-weight: 600; background: none; }
   <aside class="sliders" id="sliders" aria-label="Filter by measures" hidden>
     <div class="sl-head">
       <span class="sl-title">Filter by measures</span>
-      <button type="button" class="link" id="slClose">Close</button>
+      <button type="button" class="slx" id="slClose" aria-label="Close the filter panel" title="Close"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 5 L19 19 M19 5 L5 19" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none"/></svg></button>
     </div>
     <div class="tg" id="slMode" role="group" aria-label="Slider scale">
       <button type="button" id="slPct" data-v="pct" data-label="Percentile">Percentile</button>
@@ -1049,6 +1060,7 @@ tr.self td { font-weight: 600; background: none; }
     <div class="selcta" id="selCta" role="region" aria-label="Selected pitcher" hidden>
       <div class="cta-name"><b id="ctaName"></b><span id="ctaSub"></span></div>
       <button type="button" class="ctabtn" id="ctaOpen">See full player info <span class="arr" aria-hidden="true">→</span></button>
+      <button type="button" class="ctabtn ctasim" id="ctaSim">Show similar pitchers</button>
       <button type="button" class="ctaclose" id="ctaClose" aria-label="Clear the selection" title="Clear">×</button>
     </div>
   </main>
@@ -3073,6 +3085,16 @@ function openCard() {
   setView(T.pitch_type[m], m);
   focusCard();
 }
+// "Show similar pitchers" from the search card: open his card on the same pitch as "See full player info",
+// with the ten comps numbered on the map and their list open under the card.
+function openComps() {
+  const r = state.sel; if (r === null || r === undefined) return;
+  const m = mostUsedRow(r);
+  state.preview = false; state.showComps = true;
+  setView(T.pitch_type[m], m);
+  const b = $("#simBtn"); if (b) b.focus({ preventScroll: true });
+  const c = $("#compsIn"); if (c && c.scrollIntoView) c.scrollIntoView({ block: "start", behavior: reduced() ? "auto" : "smooth" });
+}
 function syncCta() {
   const r = state.sel, on = !!state.preview && r !== null && r !== undefined, box = $("#selCta");
   box.hidden = !on; if (!on) return;
@@ -3578,6 +3600,7 @@ function buildStatic() {
   { const mf = $("#mapFilt"), mapEl = document.querySelector(".map");
     new ResizeObserver(() => mapEl.style.setProperty("--fh", mf.offsetHeight + "px")).observe(mf); }
   $("#ctaOpen").addEventListener("click", openCard);
+  $("#ctaSim").addEventListener("click", openComps);
   $("#ctaClose").addEventListener("click", () => select(null));
   if (window.claude && typeof window.claude.use === "function") {
     window.claude.use("downloads").then(d => { DOWNLOADS = d; $("#dlBtn").hidden = !d; }, () => {});
