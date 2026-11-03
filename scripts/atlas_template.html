@@ -272,6 +272,16 @@ button, input, select { font: inherit; color: inherit; }
 .boxclear:hover { background: var(--ink); color: var(--field); }
 .boxclear[hidden] { display: none; }
 .find-box:has(.boxclear:not([hidden])) select { padding-right: 76px; }
+/* name suggestions as you type: a list under the search box, one line per pitcher */
+.sugg { position: absolute; z-index: 70; top: calc(100% + 4px); left: -2px; right: -2px; margin: 0; padding: 4px 0; list-style: none;
+  background: var(--field); border: 2px solid var(--ink); border-radius: var(--r); box-shadow: var(--sh2); max-height: min(360px, 50vh); overflow-y: auto; }
+.sugg[hidden] { display: none; }
+.sugg li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 8px 14px; cursor: pointer;
+  font: 500 17px var(--font-ui); color: var(--ink); }
+.sugg li .sg-sub { font: 400 13px var(--font-ui); color: var(--ink2); white-space: nowrap; }
+.sugg li[aria-selected="true"], .sugg li:hover { background: var(--wash); }
+.sugg li.none { cursor: default; color: var(--ink2); font-style: italic; }
+.sugg mark { background: none; color: inherit; font-weight: 700; }
 .fa-row { display: flex; flex-wrap: nowrap; gap: 8px; min-width: 0; }
 .fa-row .fa-which { flex: 1 1 0; min-width: 0; }   /* beside Off | On, so turning it on never pushes the header down */
 .fa-which select { font-size: 17px; text-overflow: ellipsis; white-space: nowrap; padding-right: 30px; }
@@ -532,6 +542,15 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
   .app.with-table:not(.has-sel) .mt-in { position: absolute; inset: 0; display: flex; flex-direction: column; }
   .app.with-table:not(.has-sel) .mt-scroll { flex: 1; max-height: none; }
 }
+/* 1100–1599px with a card open: three columns would squeeze the map to a strip, so a reopened filter
+   drawer floats over the page (as on tablets) and the map and card keep half the width each */
+@media (min-width: 1100px) and (max-width: 1599px) {
+  .app.with-sliders.has-sel { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "head dhead" "controls dtraits" "map dtraits" "map detail" "caption detail"; }
+  .app.with-sliders.has-sel .sliders { position: fixed; z-index: 60; top: 0; bottom: 0; left: 0; width: min(340px, 88vw); margin: 0;
+    padding: 16px 18px 24px 16px; box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.18); }
+  .app.with-sliders.has-sel .sl-head { top: -16px; padding-top: 12px; margin: -16px -18px 0 -16px; }
+}
 .app.has-sel .mtable { display: none; }
 .mtable { grid-area: tbl; min-width: 0; min-height: 0; margin: 12px 12px 0 0; background: var(--field); border: 1px solid var(--line);
   border-radius: var(--r-lg); box-shadow: var(--sh1); overflow: hidden; }
@@ -662,6 +681,22 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
   border: 1px solid var(--line); border-radius: var(--r); }
 .howto p { margin: 0; flex: 1 1 auto; font: 400 clamp(15px, 1.1vw, 17.5px)/1.45 var(--font-serif); color: var(--ink); }
 .howto p b { font-family: var(--font-ui); font-weight: 700; font-size: 0.95em; }
+/* glossary: folded under the how-to box; every term and measure in plain words */
+.gloss { margin: 4px 0 2px; padding: 0 14px; background: var(--field); border: 1px solid var(--line); border-radius: var(--r-lg); }
+.gloss summary { cursor: pointer; padding: 9px 0; font: 700 15px var(--font-ui); color: var(--ink); list-style: none; display: flex; align-items: center; gap: 8px; }
+.gloss summary::-webkit-details-marker { display: none; }
+.gloss summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--ink); border-bottom: 2px solid var(--ink); transform: rotate(-45deg); transition: transform 120ms; }
+.gloss[open] summary::before { transform: rotate(45deg); }
+.gloss-in { padding: 2px 0 12px; border-top: 1px solid var(--line); }
+.gloss-in h4 { margin: 12px 0 4px; font: 700 13px/1.2 var(--font-ui); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink2); }
+.gloss-in dl { margin: 0; columns: 2; column-gap: 32px; }
+.gloss-in dl > div { break-inside: avoid; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.gloss-in dt { font: 700 15px var(--font-ui); color: var(--ink); }
+.gloss-in dd { margin: 1px 0 0; font: 400 15px/1.45 var(--font-serif); color: var(--ink); }
+.gloss-in dd .tm { color: var(--ink2); }
+@media (max-width: 899px) { .gloss-in dl { columns: 1; } }
+.heropool { font: 400 13px/1.3 var(--font-ui); color: var(--ink2); }
+.heropool button { border: 0; background: none; padding: 0; font: inherit; color: var(--link); text-decoration: underline; cursor: pointer; }
 .howfig { flex: none; width: 205px; height: 77px; }
 .howhide { flex: none; align-self: flex-start; font: 600 13px var(--font-ui); color: var(--ink2); background: none; border: 1px solid var(--line);
   border-radius: var(--r); padding: 4px 10px; cursor: pointer; }
@@ -679,6 +714,12 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
   background: var(--map-chrome); color: var(--map-ink2); font: 500 13px var(--font-ui); }
 .app.has-sel .maphint { display: none; }
 .maphint { right: var(--mx); bottom: var(--mi); }
+/* a passing note when the wheel moves over the map without the zoom key held */
+.zoomtip { position: absolute; z-index: 6; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; padding: 10px 18px; pointer-events: none;
+  background: var(--map-chrome, rgba(20, 24, 30, 0.9)); color: var(--map-ink, #fff); border-radius: var(--r); font: 600 15px var(--font-ui);
+  box-shadow: var(--sh2); opacity: 0; transition: opacity 160ms; }
+.zoomtip.show { opacity: 1; }
+.zoomtip[hidden] { display: none; }
 .map:has(#savedBox:not([hidden])) .maphint { bottom: calc(var(--svh, 0px) + 2px); }
 @container map (max-width: 1150px) { .maphint { display: none; } }
 @media (max-width: 719px) { .howto { flex-direction: column; align-items: flex-start; } }
@@ -767,7 +808,8 @@ tr.self td { font-weight: 600; background: none; }
   .controls .bar { flex-direction: column; align-items: stretch; row-gap: 10px; }
   .grp { width: 100%; }
   .find { max-width: none; }
-  #colorAWrap, #colorA { width: 100%; max-width: 100%; }
+  #colorAWrap, #colorBtn { width: 100%; max-width: 100%; }
+  .colormenu { position: fixed; top: auto; bottom: 0; left: 0; width: 100vw; max-height: 80vh; border-radius: var(--r-lg) var(--r-lg) 0 0; }
   .teamcodes { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); width: 100%; }
 
   .cname { font-size: 24px; }
@@ -835,14 +877,33 @@ tr.self td { font-weight: 600; background: none; }
 .resetcolor:disabled { color: var(--muted); border-color: var(--line); box-shadow: none; cursor: default; }
 #colorAWrap { font: 700 17px var(--font-ui); max-width: min(46ch, 100%); color: var(--ink); background: var(--field);
   border: 2px solid var(--ink); border-radius: var(--r); box-shadow: var(--sh1); }
-#colorAWrap select { display: block; width: 100%; max-width: 100%; font: inherit; padding: 10px 46px 10px 16px; min-height: 44px;
-  color: inherit; background: transparent; border: 0; border-radius: inherit; }
+.colorbtn { display: block; width: 100%; max-width: 100%; font: inherit; padding: 10px 46px 10px 16px; min-height: 44px; text-align: left;
+  color: inherit; background: transparent; border: 0; border-radius: inherit; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #colorAWrap:hover { background: var(--wash); }
-#colorAWrap:has(select:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
-#colorAWrap select:focus-visible { outline: none; }
+#colorAWrap:has(.colorbtn:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.colorbtn:focus-visible { outline: none; }
 #colorAWrap::after { right: 18px; width: 9px; height: 9px; border-right-width: 2.5px; border-bottom-width: 2.5px; border-color: var(--ink); }
 #colorAWrap.on { background: var(--ink); color: var(--field); }
 #colorAWrap.on::after { border-color: var(--field); }
+/* the measure menu: the drawer's categories as headed sections, with a search box on top */
+.colormenu { position: absolute; z-index: 70; top: calc(100% + 6px); left: -2px; width: min(560px, 92vw); max-height: min(70vh, 640px);
+  display: flex; flex-direction: column; background: var(--field); color: var(--ink); border: 2px solid var(--ink); border-radius: var(--r-lg);
+  box-shadow: var(--sh2); font: 500 15px var(--font-ui); }
+.colormenu[hidden] { display: none; }
+.cm-search { flex: none; margin: 10px 12px 6px; padding: 8px 12px; border: 1.5px solid var(--ink2); border-radius: var(--r); background: var(--bg);
+  font: 400 15px var(--font-ui); color: var(--ink); }
+.cm-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 0 8px; }
+.cm-g { position: sticky; top: 0; z-index: 1; margin: 6px 0 2px; padding: 6px 14px 4px; font: 700 13px/1.2 var(--font-ui); letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--ink2); background: var(--field); border-bottom: 1px solid var(--line); }
+.cm-g:first-child { margin-top: 0; }
+.cm-opt { display: flex; width: 100%; align-items: baseline; gap: 10px; padding: 7px 14px 7px 28px; border: 0; background: none; text-align: left;
+  font: inherit; color: var(--ink); cursor: pointer; position: relative; }
+.cm-opt .cm-u { margin-left: auto; font-size: 13px; color: var(--ink2); white-space: nowrap; }
+.cm-opt:hover, .cm-opt.cur { background: var(--wash); }
+.cm-opt[aria-selected="true"] { font-weight: 700; }
+.cm-opt[aria-selected="true"]::before { content: "✓"; position: absolute; left: 11px; }
+.cm-opt:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.cm-none { padding: 12px 14px; font: italic 400 15px var(--font-serif); color: var(--ink2); }
 /* on-map: ellipse toggle (under the filter button), seasons + hand (top right), color key (bottom left) */
 .ellrow { display: flex; align-items: center; gap: 6px; }
 .mapctl .slbtn[aria-pressed="true"] { background: var(--field); color: var(--ink); border-color: var(--field); }
@@ -1315,6 +1376,9 @@ const mixHex = (fg, bg, a) => {
 const xyz = (view, r) => view === "all" ? [T.gx3[r], T.gy3[r], T.gz3[r]] : [T.tx3[r], T.ty3[r], T.tz3[r]];
 const is3D = () => state.dim === 3 && !!T.gx3;
 const MIN_N = [40, 100, 200, 400, 800];
+// the wheel scrolls the page; zooming the map takes this key (or a trackpad pinch, which browsers send as Ctrl+wheel)
+const ZOOM_KEY = /Mac|iPhone|iPad/.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "") ? "⌘" : "Ctrl";
+const seasonSpan = () => D.seasons.length > 1 ? `${D.seasons[0]}–${D.seasons[D.seasons.length - 1]}` : String(D.seasons[0]);
 
 // -------------------------------------------------------------------- state
 const state = {
@@ -1595,6 +1659,7 @@ function render() {
       lx.push(xs[xs.length >> 1]); ly.push(ys[ys.length >> 1]);
       lt.push(`<b>${PTN[c]}</b><br><span style="font-size:13px">${(shown[c] || 0).toLocaleString()}</span>`);
     });
+    spreadLabels2D(lx, ly, lt);   // neighbouring islands (splitter and changeup) must not overprint
     // a page-colored halo keeps the label legible over saturated dots in both themes
     traces.push({ meta: "typelabels", type: "scatter", mode: "text", x: lx, y: ly, text: lt, hoverinfo: "skip", showlegend: false,
       textfont: { family: UI_FONT, size: 13, color: pal.ink, shadow: `0 0 3px ${pal.bg}, 0 0 3px ${pal.bg}, 0 0 2px ${pal.bg}` } });
@@ -1669,7 +1734,7 @@ function render() {
     annotations,
     modebar: { bgcolor: "rgba(0,0,0,0)", color: pal.muted, activecolor: pal.ink },
   };
-  const config = { responsive: true, scrollZoom: !onPhone, displaylogo: false, displayModeBar: onPhone,
+  const config = { responsive: true, scrollZoom: false, displaylogo: false, displayModeBar: onPhone,   // zoom: Ctrl/⌘ + wheel (see the wheel handler)
     modeBarButtonsToRemove: ["toImage", "lasso2d", "select2d", "autoScale2d", "zoomIn2d", "zoomOut2d"] };
   let outTraces = traces, outLayout = layout;
   if (is3D()) {
@@ -1733,7 +1798,7 @@ function render() {
   $("#clearSel").disabled = !hasSel;
   $("#toCard").hidden = !state.cardOpen || !matchMedia("(max-width:1099px)").matches;
   $("#mapnote").textContent = onPhone ? "Tap a dot to open the pitcher" : (is3D() ? "Drag to rotate · " : "Drag to move · ")
-    + "Scroll to zoom · Double-click to reset · Click a dot to open the pitcher";
+    + `${ZOOM_KEY} + scroll to zoom · Double-click to reset · Click a dot to open the pitcher`;
   $("#ellOn").setAttribute("aria-pressed", String(state.ellipses));
   $("#ellOn").title = ellipseHelp();
   $("#ellP").hidden = !state.ellipses;
@@ -2122,15 +2187,37 @@ function sprite(kind) {
   else { g.arc(32, 32, 30, 0, 2 * Math.PI); g.fill(); }
   return (spriteTex[kind] = new THREE.CanvasTexture(c));
 }
+// Push overlapping label boxes apart on screen (vertically where that is the shorter move). Boxes are
+// {px, py, w, h}; mutates px/py. Used by the 2D type labels and the 3D overlay every frame.
+function spreadBoxes(boxes) {
+  for (let it = 0; it < 40; it++) {
+    let moved = false;
+    for (let a = 0; a < boxes.length; a++) for (let b = a + 1; b < boxes.length; b++) {
+      const A = boxes[a], B = boxes[b];
+      const ox = (A.w + B.w) / 2 - Math.abs(A.px - B.px), oy = (A.h + B.h) / 2 - Math.abs(A.py - B.py);
+      if (ox <= 0 || oy <= 0) continue;
+      moved = true;
+      if (oy <= ox) { const s = A.py <= B.py ? -1 : 1; A.py += s * (oy / 2 + 1); B.py -= s * (oy / 2 + 1); }
+      else { const s = A.px <= B.px ? -1 : 1; A.px += s * (ox / 2 + 1); B.px -= s * (ox / 2 + 1); }
+    }
+    if (!moved) break;
+  }
+}
 function placeLabels() {
   if (!G3) return;
-  const w = plotEl.clientWidth, h = plotEl.clientHeight;
+  const w = plotEl.clientWidth, h = plotEl.clientHeight, tl = [];
   for (const L of G3.labels) {
     const v = L.v.clone().project(G3.camera);
-    if (v.z > 1 || v.z < -1) { L.el.style.display = "none"; continue; }
-    L.el.style.display = "";
-    L.el.style.transform = `translate(${((v.x + 1) / 2 * w).toFixed(1)}px, ${((1 - v.y) / 2 * h).toFixed(1)}px) translate(-50%, ${L.dy})`;
+    if (v.z > 1 || v.z < -1) { L.el.style.display = "none"; L.off = true; continue; }
+    L.off = false; L.el.style.display = "";
+    L.px = (v.x + 1) / 2 * w; L.py = (1 - v.y) / 2 * h;
+    if (L.el.classList.contains("g3-tlabel")) {   // pitch-type labels never overprint each other
+      if (!L.w) { L.w = (L.el.offsetWidth || 70) + 6; L.h = (L.el.offsetHeight || 34) + 4; }
+      tl.push(L);
+    }
   }
+  spreadBoxes(tl);
+  for (const L of G3.labels) if (!L.off) L.el.style.transform = `translate(${L.px.toFixed(1)}px, ${L.py.toFixed(1)}px) translate(-50%, ${L.dy})`;
 }
 function init3D() {
   if (G3) return G3;
@@ -2148,6 +2235,7 @@ function init3D() {
   camera.add(key); key.target.position.set(0, 0, -1); camera.add(key.target); scene.add(camera);
   const controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true; controls.dampingFactor = 0.12; controls.rotateSpeed = 0.8; controls.zoomSpeed = 0.9;
+  controls.enableZoom = matchMedia("(pointer: coarse)").matches;   // touch pinch only; the wheel zooms with Ctrl/⌘ held (wheel handler)
   G3 = { renderer, scene, camera, controls, ray: new THREE.Raycaster(), overlay, legend, tip, objs: [], labels: [], view: null, needs: true, pickR: 0.1 };
   const resize = () => { const w = plotEl.clientWidth || 600, h = plotEl.clientHeight || 500;
     renderer.setSize(w, h, false); renderer.domElement.style.width = "100%"; renderer.domElement.style.height = "100%";
@@ -2549,13 +2637,13 @@ function compsPanel(view, j) {
     <div class="cmpkey" id="cmpKey"></div>
     <div id="cmpPlot" class="moveplot" role="img" aria-label="Pitch movement of ${esc(T.name[j])} compared with a comp"></div></section>` : ""}
     <section class="sec"><h3>Closest ${PTN[t].toLowerCase()} comps</h3><p class="help">Nearest other pitchers' ${PTN[t].toLowerCase()}s on shape, angles, delivery, command, consistency and usage, any season. Only ${T.p_throws[j] === "R" ? "right" : "left"}-handers with an arm angle within ±${isNum(T.comp_tol[j]) && isFinite(T.comp_tol[j]) ? T.comp_tol[j] : "any"}° of his${isNum(T.comp_tol[j]) && T.comp_tol[j] > 7.5 ? " (window widened: too few pitchers within ±7.5°)" : ""}. Whiff% is on this pitch; xERA is the comp's whole season.</p>
-    <div class="tablewrap"><table><thead><tr><th></th><th>Pitcher</th><th>Season</th><th>Fit</th><th class="num">Whiff%</th><th class="num">xERA</th></tr></thead><tbody>
+    <div class="tablewrap"><table><thead><tr><th></th><th>Pitcher</th><th>Season</th><th title="${FIT_TIP}">Fit</th><th class="num" title="${esc(EXPLAIN.whiff)}">Whiff%</th><th class="num" title="${esc(EXPLAIN["P:xera"])}">xERA</th></tr></thead><tbody>
     <tr class="self"><td><span class="badge self"></span></td><td>${esc(T.name[j])}</td><td>${T.season[j]} <span class="tm">${esc(teamStr(j))}</span></td><td></td><td class="num">${fmt(T.whiff[j], 1)}</td><td class="num">${i === undefined ? "—" : fmt(P.xera[i], 2)}</td></tr>`;
   comps.forEach(([c, q], k) => {
     const [fc, fl] = fitOf(q), ci = pRow(T.pitcher[c], T.season[c]), fa = faOf(c);
     const tag = fa ? ` <span class="fa-tag${fa[1] ? " signed" : ""}" title="${fa[1] ? "Free agent, signed with " + esc(fa[1]) : "Free agent, unsigned"}"><i class="sw" style="background:${faSwatch(c, pal)}"></i>FA</span>` : "";
     h += `<tr class="click" data-go="${view}:${c}"><td><span class="badge">${k + 1}</span></td><td>${esc(T.name[c])}${tag}</td><td>${T.season[c]} <span class="tm">${esc(teamStr(c))}</span></td>
-      <td><span class="fit ${fc}">${fl}</span></td><td class="num">${fmt(T.whiff[c], 1)}</td><td class="num">${ci === undefined ? "—" : fmt(P.xera[ci], 2)}</td></tr>`;
+      <td><span class="fit ${fc}" title="${FIT_TIP}">${fl}</span></td><td class="num">${fmt(T.whiff[c], 1)}</td><td class="num">${ci === undefined ? "—" : fmt(P.xera[ci], 2)}</td></tr>`;
   });
   h += `</tbody></table></div></section>`;
   if (i !== undefined) h += bestCompSection(view, i, comps, j);
@@ -2937,11 +3025,14 @@ function measureItems(vars, r, poolName, rows) {
   });
 }
 const mName = v => SHORT[baseKey(v.key)] || v.label;
+// hover text for a measure anywhere on the page: its full name, then its plain-language meaning
+const tipFor = v => { const e = EXPLAIN[v.key] || EXPLAIN[baseKey(v.key)]; return v.label + (e ? ". " + e : ""); };
+const FIT_TIP = "Fit: how near this comp sits to him in the measure space, ranked against every pitcher's nearest comp of this pitch type. Close: nearer than half of those. Fair: a usual distance. Loose: farther than nine in ten.";
 function mRow({ v, x, p, note }) {
   const bar = p < 0 ? `<span></span>` : (() => { const w = Math.max(0, Math.min(100, p)).toFixed(0);
     return `<span class="pbar" title="${ord(p)} percentile${note || ""}"><span class="track"></span>`
       + `<i style="width:${w}%;background:${savantColor(p)}"></i><b style="left:${w}%;background:${savantColor(p)};color:${savantInk(p)}">${Math.round(p)}</b></span>`; })();
-  return `<div class="mrow" title="${esc(v.label)}"><span class="ml">${esc(mName(v))}</span><span class="mv">${fmt(x, v.dec, v.unit)}</span>${bar}</div>`;
+  return `<div class="mrow" title="${esc(tipFor(v))}"><span class="ml">${esc(mName(v))}</span><span class="mv">${fmt(x, v.dec, v.unit)}</span>${bar}</div>`;
 }
 
 // ------------------------------------------------ Savant-style card helpers
@@ -2966,10 +3057,10 @@ const pctOf = (sortedPool, x, lowGood) => { if (!isNum(x) || !sortedPool.length)
 const ipTxt = x => isNum(x) ? `${Math.floor(x)}${x % 1 > 0.5 ? ".2" : x % 1 > 0.2 ? ".1" : ""}` : "—";
 
 const HERO_HI = 90, HERO_LO = 10, HERO_MIN = 5, HERO_MAX = 8;
-function heroRow(it) {
+function heroRow(it, poolNote) {
   const { v, x, p, note } = it, hi = p >= 50, w = Math.abs(p - 50).toFixed(1), c = savantColor(p);
   const fill = hi ? `left:50%;width:${w}%` : `right:50%;width:${w}%`;
-  return `<div class="hrow" title="${esc(v.label)}: ${ord(p)} percentile${note || ""}">
+  return `<div class="hrow" title="${esc(v.label)}: ${ord(p)} percentile among ${esc(poolNote || "")}${note || ""}. ${esc(EXPLAIN[v.key] || EXPLAIN[baseKey(v.key)] || "")}">
     <span class="hlab">${esc(mName(v))}</span>
     <span class="hbar"><span class="hmid"></span><i style="${fill};background:${c}"></i><b style="left:${p.toFixed(1)}%;background:${c};color:${savantInk(p)}">${Math.round(p)}</b></span>
     <span class="hv">${fmt(x, v.dec, v.unit)}</span></div>`;
@@ -3012,7 +3103,7 @@ function typeCard(view, j) {
     <h2 class="cname" tabindex="-1">${esc(T.name[j])}</h2>
     <span class="sv-barr">
       <button type="button" class="bigbtn simbtn" id="simBtn" aria-expanded="${!!state.showComps}" aria-controls="comps">${state.showComps ? "Hide similar pitchers ↑" : "Show similar pitchers ↓"}</button>
-      ${backStack.length ? `<button type="button" class="bigbtn backsel">← Go back to ${esc(T.name[backStack[backStack.length - 1].sel])}</button>` : ""}
+      ${backTarget(j) ? `<button type="button" class="bigbtn backsel">← Go back to ${esc(T.name[backTarget(j).sel])}</button>` : ""}
       <button type="button" class="bigbtn primary clearsel backmap" aria-label="Close this pitcher">✕ Close</button></span>${headStats(view, j, i)}${arsenalStrip(view, j, ars)}</div>`;
   // ---------------- hero: what puts this pitch where it is in the 3D space ----------------
   // the measures on which his pitch sits farthest from a typical pitch of its type: these are what
@@ -3022,9 +3113,11 @@ function typeCard(view, j) {
   let hero = ranked.filter(it => it.p >= HERO_HI || it.p <= HERO_LO);
   if (hero.length < HERO_MIN) hero = ranked.slice(0, HERO_MIN);
   // compact: at most HERO_MAX rows, two columns, so it fits the band beside "Color pitchers by"
+  // every percentile on the card ranks his pitch among every pitch of its type on the atlas: all seasons, both hands
+  const poolNote = `all ${pool.length.toLocaleString()} ${PTN[t].toLowerCase()}s on the atlas, ${seasonSpan()}, both hands`;
   h += `<section class="sv-hero"><div class="herohead"><h3>Defining Traits</h3>
-</div>
-    <div class="herogrid">${hero.slice(0, HERO_MAX).map(heroRow).join("")}</div></section>`;
+    <span class="heropool">Percentiles among ${poolNote} · <button type="button" class="to-gloss">Glossary</button></span></div>
+    <div class="herogrid">${hero.slice(0, HERO_MAX).map(it => heroRow(it, poolNote)).join("")}</div></section>`;
   // ---------------- left: profile, value percentiles, seasons, pitch usage ----------------
   h += `<section class="svp sv-prof"><h3>Profile</h3>${faLine(j)}${typesLine(j)}
 `;
@@ -3064,23 +3157,52 @@ function typeCard(view, j) {
 
   // ---------------- panel 4: every measure, by category, sorted within ----------------
   const groups = [...new Set(items.map(it => it.v.group))];
-  h += `<section class="svp sv-all"><h3>All ${items.length} measures <span class="tm">his ${PTN[t].toLowerCase()} vs. all ${PTN[t].toLowerCase()}s</span></h3><div class="mcols">${groups.map(g =>
+  h += `<section class="svp sv-all"><h3>All ${items.length} measures <span class="tm">percentiles among ${poolNote}</span></h3><div class="mcols">${groups.map(g =>
     `<div class="mcat"><h4>${esc(g)}</h4>${items.filter(it => it.v.group === g).sort((a, b) => b.p - a.p).map(mRow).join("")}</div>`).join("")}</div></section>`;
   return h + `</div>`;
 }
 
+// Pitch-type labels in 2D: the same push-apart as the 3D overlay, in pixels at the map's current scale
+// (before the first draw, at the scale the autorange will give: the data span fitted to the plot box).
+function spreadLabels2D(lx, ly, lt) {
+  const fl = plotEl._fullLayout, W = plotEl.clientWidth || 800, H = plotEl.clientHeight || 600;
+  let sx, sy;   // pixels per data unit
+  if (fl && fl.xaxis && fl.xaxis._length && fl.xaxis.range && fl.yaxis && fl.yaxis._length && fl.yaxis.range) {
+    sx = fl.xaxis._length / (Math.abs(fl.xaxis.range[1] - fl.xaxis.range[0]) || 1);
+    sy = fl.yaxis._length / (Math.abs(fl.yaxis.range[1] - fl.yaxis.range[0]) || 1);
+  } else {
+    const xs = ALL_ROWS.map(r => T.gx[r]).filter(isNum), ys = ALL_ROWS.map(r => T.gy[r]).filter(isNum);
+    const spanX = Math.max(...xs) - Math.min(...xs) || 1, spanY = Math.max(...ys) - Math.min(...ys) || 1;
+    sx = sy = Math.min(W / spanX, H / spanY) / 1.1;
+  }
+  if (!isFinite(sx) || !isFinite(sy) || sx <= 0 || sy <= 0) return;
+  const boxes = lt.map((t, k) => {
+    const lines = String(t).replace(/<br\s*\/?>/g, "\n").replace(/<[^>]+>/g, "").split("\n");
+    return { px: lx[k] * sx, py: -ly[k] * sy, w: 8 * Math.max(...lines.map(l => l.length)) + 10, h: 17 * lines.length + 6 };
+  });
+  spreadBoxes(boxes);
+  boxes.forEach((b, k) => { lx[k] = b.px / sx; ly[k] = -b.py / sy; });
+}
+
 // ---------------------------------------------------------------- controls
-// Back stack: each time the selected pitch changes to another one, remember where we were.
+// Back stack: each time the selected pitch changes to another pitcher, remember where we were.
+// Moving between one pitcher's own pitches (search preview -> his card, the arsenal chips) is not a step back.
 const backStack = [];
 let goingBack = false;
-function remember(view, sel) {
+const samePitcher = (a, b) => a !== null && a !== undefined && b !== null && b !== undefined && T.pitcher[a] === T.pitcher[b];
+function remember(view, sel, next) {
   if (goingBack || sel === null || sel === undefined) return;
+  if (samePitcher(sel, next)) return;
   const top = backStack[backStack.length - 1];
   if (top && top.view === view && top.sel === sel) return;
   backStack.push({ view, sel }); if (backStack.length > 50) backStack.shift();
 }
+// the entry "Go back" would land on: the newest one that is another pitcher than the one shown
+const backTarget = cur => { for (let k = backStack.length - 1; k >= 0; k--) if (!samePitcher(backStack[k].sel, cur)) return backStack[k]; return null; };
 function goBack() {
-  const prev = backStack.pop(); if (!prev) return;
+  let prev = backStack.pop();
+  while (prev && samePitcher(prev.sel, state.sel)) prev = backStack.pop();
+  if (!prev) return;
   goingBack = true;
   try { if (prev.view !== state.view) setView(prev.view, prev.sel); else select(prev.sel); }
   finally { goingBack = false; }
@@ -3091,14 +3213,14 @@ function select(r) {
   if (state.preview && r !== null && r !== undefined && s0 !== null && s0 !== undefined
       && T.pitcher[r] === T.pitcher[s0] && T.season[r] === T.season[s0]) { openCard(); return; }
   state.preview = false;
-  if (r !== state.sel && r !== null && r !== undefined) remember(state.view, state.sel);
+  if (r !== state.sel && r !== null && r !== undefined) remember(state.view, state.sel, r);
   if (r === null || r === undefined) state.showComps = false;
   state.sel = r; render(); renderDetail();
 }
 // Search shows the pitcher on the map first: his whole arsenal ringed and named, card closed, and a large
 // "See full player info" button. That opens the card on his most-used pitch, in that pitch's universe.
 function preview(r) {
-  if (r !== state.sel) remember(state.view, state.sel);
+  if (r !== state.sel) remember(state.view, state.sel, r);
   state.preview = true; state.showComps = false; state.sel = r;
   render(); renderDetail();
   const b = $("#ctaOpen"); if (b && !$("#selCta").hidden) b.focus({ preventScroll: true });
@@ -3188,7 +3310,7 @@ function onZoom(e) {
 
 function setView(view, sel) {
   const prev = state.view;
-  if (sel !== undefined && sel !== null && (sel !== state.sel || prev !== view)) remember(prev, state.sel);
+  if (sel !== undefined && sel !== null && (sel !== state.sel || prev !== view)) remember(prev, state.sel, sel);
   if (prev !== view) state.zoomK = 1;   // each map opens fully zoomed out
   state.sel = sel !== undefined ? sel : mapSelection(prev, view, state.sel);
   state.view = view;
@@ -3203,6 +3325,23 @@ function buildUniverse() {
   nav.innerHTML = btn("all", "All pitches") + `<span class="udiv" aria-hidden="true"></span>` + TYPES.map(t => btn(t, PTN[t])).join("");
   nav.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => setView(b.dataset.view)));
   $("#universeSelect").value = v;
+}
+
+// "Color pitchers by": the drawer's categories as headed sections (Groups, Shape, Dynamic Dead Zone, Angles,
+// Delivery, Command, Consistency, Usage, Results, Whole pitcher), filtered by the search box's words
+const colorPick = () => VARS[varKind(state.view)].filter(v => !NOT_IN_LIST.has(v.key));
+function colorMenuHTML(pick, cur, filter) {
+  const f = String(filter || "").toLowerCase().split(/\s+/).filter(Boolean);
+  const hit = v => !f.length || f.every(w => (v.label + " " + v.group).toLowerCase().includes(w));
+  const head = [{ key: "cat:pitch_type", label: "Pitch type", group: "Groups" }]
+    .concat(cur === "cat:team" ? [{ key: "cat:team", label: "Team (turn off on the map)", group: "Groups" }] : []);
+  let html = "", g = null;
+  head.concat(pick).forEach(v => {
+    if (!hit(v)) return;
+    if (v.group !== g) { g = v.group; html += `<div class="cm-g">${esc(g)}</div>`; }
+    html += `<button type="button" class="cm-opt" role="option" data-k="${esc(v.key)}" aria-selected="${v.key === cur}" title="${esc(tipFor(v))}">${esc(v.label)}${v.unit ? `<span class="cm-u">${esc(v.unit)}</span>` : ""}</button>`;
+  });
+  return html || `<p class="cm-none">No measure matches</p>`;
 }
 
 function optionsHTML(vars, selected, filter, allowCat) {
@@ -3279,6 +3418,39 @@ const EXPLAIN = {
   "cat:season": "Colors each dot by season.",
   "cat:throws": "Colors each dot by throwing hand.",
 };
+// Glossary (under the how-to box): the jargon first, in plain words, then every measure by category,
+// in the same words as "Explain the meaning of this"
+const TERMS = () => [
+  ["Percentile", `Where a value ranks among every pitch of the same type on the atlas (${seasonSpan()}, both hands), from 0 to 100: 90 means higher than nine in ten of them. Where lower is better (walks, xERA, scatter) the scale is flipped, so red always means better for the pitcher and blue worse.`],
+  ["Ride (IVB)", "Induced vertical break: inches of rise or drop compared with a ball thrown without spin, gravity taken out. A fastball with ride holds its line and looks as if it climbs."],
+  ["Run and sweep (HB)", "Horizontal break: sideways inches compared with a spinless ball. Run is toward the pitcher’s arm side, sweep toward his glove side."],
+  ["Arm slot, arm angle", "The angle of the arm at release, in degrees: 90° is straight over the top, 0° is sidearm, below zero is submarine."],
+  ["Extension", "How far in front of the rubber the ball leaves the hand, in feet. More extension shortens the ball’s trip, so the pitch plays faster than its speed."],
+  ["VAA, HAA", "Vertical and horizontal approach angle: the angle, in degrees, at which the pitch crosses the plate, up-and-down and side-to-side. A flat VAA on a high fastball is hard to get on top of."],
+  ["VRA, HRA", "Vertical and horizontal release angle: the direction the ball leaves the hand, in degrees, up-and-down and side-to-side."],
+  ["vs. expected", "Approach and release angles depend mostly on where the pitch is thrown, so the atlas compares each with a pitch of the same type aimed at the same spot and shows the difference."],
+  ["Seam-shifted wake (SSW)", EXPLAIN.ssw],
+  ["Dynamic Dead Zone", EXPLAIN.ddz_az + " “Ride vs. slot” is this plain version; “ride vs. slot + velo” also allows for how hard he throws; “run” is the same idea for sideways movement."],
+  ["Spin efficiency", EXPLAIN.spin_eff],
+  ["Whiff rate", "Swings and misses, per swing."],
+  ["CSW", "Called strikes plus swinging strikes, per pitch thrown."],
+  ["xwOBA", "Expected weighted on-base average: what the contact allowed was worth, judged by exit speed and launch angle rather than where the ball happened to land."],
+  ["xERA", EXPLAIN["P:xera"]],
+  ["ERA − xERA", "Positive: his ERA was worse than his strikeouts, walks and contact deserved (unlucky). Negative: better (lucky)."],
+  ["Run value / 100", "Runs saved per 100 pitches, from the change in expected runs after each pitch. Positive is good for the pitcher."],
+  ["Uniqueness", EXPLAIN.uniq_z],
+  ["Comps, lookalikes, similar pitchers", "The ten other pitchers whose version of the pitch sits nearest his in the measure space: same hand, arm angle within 7.5° (widened only when too few qualify), any season."],
+  ["Fit (Close, Fair, Loose)", FIT_TIP.replace(/^Fit: /, "")],
+  ["Pitcher types", "Named groups under “Find a type of pitcher”; the definition of the chosen one shows under the box."],
+];
+function glossaryHTML() {
+  const dl = rows => `<dl>${rows.map(([t, d]) => `<div><dt>${esc(t)}</dt><dd>${esc(d || "")}</dd></div>`).join("")}</dl>`;
+  let html = `<h4>Terms</h4>${dl(TERMS())}`;
+  const vars = VARS.t.filter(v => !v.cat), groups = [...new Set(vars.map(v => v.group))];
+  groups.forEach(g => { html += `<h4>${esc(g)}</h4>` + dl(vars.filter(v => v.group === g).map(v => [v.label, EXPLAIN[v.key] || EXPLAIN[baseKey(v.key)]])); });
+  return html;
+}
+
 function explainHTML(kind) {
   const a = VMAP[kind][state.color[kind]]; if (!a) return "";
   const one = v => EXPLAIN[v.key] || EXPLAIN[baseKey(v.key)] || "";
@@ -3307,11 +3479,10 @@ function syncExplain() {   // the button shows while a measure is the color; the
 function buildVarSelects() {
   const kind = varKind(state.view), vars = VARS[kind], cur = state.color[kind];
   const pick = vars.filter(v => !NOT_IN_LIST.has(v.key));
-  $("#colorA").innerHTML = `<option value="cat:pitch_type"${cur === "cat:pitch_type" ? " selected" : ""}>Pitch type</option>`
-    + (cur === "cat:team" ? `<option value="cat:team" selected>Team (turn off on the map)</option>` : "")
-    + optionsHTML(pick, cur, "", true);
-  $("#colorB").innerHTML = optionsHTML(vars, state.colorB[kind], "", false);
   const a = VMAP[kind][cur];
+  $("#colorBtnTxt").textContent = cur === "cat:team" ? "Team (turn off on the map)" : a ? a.label : "Pitch type";
+  if (!$("#colorMenu").hidden) $("#cmList").innerHTML = colorMenuHTML(pick, cur, $("#cmSearch").value);
+  $("#colorB").innerHTML = optionsHTML(vars, state.colorB[kind], "", false);
   $("#colorAWrap").classList.toggle("on", !NOT_IN_LIST.has(cur));   // filled in while a measure is the color
   $("#teamOn").setAttribute("aria-pressed", String(cur === "cat:team"));
   $("#colorReset").disabled = cur === "cat:pitch_type" && state.op === "none";
@@ -3384,7 +3555,7 @@ function buildSliders() {
     }
     const { min, max, step } = sliderSpec(v), cur = state.ranges[v.key] || [min, max];
     html += `<div class="slrow" data-k="${esc(v.key)}" data-n="${n}">
-      <div class="sltop"><label for="sl-lo-${n}">${esc(v.label)}</label><span class="slval"><input type="number" class="slnum" data-end="lo" min="${min}" max="${max}" step="${step}" inputmode="decimal" aria-label="${esc(v.label)}, low end (type a value)">–<input type="number" class="slnum" data-end="hi" min="${min}" max="${max}" step="${step}" inputmode="decimal" aria-label="${esc(v.label)}, high end (type a value)">${state.rangeMode === "raw" && v.unit ? `<span class="slu">${esc(v.unit === "%" ? "%" : v.unit)}</span>` : ""}</span></div>
+      <div class="sltop"><label for="sl-lo-${n}" title="${esc(tipFor(v))}">${esc(v.label)}</label><span class="slval"><input type="number" class="slnum" data-end="lo" min="${min}" max="${max}" step="${step}" inputmode="decimal" aria-label="${esc(v.label)}, low end (type a value)">–<input type="number" class="slnum" data-end="hi" min="${min}" max="${max}" step="${step}" inputmode="decimal" aria-label="${esc(v.label)}, high end (type a value)">${state.rangeMode === "raw" && v.unit ? `<span class="slu">${esc(v.unit === "%" ? "%" : v.unit)}</span>` : ""}</span></div>
       <div class="dual"><span class="rail"></span><span class="mask-l"></span><span class="mask-r"></span>
         <input type="range" id="sl-lo-${n}" min="${min}" max="${max}" step="${step}" value="${cur[0]}" aria-label="${esc(v.label)}, low end">
         <input type="range" id="sl-hi-${n}" min="${min}" max="${max}" step="${step}" value="${cur[1]}" aria-label="${esc(v.label)}, high end">
@@ -3399,6 +3570,8 @@ function buildSliders() {
   }));
   list.querySelectorAll(".sltbl").forEach(b => b.addEventListener("click", () => {
     state.tblGroup = state.tblGroup === b.dataset.g ? null : b.dataset.g;
+    // the table sits where the card is: opening it closes an open card (which also brings the drawer back)
+    if (state.tblGroup && state.sel !== null && state.sel !== undefined && !state.preview) select(null);
     syncTable(); relayout();
   }));
   const vars = sliderVars();
@@ -3519,7 +3692,7 @@ function renderTable() {
   const ariaSort = k => k === sk ? ` aria-sort="${dir < 0 ? "descending" : "ascending"}"` : "";
   const unitTxt = v => pct ? "" : v.unit ? ` <span class="tm">(${esc(v.unit)})</span>` : "";
   $("#mtHeadRow").innerHTML = `<tr><th scope="col"${ariaSort("name")}><button type="button" data-k="name">Pitcher${arrow("name")}</button></th>` +
-    cols.map(v => `<th scope="col"${ariaSort(v.key)}><button type="button" data-k="${esc(v.key)}" title="${esc(v.label)}"><span class="mt-h">${esc(shortLabel(v))}${unitTxt(v)}</span>${arrow(v.key)}</button></th>`).join("") + "</tr>";
+    cols.map(v => `<th scope="col"${ariaSort(v.key)}><button type="button" data-k="${esc(v.key)}" title="${esc(tipFor(v))}"><span class="mt-h">${esc(shortLabel(v))}${unitTxt(v)}</span>${arrow(v.key)}</button></th>`).join("") + "</tr>";
   const cell = (v, x) => {
     if (x === null) return `<td>—</td>`;
     if (pct) { const p = Math.round(x); return `<td><span class="mt-pct" style="background:${savantColor(p)};color:${savantInk(p)}">${p}</span></td>`; }
@@ -3693,13 +3866,34 @@ function buildStatic() {
   $("#colorReset").addEventListener("click", () => {   // back to the default: pitch type, no ratio, no team colors
     const kind = varKind(state.view);
     state.color[kind] = "cat:pitch_type"; state.op = "none"; buildVarSelects(); render();
-    $("#colorA").focus({ preventScroll: true });
+    $("#colorBtn").focus({ preventScroll: true });
   });
   $("#teamOn").addEventListener("click", () => {   // Team colors on/off; off returns to pitch type
     const kind = varKind(state.view);
     state.color[kind] = state.color[kind] === "cat:team" ? "cat:pitch_type" : "cat:team"; buildVarSelects(); render();
   });
-  $("#colorA").addEventListener("change", e => { if (e.target.value === "") return; state.color[varKind(state.view)] = e.target.value; buildVarSelects(); render(); });
+  // the color menu: opens under its button, search on top, arrows move, Enter picks, Escape or a click outside closes
+  const cm = $("#colorMenu"), cmBtn = $("#colorBtn"), cmS = $("#cmSearch"), cmL = $("#cmList");
+  const setColor = k => { state.color[varKind(state.view)] = k; buildVarSelects(); render(); };
+  const cmOpen = o => {
+    cm.hidden = !o; cmBtn.setAttribute("aria-expanded", String(o));
+    if (!o) return;
+    cmS.value = ""; cmL.innerHTML = colorMenuHTML(colorPick(), state.color[varKind(state.view)], "");
+    cmS.focus({ preventScroll: true });
+    const on = cmL.querySelector('[aria-selected="true"]'); if (on && on.scrollIntoView) on.scrollIntoView({ block: "center" });
+  };
+  const cmPick = k => { setColor(k); cmOpen(false); cmBtn.focus({ preventScroll: true }); };
+  cmBtn.addEventListener("click", () => cmOpen(cm.hidden));
+  cmS.addEventListener("input", () => { cmL.innerHTML = colorMenuHTML(colorPick(), state.color[varKind(state.view)], cmS.value); });
+  cmL.addEventListener("click", e => { const b = e.target.closest(".cm-opt"); if (b) cmPick(b.dataset.k); });
+  cm.addEventListener("keydown", e => {
+    const opts = [...cmL.querySelectorAll(".cm-opt")], i = opts.indexOf(document.activeElement);
+    if (e.key === "Escape") { e.preventDefault(); cmOpen(false); cmBtn.focus({ preventScroll: true }); }
+    else if (e.key === "ArrowDown" && opts.length) { e.preventDefault(); (opts[i + 1] || opts[0]).focus(); }
+    else if (e.key === "ArrowUp" && opts.length) { e.preventDefault(); if (i <= 0) cmS.focus(); else opts[i - 1].focus(); }
+    else if (e.key === "Enter" && document.activeElement === cmS && opts.length) { e.preventDefault(); cmPick(opts[0].dataset.k); }
+  });
+  document.addEventListener("pointerdown", e => { if (!cm.hidden && !e.target.closest("#colorAWrap")) cmOpen(false); });
   $("#colorB").addEventListener("change", e => { state.colorB[varKind(state.view)] = e.target.value; render(); });
   $("#op").addEventListener("change", e => { state.op = e.target.value; buildVarSelects(); render(); });
 
@@ -3740,16 +3934,47 @@ function buildStatic() {
 
   // "More options" drawer remembers whether it was open (per viewer; storage may be unavailable)
 
-  const names = [...new Set(P.name)].sort((a, b) => a.localeCompare(b));
-  $("#names").innerHTML = names.map(n => `<option value="${esc(n)}"></option>`).join("");
-  $("#search").addEventListener("input", () => { $("#searchMsg").textContent = ""; });
+  // Suggestions as you type: every pitcher whose name contains the typed letters (accents ignored),
+  // with his hand and latest season; arrows move, Enter or a click picks, Escape closes.
+  const fold = s => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const latest = {};   // name -> newest pitcher-season row
+  for (let i = 0; i < P.name.length; i++) if (latest[P.name[i]] === undefined || P.season[i] > P.season[latest[P.name[i]]]) latest[P.name[i]] = i;
+  const names = Object.keys(latest).sort((a, b) => a.localeCompare(b)), folded = names.map(fold);
+  const sInp = $("#search"), sList = $("#sugg");
+  let sCur = -1;
+  const suggClose = () => { sList.hidden = true; sList.innerHTML = ""; sInp.setAttribute("aria-expanded", "false"); sInp.removeAttribute("aria-activedescendant"); sCur = -1; };
+  const suggMark = () => sList.querySelectorAll("li[data-n]").forEach((li, k) => { li.setAttribute("aria-selected", String(k === sCur)); if (k === sCur) { sInp.setAttribute("aria-activedescendant", li.id); if (li.scrollIntoView) li.scrollIntoView({ block: "nearest" }); } });
+  const suggest = () => {
+    const q = fold(sInp.value.trim()); if (!q) { suggClose(); return; }
+    const hits = [];
+    for (let k = 0; k < names.length && hits.length < 10; k++) if (folded[k].includes(q)) hits.push(k);
+    hits.sort((a, b) => (folded[a].startsWith(q) ? 0 : 1) - (folded[b].startsWith(q) ? 0 : 1));   // name-start matches first
+    sList.innerHTML = hits.length ? hits.map((k, m) => {
+      const n = names[k], at = folded[k].indexOf(q), i = latest[n];
+      const sub = `${P.p_throws ? P.p_throws[i] + "HP · " : ""}${P.season[i]}`;
+      return `<li id="sugg-${m}" role="option" data-n="${esc(n)}" aria-selected="false">${esc(n.slice(0, at))}<mark>${esc(n.slice(at, at + q.length))}</mark>${esc(n.slice(at + q.length))}<span class="sg-sub">${esc(sub)}</span></li>`;
+    }).join("") : `<li class="none">No pitcher named “${esc(sInp.value.trim())}”</li>`;
+    sList.hidden = false; sInp.setAttribute("aria-expanded", "true"); sCur = -1;
+  };
+  sInp.addEventListener("input", () => { $("#searchMsg").textContent = ""; suggest(); });
+  sInp.addEventListener("focus", suggest);
+  sInp.addEventListener("blur", () => setTimeout(suggClose, 120));   // after a click on the list lands
+  sInp.addEventListener("keydown", e => {
+    const n = sList.hidden ? 0 : sList.querySelectorAll("li[data-n]").length;
+    if (e.key === "ArrowDown" && n) { e.preventDefault(); sCur = (sCur + 1) % n; suggMark(); }
+    else if (e.key === "ArrowUp" && n) { e.preventDefault(); sCur = (sCur - 1 + n) % n; suggMark(); }
+    else if (e.key === "Escape" && !sList.hidden) { e.preventDefault(); suggClose(); }
+    else if (e.key === "Enter" && n && sCur >= 0) { e.preventDefault(); sInp.value = sList.querySelectorAll("li[data-n]")[sCur].dataset.n; suggClose(); sInp.dispatchEvent(new Event("change")); }
+  });
+  sList.addEventListener("mousedown", e => e.preventDefault());   // keep the input's focus
+  sList.addEventListener("click", e => { const li = e.target.closest("li[data-n]"); if (!li) return; sInp.value = li.dataset.n; suggClose(); sInp.dispatchEvent(new Event("change")); });
   // Enter submits the form: run the same lookup as picking a name from the list
-  $("#findForm").addEventListener("submit", e => { e.preventDefault(); $("#search").dispatchEvent(new Event("change")); });
+  $("#findForm").addEventListener("submit", e => { e.preventDefault(); suggClose(); $("#search").dispatchEvent(new Event("change")); });
   $("#search").addEventListener("change", e => {
-    const q = e.target.value.trim(), n = q.toLowerCase(); if (!n) return;
+    const q = e.target.value.trim(), n = fold(q); if (!n) return;
     const view = state.view, tab = T;
-    let cands = viewRows(view).filter(r => tab.name[r].toLowerCase() === n);
-    if (!cands.length) cands = viewRows(view).filter(r => tab.name[r].toLowerCase().includes(n));
+    let cands = viewRows(view).filter(r => fold(tab.name[r]) === n);
+    if (!cands.length) cands = viewRows(view).filter(r => fold(tab.name[r]).includes(n));
     if (view === "all") { const fb = cands.filter(r => { const i = pRow(T.pitcher[r], T.season[r]); return i !== undefined && P.primary_fb[i] === T.pitch_type[r]; }); if (fb.length) cands = fb; }
     if (!cands.length) {
       $("#searchMsg").textContent = `No ${view === "all" ? "pitch" : PTN[view].toLowerCase()} named “${q}” on this map.` + (view === "all" ? "" : " Try All pitches.");
@@ -3766,6 +3991,38 @@ function buildStatic() {
 
   // Keep the map sized when the drawer, team row or caption change height
   new ResizeObserver(() => { if (plotReady) Plotly.Plots.resize(plotEl); }).observe(document.querySelector(".map"));
+
+  // The wheel over the map scrolls the page. Zooming takes Ctrl (⌘ on a Mac) + wheel, which is also what a
+  // trackpad pinch sends; a plain wheel shows a passing note saying so. 2D zooms about the pointer; 3D dollies.
+  let tipTimer = null;
+  const zoomTip = () => {
+    const t = $("#zoomTip"); t.textContent = `Hold ${ZOOM_KEY} and scroll to zoom the map`; t.hidden = false;
+    requestAnimationFrame(() => t.classList.add("show"));
+    clearTimeout(tipTimer); tipTimer = setTimeout(() => { t.classList.remove("show"); setTimeout(() => { t.hidden = true; }, 200); }, 1400);
+  };
+  plotEl.addEventListener("wheel", e => {
+    if (!(e.ctrlKey || e.metaKey)) { if (!phone()) zoomTip(); return; }
+    e.preventDefault();
+    const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY;
+    const f = Math.exp(Math.max(-80, Math.min(80, dy)) * 0.004);   // > 1 zooms out
+    if (G3) {
+      const c = G3.camera, tg = G3.controls.target, d = c.position.clone().sub(tg).multiplyScalar(f);
+      c.position.copy(tg).add(d); G3.controls.update(); G3.needs = true; return;
+    }
+    const fl = plotEl._fullLayout; if (!fl || !fl.xaxis || typeof fl.xaxis.p2d !== "function") return;
+    const xa = fl.xaxis, ya = fl.yaxis, rect = plotEl.getBoundingClientRect();
+    const x0 = xa.p2d(e.clientX - rect.left - xa._offset), y0 = ya.p2d(e.clientY - rect.top - ya._offset);
+    const [xl, xh] = xa.range, [yl, yh] = ya.range;
+    Plotly.relayout(plotEl, { "xaxis.range": [x0 + (xl - x0) * f, x0 + (xh - x0) * f], "yaxis.range": [y0 + (yl - y0) * f, y0 + (yh - y0) * f] });
+  }, { passive: false });
+
+  // Glossary under the how-to box; "Glossary" on a card opens it
+  $("#glossIn").innerHTML = glossaryHTML();
+  document.addEventListener("click", e => {
+    if (!e.target.closest(".to-gloss")) return;
+    const g = $("#gloss"); g.open = true;
+    if (g.scrollIntoView) g.scrollIntoView({ block: "start", behavior: reduced() ? "auto" : "smooth" });
+  });
 
   window.addEventListener("hashchange", () => { const v = location.hash.slice(1); if (VIEWS[v] && v !== state.view) setView(v); });
 }
