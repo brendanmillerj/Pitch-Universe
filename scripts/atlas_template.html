@@ -2902,22 +2902,10 @@ const relLum = rgb => rgb.reduce((a, v, k) => { const c = v / 255; return a + [0
 const savantInk = p => relLum(savantRGB(p)) < 0.21 ? "#ffffff" : "#1b2430";   // 0.21: where white and ink tie on contrast
 const SAVANT_SCALE = SAVANT_STOPS.map(([q, c]) => [q / 100, `rgb(${c.join(",")})`]);
 const pdot = (p, title) => `<span class="pdot" title="${esc(title)}" style="background:${savantColor(p)};color:${savantInk(p)}">${Math.round(p)}</span>`;
-// Descriptive measures (shape, Dynamic Dead Zone, angles, delivery, command, consistency, usage) have no better
-// direction, so their percentile badges are a neutral gray ramp, darker for higher; red and blue stay for results.
-const NEUTRAL_STOPS = [[0, [225, 230, 237]], [50, [169, 179, 191]], [100, [61, 71, 86]]];
-function neutralRGB(p) {
-  const x = Math.max(0, Math.min(100, p));
-  for (let k = 1; k < NEUTRAL_STOPS.length; k++) {
-    const [p1, c1] = NEUTRAL_STOPS[k], [p0, c0] = NEUTRAL_STOPS[k - 1];
-    if (x <= p1) { const t = (x - p0) / (p1 - p0); return c0.map((c, i) => Math.round(c + (c1[i] - c) * t)); }
-  }
-  return NEUTRAL_STOPS[NEUTRAL_STOPS.length - 1][1];
-}
-const RESULT_GROUPS = new Set(["Results", "Whole pitcher"]);
-const isResultVar = v => !!v && RESULT_GROUPS.has(v.group) && !["uniq_z", "n", "ip"].includes(baseKey(v.key));
-const pctRGB = (v, p) => isResultVar(v) ? savantRGB(p) : neutralRGB(p);
-const pctColor = (v, p) => `rgb(${pctRGB(v, p).join(",")})`;
-const pctInk = (v, p) => relLum(pctRGB(v, p)) < 0.21 ? "#ffffff" : "#1b2430";
+// Every percentile badge, bar and table cell takes the Savant blue-gray-red scale (user, 2026-11-03: a gray ramp
+// for the descriptive measures was tried and read as uncoloured)
+const pctColor = (v, p) => savantColor(p);
+const pctInk = (v, p) => savantInk(p);
 
 function pctSub(poolName, rows, v, r, lowGood) {
   const x = v.get(r); if (!isNum(x)) return "";
@@ -4193,7 +4181,7 @@ const EXPLAIN = {
 // Glossary (under the how-to box): the jargon first, in plain words, then every measure by category,
 // in the same words as "Explain the meaning of this"
 const TERMS = () => [
-  ["Percentile", `Where a value ranks among every pitch of the same type on the atlas (${seasonSpan()}, both hands), from 0 to 100: 90 means higher than nine in ten of them. Results (whiffs, xERA, walks and the like) are colored red to blue, red the better end for the pitcher, so where lower is better the scale is flipped. Descriptive measures (shape, delivery, command, consistency) have no better end and are shaded gray, darker for higher.`],
+  ["Percentile", `Where a value ranks among every pitch of the same type on the atlas (${seasonSpan()}, both hands), from 0 to 100: 90 means higher than nine in ten of them. Colors run from blue (low) through gray to red (high). Where lower is better for the pitcher (walks, xERA, scatter) the scale is flipped, so red is the better end; for measures with no better end, such as arm angle, velocity or ride, red simply means higher.`],
   ["Ride (IVB)", "Induced vertical break: inches of rise or drop compared with a ball thrown without spin, gravity taken out. A fastball with ride holds its line and looks as if it climbs."],
   ["Run and sweep (HB)", "Horizontal break: sideways inches compared with a spinless ball. Run is toward the pitcher’s arm side, sweep toward his glove side."],
   ["Arm slot, arm angle", "The angle of the arm at release, in degrees: 90° is straight over the top, 0° is sidearm, below zero is submarine."],
