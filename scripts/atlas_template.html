@@ -1143,6 +1143,7 @@ tr.self td { font-weight: 600; background: none; }
 
     <p class="hl" id="hlLine">
       <span class="count" id="matchCount" aria-live="polite"></span>
+      <button type="button" class="link" id="mbReshow" hidden title="Bring the list of highlighted pitchers back onto the map">Show pitcher list</button>
       <button type="button" class="link" id="slClear" hidden>Clear measure filters</button>
     </p>
 
@@ -1874,8 +1875,8 @@ function render() {
   $("#legSeasons").hidden = !(hasSel && nSame > 1);
   $("#clearSel").disabled = !hasSel;
   $("#toCard").hidden = !state.cardOpen || !matchMedia("(max-width:1099px)").matches;
-  $("#mapnote").textContent = onPhone ? "Tap a dot to open the pitcher" : (is3D() ? "Drag to rotate · " : "Drag to move · ")
-    + `${ZOOM_KEY} + scroll to zoom · Double-click to reset · Click a dot to open the pitcher`;
+  $("#mapnote").textContent = onPhone ? "Tap a dot to open the pitcher" : (is3D() ? "Drag to rotate · Scroll to zoom in where the pointer is · " : `Drag to move · ${ZOOM_KEY} + scroll to zoom · `)
+    + "Double-click to reset · Click a dot to open the pitcher";
   $("#ellOn").setAttribute("aria-pressed", String(state.ellipses));
   $("#ellOn").title = ellipseHelp();
   $("#ellP").hidden = !state.ellipses;
@@ -2861,7 +2862,7 @@ function updateMatchBox(view, rows, match, cg) {
   state.dlRows = lit;   // "Download CSV" exports every highlighted dot
   state.mbTitle = title;   // default name for "Keep as a group"
   $("#svBtn").hidden = !lit || !lit.length;
-  if (!lit) { box.hidden = true; show.hidden = true; state.mbRows = null; return; }
+  if (!lit) { box.hidden = true; show.hidden = true; $("#mbReshow").hidden = true; state.mbRows = null; return; }
   // one entry per pitcher: his most recent highlighted season (his pitches that season); earlier seasons are noted
   const by = new Map();
   lit.forEach(r => { const k = T.pitcher[r]; if (!by.has(k)) by.set(k, []); by.get(k).push(r); });
@@ -2875,6 +2876,8 @@ function updateMatchBox(view, rows, match, cg) {
   $("#mbTitle").textContent = `${title || "Highlighted"} · ${items.length.toLocaleString()} pitcher${items.length === 1 ? "" : "s"}`;
   show.textContent = `Show pitcher list (${items.length.toLocaleString()})`;
   box.hidden = !!state.mbHidden || cmp; show.hidden = !state.mbHidden || cmp;   // the comps panel takes this slot while it is up
+  // the link under the controls always offers the list back, hidden by Hide, by an open card or by the comps panel
+  $("#mbReshow").hidden = !box.hidden; $("#mbReshow").textContent = `Show pitcher list (${items.length.toLocaleString()})`;
   renderMatchList();
 }
 function renderMatchList() {
@@ -4193,7 +4196,8 @@ function buildStatic() {
   $("#mbList").addEventListener("click", e => { const b = e.target.closest("[data-mb]"); if (b) select(+b.dataset.mb); });
   $("#mbSearch").addEventListener("input", renderMatchList);
   $("#mbHide").addEventListener("click", () => { state.mbHidden = true; $("#matchBox").hidden = true; $("#mbShow").hidden = false; });
-  $("#mbShow").addEventListener("click", () => { state.mbHidden = false; $("#matchBox").hidden = false; $("#mbShow").hidden = true; renderMatchList(); });
+  $("#mbShow").addEventListener("click", () => { state.mbHidden = false; $("#matchBox").hidden = false; $("#mbShow").hidden = true; $("#mbReshow").hidden = true; renderMatchList(); });
+  $("#mbReshow").addEventListener("click", () => { state.mbHidden = false; if (compsOnMap()) state.showComps = false; render(); });
 
   // "How to read it" box: Hide / show, remembered for this viewer (storage may be blocked)
   const setHow = (hidden, focus) => {
@@ -4393,8 +4397,10 @@ function buildStatic() {
   // Keep the map sized when the drawer, team row or caption change height
   new ResizeObserver(() => { if (plotReady) Plotly.Plots.resize(plotEl); }).observe(document.querySelector(".map"));
 
-  // The wheel over the map scrolls the page. Zooming takes Ctrl (⌘ on a Mac) + wheel, which is also what a
-  // trackpad pinch sends; a plain wheel shows a passing note saying so. 2D zooms about the pointer; 3D dollies.
+  // 2D: the wheel over the map scrolls the page; zooming takes Ctrl (⌘ on a Mac) + wheel, which is also what a
+  // trackpad pinch sends, and a plain wheel shows a passing note saying so. Zoom is about the pointer.
+  // 3D: the plain wheel zooms, toward the point under the pointer (camera and orbit target both move toward it),
+  // so scrolling over a cluster closes in on that cluster rather than on the middle of the map.
   let tipTimer = null;
   const zoomTip = () => {
     const t = $("#zoomTip"); t.textContent = `Hold ${ZOOM_KEY} and scroll to zoom the map`; t.hidden = false;
@@ -4402,13 +4408,22 @@ function buildStatic() {
     clearTimeout(tipTimer); tipTimer = setTimeout(() => { t.classList.remove("show"); setTimeout(() => { t.hidden = true; }, 200); }, 1400);
   };
   plotEl.addEventListener("wheel", e => {
-    if (!(e.ctrlKey || e.metaKey)) { if (!phone()) zoomTip(); return; }
+    if (!(e.ctrlKey || e.metaKey) && !G3) { if (!phone()) zoomTip(); return; }
     e.preventDefault();
     const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY;
     const f = Math.exp(Math.max(-80, Math.min(80, dy)) * 0.004);   // > 1 zooms out
     if (G3) {
-      const c = G3.camera, tg = G3.controls.target, d = c.position.clone().sub(tg).multiplyScalar(f);
-      c.position.copy(tg).add(d); G3.controls.update(); G3.needs = true; return;
+      const c = G3.camera, tg = G3.controls.target, rect = G3.renderer.domElement.getBoundingClientRect();
+      // the point under the pointer at the target's depth: the ray through the pointer meets the plane that
+      // faces the camera through the orbit target; a glance from behind the camera falls back to the target
+      const ndc = new THREE.Vector2(((e.clientX - rect.left) / Math.max(1, rect.width)) * 2 - 1, -((e.clientY - rect.top) / Math.max(1, rect.height)) * 2 + 1);
+      G3.ray.setFromCamera(ndc, c);
+      const ray = G3.ray.ray, dir = c.getWorldDirection(new THREE.Vector3()), den = ray.direction.dot(dir);
+      const t = den > 1e-6 ? tg.clone().sub(ray.origin).dot(dir) / den : -1;
+      const p = t > 0 ? ray.origin.clone().add(ray.direction.clone().multiplyScalar(t)) : tg.clone();
+      c.position.copy(p).add(c.position.clone().sub(p).multiplyScalar(f));
+      tg.copy(p).add(tg.clone().sub(p).multiplyScalar(f));
+      G3.controls.update(); G3.needs = true; return;
     }
     const fl = plotEl._fullLayout; if (!fl || !fl.xaxis || typeof fl.xaxis.p2d !== "function") return;
     const xa = fl.xaxis, ya = fl.yaxis, rect = plotEl.getBoundingClientRect();
