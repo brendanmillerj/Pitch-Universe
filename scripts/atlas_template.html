@@ -590,7 +590,21 @@ button, input, select { font: inherit; color: inherit; }
 .compsin { margin-top: 8px; padding-top: 8px; border-top: 2px solid var(--rule); scroll-margin-top: 8px; }
 .compsin .card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: start; }
 .compsin .card > section { background: var(--field); border: 1px solid var(--line); border-radius: var(--r); padding: 8px 10px; margin: 0; }
-.compsin .card > section.best { grid-column: 1 / -1; }
+.compsin .card > section.best, .compsin .card > section.heat { grid-column: 1 / -1; }
+/* the comps heat table: compact, scrolls sideways, the pitcher column pinned */
+.hmwrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); }
+.hm { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font: 500 13px var(--font-ui); font-variant-numeric: tabular-nums lining-nums; }
+.hm th, .hm td { padding: 3px 5px; text-align: center; white-space: nowrap; border-bottom: 1px solid var(--field); border-right: 1px solid var(--field); }
+.hm thead th { font: 600 12px/1.15 var(--font-ui); color: var(--ink2); background: var(--panel); white-space: normal; min-width: 46px; max-width: 66px; vertical-align: bottom; }
+.hm thead tr.hm-g th { font: 700 12px var(--font-ui); color: var(--ink); text-align: left; max-width: none; border-bottom: 1.5px solid var(--rule); }
+.hm .hm-name { position: sticky; left: 0; z-index: 1; background: var(--field); text-align: left; min-width: 160px; max-width: 200px; white-space: normal; box-shadow: 1px 0 0 var(--line); }
+.hm thead .hm-name { background: var(--panel); z-index: 2; }
+.hm .hm-name .badge { width: 20px; height: 20px; font-size: 12px; line-height: 20px; margin-right: 4px; }
+.hm .hm-name .tm { display: block; font-weight: 400; font-size: 12px; color: var(--ink2); }
+.hm tr.self td { font-weight: 700; }
+.hm tr.self .hm-name { background: var(--wash); }
+.hm tr.click:hover .hm-name { background: var(--wash); }
+.hm td.hm-na { color: var(--muted); background: var(--field); }
 @media (max-width: 1099px) { .compsin .card { grid-template-columns: minmax(0, 1fr); } }
 /* card: half the page, panels so it fits one screen */
 .card.big { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 28px;
@@ -3099,18 +3113,35 @@ function compsPanel(view, j) {
     <p class="cmprow"><label class="flbl" for="cmpSel">Compare with</label><span class="sel"><select id="cmpSel">${opts}</select></span></p>
     <div class="cmpkey" id="cmpKey"></div>
     <div id="cmpPlot" class="moveplot" role="img" aria-label="Pitch movement of ${esc(T.name[j])} compared with a comp"></div></section>` : ""}
-    <section class="sec"><h3>Closest ${PTN[t].toLowerCase()} comps</h3>${poolSegHTML(j) ? `<div class="poolseg" role="group" aria-label="Comps among which pitchers">${poolSegHTML(j)}</div>` : ""}${comps.length ? `<button type="button" class="savebtn oncard" data-svcomps="${j}" data-label="Save as group"${compsSavedId(j) ? " disabled" : ""} title="Keep him and these ${comps.length} as a named group: a region on the map, with everyone inside it listed">${compsSavedId(j) ? "Saved" : "Save as group"}</button>` : ""}<p class="help">Nearest ${compPoolOf(j) === "aaa" ? "Triple-A" : T.level[j] === "mlb" ? "other" : "big-league"} pitchers' ${PTN[t].toLowerCase()}s on shape, angles, delivery, command, consistency and usage, any season. Only ${T.p_throws[j] === "R" ? "right" : "left"}-handers with an arm angle within ±${isNum(compTolOf(j)) && isFinite(compTolOf(j)) ? compTolOf(j) : "any"}° of his${isNum(compTolOf(j)) && compTolOf(j) > 7.5 ? " (window widened: too few pitchers within ±7.5°)" : ""}. Whiff% is on this pitch; xERA is the comp's whole season.</p>
-    <div class="tablewrap"><table><thead><tr><th></th><th>Pitcher</th><th>Season</th><th title="${FIT_TIP}">Fit</th><th class="num" title="${esc(EXPLAIN.whiff)}">Whiff%</th><th class="num" title="${esc(EXPLAIN["P:xera"])}">xERA</th></tr></thead><tbody>
-    <tr class="self"><td><span class="badge self"></span></td><td>${esc(T.name[j])}</td><td>${T.season[j]} <span class="tm">${esc(teamStr(j))}</span></td><td></td><td class="num">${fmt(T.whiff[j], 1)}</td><td class="num">${i === undefined ? "—" : fmt(P.xera[i], 2)}</td></tr>`;
-  comps.forEach(([c, q], k) => {
-    const [fc, fl] = fitOf(q), ci = pRow(T.pitcher[c], T.season[c], T.level[c]), fa = faOf(c);
-    const tag = fa ? ` <span class="fa-tag${fa[1] ? " signed" : ""}" title="${fa[1] ? "Free agent, signed with " + esc(fa[1]) : "Free agent, unsigned"}"><i class="sw" style="background:${faSwatch(c, pal)}"></i>FA</span>` : "";
-    h += `<tr class="click" data-go="${view}:${c}"><td><span class="badge">${k + 1}</span></td><td>${esc(T.name[c])}${tag}</td><td>${T.season[c]} <span class="tm">${esc(teamStr(c))}</span></td>
-      <td><span class="fit ${fc}" title="${FIT_TIP}">${fl}</span></td><td class="num">${fmt(T.whiff[c], 1)}</td><td class="num">${ci === undefined ? "—" : fmt(P.xera[ci], 2)}</td></tr>`;
-  });
-  h += `</tbody></table></div></section>`;
+    <section class="sec heat"><h3>Closest ${PTN[t].toLowerCase()} comps</h3>${poolSegHTML(j) ? `<div class="poolseg" role="group" aria-label="Comps among which pitchers">${poolSegHTML(j)}</div>` : ""}${comps.length ? `<button type="button" class="savebtn oncard" data-svcomps="${j}" data-label="Save as group"${compsSavedId(j) ? " disabled" : ""} title="Keep him and these ${comps.length} as a named group: a region on the map, with everyone inside it listed">${compsSavedId(j) ? "Saved" : "Save as group"}</button>` : ""}<p class="help">Nearest ${compPoolOf(j) === "aaa" ? "Triple-A" : T.level[j] === "mlb" ? "other" : "big-league"} pitchers' ${PTN[t].toLowerCase()}s on shape, angles, delivery, command, consistency and usage, any season. Only ${T.p_throws[j] === "R" ? "right" : "left"}-handers with an arm angle within ±${isNum(compTolOf(j)) && isFinite(compTolOf(j)) ? compTolOf(j) : "any"}° of his${isNum(compTolOf(j)) && compTolOf(j) > 7.5 ? " (window widened: too few pitchers within ±7.5°)" : ""}. Each cell is the value, shaded by its percentile among MLB ${PTN[t].toLowerCase()}s: red high, blue low, flipped where lower is better. Hover a cell for its percentile; click a row to open him.</p>
+    ${comps.length ? heatTable(view, j, comps) : ""}</section>`;
   if (i !== undefined) h += bestCompSection(view, i, comps, j);
   return h + `</div>`;
+}
+
+// The comps as a heat table: one row for him, one per comp; columns are xERA (whole season) and every measure on the
+// card, grouped as on the card. Cells show the value and take the Savant colour of its percentile among MLB pitches
+// of this type (the card's pool, flips and labels), so the columns read at a glance.
+function heatTable(view, j, comps) {
+  const t = T.pitch_type[j], pool = typeRows[t], pName = "t" + t, pal = mapPalette();
+  const hv = VARS.t.filter(v => !v.cat && v.key.startsWith("t:"));
+  const groups = [...new Set(hv.map(v => v.group))], cols = groups.flatMap(g => hv.filter(v => v.group === g));
+  const xeraPool = poolSorted("P", ALL_P, { key: "xera", get: k => P.xera[k] });
+  const cell = (x, p, dec, tip) => !isNum(x) ? `<td class="hm-na">—</td>`
+    : `<td style="background:${savantColor(p)};color:${savantInk(p)}" title="${esc(tip)}">${x.toFixed(dec)}</td>`;
+  const row = (r, k, q) => {
+    const i = pRow(T.pitcher[r], T.season[r], T.level[r]), xe = i === undefined ? null : P.xera[i], fa = faOf(r);
+    const tag = fa ? ` <span class="fa-tag${fa[1] ? " signed" : ""}" title="${fa[1] ? "Free agent, signed with " + esc(fa[1]) : "Free agent, unsigned"}"><i class="sw" style="background:${faSwatch(r, pal)}"></i>FA</span>` : "";
+    const meta = `${T.season[r]} · ${esc(teamStr(r))}${T.level[r] === "mlb" ? "" : " · Triple-A"}${q === undefined ? "" : ` · ${fitOf(q)[1]} fit`}`;
+    const name = `<td class="hm-name">${k === null ? `<span class="badge self"></span>` : `<span class="badge">${k + 1}</span>`} ${esc(T.name[r])}${tag}<span class="tm">${meta}</span></td>`;
+    const xp = pctOf(xeraPool, xe, true);
+    const cells = measureItems(cols, r, pName, pool).map(({ v, x, p, note }) => cell(x, p, v.dec ?? 2, `${mName(v)}: ${fmt(x, v.dec, v.unit)} · ${isNum(p) && p >= 0 ? ord(p) + " percentile" : ""}${note || ""}`));
+    return `<tr${k === null ? ' class="self"' : ` class="click" data-go="${view}:${r}"`}>${name}${cell(xe, xp, 2, `xERA ${fmt(xe, 2)}${isNum(xp) ? " · " + ord(xp) + " percentile among MLB pitchers (lower is better)" : ""}`)}${cells.join("")}</tr>`;
+  };
+  const ghead = `<tr class="hm-g"><th class="hm-name" rowspan="2">Pitcher</th><th rowspan="2" title="${esc(EXPLAIN["P:xera"])}">xERA</th>`
+    + groups.map(g => `<th colspan="${cols.filter(v => v.group === g).length}">${esc(g)}</th>`).join("") + `</tr>`;
+  const chead = `<tr>${cols.map(v => `<th title="${esc(tipFor(v))}">${esc(shortLabel(v))}</th>`).join("")}</tr>`;
+  return `<div class="hmwrap"><table class="hm"><thead>${ghead}${chead}</thead><tbody>${row(j, null)}${comps.map(([c, q], k) => row(c, k, q)).join("")}</tbody></table></div>`;
 }
 
 // ------------------------------------------------- best-xERA comp, and how they differ
