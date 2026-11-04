@@ -187,10 +187,16 @@ button, input, select { font: inherit; color: inherit; }
 .rp-help { flex: none; margin: 0 12px 6px; font: 400 13px/1.35 var(--font-ui); color: var(--map-ink2); }
 .rp-help[hidden] { display: none; }
 .rp-list { list-style: none; margin: 0; padding: 0 0 8px; overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
-#mbList button, #cbList button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 0; background: none; padding: 5px 12px; cursor: pointer; border-top: 1px solid var(--map-hair); color: inherit; }
-#mbList button:hover, #cbList button:hover { background: var(--map-hover); }
-#mbList button.on { background: var(--field); }
-#mbList button.on .mbn, #mbList button.on .mbm { color: var(--ink); }
+#mbList li { display: flex; align-items: center; border-top: 1px solid var(--map-hair); }
+#mbList li.mbmore { display: block; }
+#mbList button[data-mb] { flex: 1 1 auto; min-width: 0; border-top: 0 !important; }
+.mbadd { flex: none; margin-right: 10px; font: 600 13px var(--font-ui); min-height: 28px; padding: 0 10px; border-radius: 6px; border: 1.5px solid var(--map-muted); background: none; color: var(--map-ink); cursor: pointer; }
+.mbadd:hover { background: var(--map-hover); }
+.mbadd[aria-pressed="true"] { background: var(--field); color: var(--ink); border-color: var(--field); }
+#mbList button[data-mb], #cbList button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 0; background: none; padding: 5px 12px; cursor: pointer; border-top: 1px solid var(--map-hair); color: inherit; }
+#mbList button[data-mb]:hover, #cbList button:hover { background: var(--map-hover); }
+#mbList button[data-mb].on { background: var(--field); }
+#mbList button[data-mb].on .mbn, #mbList button[data-mb].on .mbm { color: var(--ink); }
 .mbn { display: block; font: 600 14px var(--font-ui); color: var(--map-ink); }
 .mbm { display: block; font: 400 13px var(--font-ui); color: var(--map-ink2); }
 .mbmore { padding: 8px 12px; font: 400 13px var(--font-ui); color: var(--map-muted); }
@@ -213,6 +219,18 @@ button, input, select { font: inherit; color: inherit; }
 .savebtn[hidden] { display: none; }
 .savebtn.oncard { margin: 2px 0 8px; }
 /* Groups: one row per group; the name is a full-width field so it never truncates */
+/* New group: the pitchers picked so far, named and saved from here */
+.svnew { flex: none; margin: 0 12px 10px; padding: 10px 12px; border: 1.5px dashed var(--map-ink2); border-radius: var(--r); display: flex; flex-direction: column; gap: 8px; }
+.svnew[hidden] { display: none; }
+.svnew-head b { font: 700 15px var(--font-ui); color: var(--map-ink); }
+.svnew-list { list-style: none; margin: 0; padding: 0; max-height: 30vh; overflow-y: auto; }
+.svnew-list li { display: flex; align-items: center; gap: 8px; padding: 3px 0; border-top: 1px solid var(--map-hair); font: 500 14px var(--font-ui); color: var(--map-ink); }
+.svnew-list li .tm { margin-left: auto; color: var(--map-ink2); white-space: nowrap; }
+.svnew-list button { flex: none; width: 26px; height: 26px; border: 0; border-radius: 6px; background: none; color: var(--map-ink); font: 400 18px/1 var(--font-ui); cursor: pointer; }
+.svnew-list button:hover { background: var(--map-hover); }
+.svnew-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.svnew-name { flex: 1 1 140px; min-width: 0; min-height: var(--ctl); padding: 0 8px; border: 1px solid var(--map-muted); border-radius: var(--r); background: rgba(0, 0, 0, 0.25); color: var(--map-ink); font: 500 14px var(--font-ui); }
+.svnew-name::placeholder { color: var(--map-muted); }
 #svList { list-style: none; margin: 0; padding: 0 0 8px; overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
 #svList > li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: start; gap: 4px 8px; padding: 10px 12px; border-top: 1px solid var(--map-hair); }
 #svList li.off .sv-name, #svList li.off .sv-meta { opacity: 0.7; }
@@ -515,6 +533,7 @@ button, input, select { font: inherit; color: inherit; }
   color: var(--ink); cursor: pointer; min-height: var(--ctl); white-space: nowrap; }
 .bigbtn:hover { background: var(--wash); }
 .bigbtn.primary { background: var(--ink); color: var(--field); }
+.bigbtn[aria-pressed="true"] { background: var(--ink); color: var(--field); }
 .bigbtn.primary:hover { background: var(--ink2); border-color: var(--ink2); }
 .sv-bar .bigbtn { align-self: center; }
 .sv-bar { align-items: center !important; }
@@ -1149,6 +1168,7 @@ tr.self td { font-weight: 600; background: none; }
             </div>
           </div>
           <button type="button" class="mbtn" id="teamOn" aria-pressed="false">Team colors</button>
+          <button type="button" class="mbtn" id="lassoOn" aria-pressed="false" title="Drag a loop around dots on the 2D map to pick them for a new group">Draw a group</button>
         </div>
           </div>
         </div>
@@ -1209,7 +1229,13 @@ tr.self td { font-weight: 600; background: none; }
       <section class="railpane" id="savedBox" role="tabpanel" aria-labelledby="svTitle" hidden>
         <div class="rp-head"><span id="svTitle">Your groups</span> <span class="rp-n" id="svCount"></span></div>
         <div class="rp-acts"><button type="button" class="obtn" id="svOnly" aria-pressed="false" title="Keep the pitchers in your groups in color and gray out everyone else">Highlight my groups</button></div>
-        <p class="rp-help" id="svEmpty">No groups yet. Save one from a pitcher list or from a pitcher’s comps. A group is a region of the map: it is circled on the pitch type it was built on, and this panel lists everyone inside it, at either level.</p>
+        <section class="svnew" id="svNew" aria-label="New group" hidden>
+          <div class="svnew-head"><b>New group</b> <span class="rp-n" id="svNewN"></span></div>
+          <ul class="svnew-list" id="svNewList"></ul>
+          <div class="svnew-acts"><input type="text" class="svnew-name" id="svNewName" maxlength="60" aria-label="Name for the new group" placeholder="Name it">
+            <button type="button" class="obtn" id="svNewSave">Save as group</button><button type="button" class="obtn" id="svNewClear">Clear</button></div>
+        </section>
+        <p class="rp-help" id="svEmpty">No groups yet. Pick pitchers with Add (in the Pitchers list or on a pitcher’s profile) or Draw a group on the map, or save a pitcher list or a pitcher’s lookalikes. A group is a region of the map: it is circled on the pitch type it was built on, and this panel lists everyone inside it, at either level.</p>
         <ul id="svList"></ul>
         <p class="sv-undo" id="svUndo" hidden></p>
       </section>
@@ -1552,7 +1578,9 @@ const state = {
   throws: "all",
   team: "all",
   groupsHi: false,     // "Highlight my groups": members in color, everyone else gray
-  rail: { open: false, tab: "groups" },   // the docked right rail: Pitchers / Comps / Groups
+  rail: { open: false, tab: "groups" },
+  picks: new Set(),   // pitches picked for a new group (Add, Draw a group); saved from the Groups tab
+  lasso: false, selRev: 0,   // Draw a group: the 2D map's drag draws a loop instead of panning   // the docked right rail: Pitchers / Comps / Groups
   dim: 2,              // 2D UMAP by default; 3D is one click away
   showName: true,
   ellipses: false, ellP: 68,   // ellipses start off
@@ -1829,6 +1857,14 @@ function render() {
       textfont: { family: UI_FONT, size: 13, color: pal.ink, shadow: `0 0 3px ${pal.bg}, 0 0 3px ${pal.bg}, 0 0 2px ${pal.bg}` } });
   }
   traces.push(...savedTraces(view, pal, typeBoxes));   // saved groups: always drawn, whatever the filters
+  // pitches picked for a new group: a white ring each (only those on this map, at this level)
+  const picked = [...state.picks].filter(r => T.level[r] === state.level && (view === "all" || T.pitch_type[r] === view));
+  if (picked.length) {
+    const c = pt(picked);
+    traces.push({ meta: "picks", type: "scatter", mode: "markers", ...c, customdata: picked, hoverinfo: "text", hovertext: picked.map(r => hoverHTML(r) + "<br>picked for a new group"),
+      marker: { size: Math.max(16, size * 1.9), symbol: "circle-open", color: "#ffffff", line: { width: 2.5, color: "#ffffff" } }, showlegend: false });
+  }
+  state.lassoRows = new Set(on);   // a loop picks only dots that are lit (not grayed out by a filter)
 
   // Selection overlay: same pitcher's other seasons, comps as numbered badges, selected ring
   const sel = state.sel, hasSel = sel !== null && sel !== undefined;
@@ -1892,7 +1928,8 @@ function render() {
     margin: { l: 4, r: 4, b: 4, t: onPhone ? 30 : 6 },   // phone: clear the always-on modebar
     xaxis: { visible: false }, yaxis: { visible: false, scaleanchor: "x" },
     // on phones a one-finger drag must scroll the page, so panning waits for the modebar's pan tool
-    hovermode: "closest", dragmode: onPhone ? false : "pan", uirevision: view,
+    hovermode: "closest", dragmode: onPhone ? false : state.lasso ? "lasso" : "pan", uirevision: view,
+    selectionrevision: state.selRev, selections: [],   // a finished loop leaves no outline or dimmed dots behind
     font: { family: UI_FONT, color: pal.ink, size: 13 },
     hoverlabel: { bgcolor: pal.panel, bordercolor: pal.line, align: "left", font: { family: UI_FONT, size: 14, color: pal.ink } },
     showlegend: false,   // the key is drawn on the map as HTML (drawKey)
@@ -1943,6 +1980,7 @@ function render() {
       plotEl.on("plotly_hover", e => { const p = e.points && e.points[0]; plotEl.classList.toggle("dot-hover", !!(p && p.customdata !== undefined)); });
       plotEl.on("plotly_unhover", () => plotEl.classList.remove("dot-hover"));
       plotEl.on("plotly_relayout", onZoom);
+      plotEl.on("plotly_selected", e => lassoDone(e));
       plotReady = true;
     }
   });
@@ -1965,6 +2003,8 @@ function render() {
   if (!state.hinted) { state.hinted = true; toast(onPhone ? "Tap a dot to open the pitcher" : (is3D() ? "Drag to rotate · Scroll to zoom · " : `Drag to move · ${ZOOM_KEY} + scroll to zoom · `) + "Double-click to reset · Click a dot to open the pitcher", 9000); }
   syncRail(); writeHash(view);
   $("#ellOn").setAttribute("aria-pressed", String(state.ellipses));
+  const lb = $("#lassoOn"); lb.hidden = onPhone; lb.disabled = is3D(); lb.setAttribute("aria-pressed", String(!!state.lasso && !is3D()));
+  lb.title = is3D() ? "Switch to 2D to draw a group" : "Drag a loop around dots on the 2D map to pick them for a new group";
   $("#ellOn").title = ellipseHelp();
   $("#ellP").hidden = !state.ellipses;
   $("#ellP").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.v === state.ellP)));
@@ -2309,8 +2349,58 @@ function refreshSavedMeta() {
     const rg = li.querySelector("[data-region]"); if (rg) { const h = regionListHTML(e); if (rg.innerHTML !== h) rg.innerHTML = h; }   // the list follows the level on screen
   });
 }
+// ---------------------------------------------------- picking a new group
+// Picks are pitches (type rows). Saved, they become an ordinary group of pitcher-seasons whose region is built on the
+// pitch type most of the picks are (a loop on the slider island makes a slider group).
+function togglePick(r) {
+  if (r === null || r === undefined || !Number.isInteger(r)) return;
+  if (state.picks.has(r)) state.picks.delete(r); else state.picks.add(r);
+  renderPicks(); render();
+}
+function pickType() {
+  const n = {}; state.picks.forEach(r => { n[T.pitch_type[r]] = (n[T.pitch_type[r]] || 0) + 1; });
+  return Object.keys(n).sort((a, b) => n[b] - n[a])[0] || null;
+}
+function renderPicks() {
+  const rows = [...state.picks], box = $("#svNew"), pt0 = pickType();
+  box.hidden = !rows.length;
+  $("#svNewN").textContent = rows.length ? `${rows.length} picked` + (pt0 ? ` · built on ${PLURAL[pt0]}` : "") : "";
+  $("#svNewList").innerHTML = rows.map(r => `<li>${esc(T.name[r])}<span class="tm">${T.season[r]} · ${PTN[T.pitch_type[r]]}${T.level[r] === "mlb" ? "" : " · Triple-A"}</span>`
+    + `<button type="button" data-unpick="${r}" aria-label="Take ${esc(T.name[r])} out of the new group" title="Remove">×</button></li>`).join("");
+  if (pt0 && !$("#svNewName").value) $("#svNewName").placeholder = `Picked ${PLURAL[pt0]}`;
+  document.querySelectorAll("[data-pick]").forEach(b => {
+    const on = state.picks.has(+b.dataset.pick); b.setAttribute("aria-pressed", String(on));
+    b.textContent = b.classList.contains("mbadd") ? (on ? "Added" : "Add") : (on ? `In new group (${rows.length})` : "Add to group");
+  });
+  syncRail();
+}
+function setLasso(on) {
+  state.lasso = !!on && !is3D();
+  if (state.lasso) toast("Drag a loop around the dots you want · Esc to stop"); else hideToast();
+  render();
+}
+function lassoDone(e) {
+  if (!state.lasso) return;
+  const ok = state.lassoRows || new Set();
+  const rows = ((e && e.points) || []).map(p => p.customdata).filter(r => Number.isInteger(r) && ok.has(r));
+  rows.forEach(r => state.picks.add(r));
+  state.lasso = false; state.selRev++; hideToast();
+  renderPicks(); render();
+  if (rows.length) railOpen("groups");
+}
+function saveNewGroup() {
+  const rows = [...state.picks]; if (!rows.length) return;
+  const pt0 = pickType(), name = $("#svNewName").value.trim() || `Picked ${PLURAL[pt0]}`;
+  saveGroup(rows, name, null, pt0);
+  state.picks.clear(); $("#svNewName").value = ""; renderPicks(); render();
+}
 function wireSaved() {
   $("#svBtn").addEventListener("click", saveCurrentGroup);
+  $("#svNewSave").addEventListener("click", saveNewGroup);
+  $("#svNewName").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); saveNewGroup(); } });
+  $("#svNewClear").addEventListener("click", () => { state.picks.clear(); renderPicks(); render(); });
+  $("#svNewList").addEventListener("click", e => { const b = e.target.closest("[data-unpick]"); if (b) togglePick(+b.dataset.unpick); });
+  document.addEventListener("click", e => { const b = e.target.closest("[data-pick]"); if (b) togglePick(+b.dataset.pick); });
   $("#svOnly").addEventListener("click", () => { state.groupsHi = !state.groupsHi; syncGroupsHi(); render(); });
   const list = $("#svList"), of = el => saved.find(e => e.id === (el.closest("li[data-id]") || {}).dataset?.id);
   list.addEventListener("click", ev => {
@@ -3084,8 +3174,10 @@ function renderMatchList() {
   const selKey = state.sel === null || state.sel === undefined ? "" : String(T.pitcher[state.sel]);
   $("#mbList").innerHTML = shown.slice(0, MB_MAX).map(rs => {
     const r = rs[0], k = String(T.pitcher[r]);
+    const on = state.picks.has(r);
     return `<li><button type="button" data-mb="${r}" class="${k === selKey ? "on" : ""}"><span class="mbn">${esc(T.name[r])}</span>`
-      + `<span class="mbm">${T.season[r]}${rs.also && rs.also.length ? ` (also ${rs.also.join(", ")})` : ""} · ${esc(teamStr(r))} · ${rs.map(x => T.pitch_type[x]).join(" ")}</span></button></li>`;
+      + `<span class="mbm">${T.season[r]}${rs.also && rs.also.length ? ` (also ${rs.also.join(", ")})` : ""} · ${esc(teamStr(r))} · ${rs.map(x => T.pitch_type[x]).join(" ")}</span></button>`
+      + `<button type="button" class="mbadd" data-pick="${r}" aria-pressed="${on}" title="Pick his ${PTN[T.pitch_type[r]].toLowerCase()} for a new group">${on ? "Added" : "Add"}</button></li>`;
   }).join("") + (shown.length > MB_MAX ? `<li class="mbmore">${(shown.length - MB_MAX).toLocaleString()} more; filter by name to narrow</li>` : "");
 }
 
@@ -3763,6 +3855,7 @@ function typeCard(view, j) {
     <h2 class="cname" tabindex="-1">${esc(T.name[j])}${T.level[j] === "aaa" ? `<span class="lvlbadge">Triple-A</span>` : ""}</h2>
     <span class="sv-barr">
       <button type="button" class="bigbtn simbtn" id="simBtn" aria-expanded="${!!state.showComps}" aria-controls="comps">${state.showComps ? "Hide similar pitchers ↑" : "Show similar pitchers ↓"}</button>
+      <button type="button" class="bigbtn pickbtn" data-pick="${j}" aria-pressed="${state.picks.has(j)}" title="Pick his ${PTN[T.pitch_type[j]].toLowerCase()} for a new group; name and save it in the Groups tab">${state.picks.has(j) ? `In new group (${state.picks.size})` : "Add to group"}</button>
       ${backTarget(j) ? `<button type="button" class="bigbtn backsel">← Go back to ${esc(T.name[backTarget(j).sel])}</button>` : ""}
       <button type="button" class="bigbtn clearsel backmap" aria-label="Close this pitcher and go back to the map">← Back to map</button></span>${headStats(view, j, i)}${arsenalStrip(view, j, ars)}</div>`;
   // ---------------- hero: what puts this pitch where it is in the 3D space ----------------
@@ -4589,7 +4682,7 @@ function buildStatic() {
   syncDim();
   $("#dimSeg").querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
     if (state.dim === +b.dataset.v) return;
-    state.dim = +b.dataset.v; state.zoomK = 1; syncDim();
+    state.dim = +b.dataset.v; state.zoomK = 1; state.lasso = false; syncDim();
     try { Plotly.purge(plotEl); } catch (e) {}   // 2D <-> 3D needs a fresh plot
     if (G3) dispose3D();
     plotReady = false; render();
@@ -4671,6 +4764,8 @@ function buildStatic() {
     state.color[kind] = "cat:pitch_type"; state.op = "none"; buildVarSelects(); render();
     $("#colorBtn").focus({ preventScroll: true });
   });
+  $("#lassoOn").addEventListener("click", () => setLasso(!state.lasso));
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && state.lasso) { e.preventDefault(); setLasso(false); } });
   $("#teamOn").addEventListener("click", () => {   // Team colors on/off; off returns to pitch type
     const kind = varKind(state.view);
     state.color[kind] = state.color[kind] === "cat:team" ? "cat:pitch_type" : "cat:team"; buildVarSelects(); render();
