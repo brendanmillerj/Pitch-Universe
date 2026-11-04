@@ -198,8 +198,8 @@ button, input, select { font: inherit; color: inherit; }
 .mbadd[aria-pressed="true"] { background: var(--field); color: var(--ink); border-color: var(--field); }
 #cbList li { display: flex; align-items: center; border-top: 1px solid var(--map-hair); }
 #cbList button[data-cbp] { flex: 1 1 auto; min-width: 0; border-top: 0 !important; }
-#savedBox { overflow-y: auto; overscroll-behavior: contain; }
-#savedBox .rp-list, #savedBox #svList { overflow: visible; flex: none; }
+#savedBox, #lookBox { overflow-y: auto; overscroll-behavior: contain; }
+#savedBox .rp-list, #savedBox #svList, #lookBox .rp-list { overflow: visible; flex: none; }
 .svlook { flex: none; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--map-line); }
 .svlook[hidden] { display: none; }
 #mbList button[data-mb], #cbList button[data-cbp] { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 0; background: none; padding: 5px 12px; cursor: pointer; border-top: 1px solid var(--map-hair); color: inherit; }
@@ -241,7 +241,14 @@ button, input, select { font: inherit; color: inherit; }
 .svnew-name { flex: 1 1 140px; min-width: 0; min-height: var(--ctl); padding: 0 8px; border: 1px solid var(--map-muted); border-radius: var(--r); background: rgba(0, 0, 0, 0.25); color: var(--map-ink); font: 500 14px var(--font-ui); }
 .svnew-name::placeholder { color: var(--map-muted); }
 #svList { list-style: none; margin: 0; padding: 0 0 8px; overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
-#svList > li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: start; gap: 4px 8px; padding: 10px 12px; border-top: 1px solid var(--map-hair); }
+#svList > li { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto auto auto; align-items: center; gap: 4px 6px; padding: 8px 10px; border-top: 1px solid var(--map-hair); }
+.sv-exp { width: 26px; height: 26px; border: 0; border-radius: 6px; background: none; cursor: pointer; display: grid; place-items: center; }
+.sv-exp:hover { background: var(--map-hover); }
+.sv-exp .chev { width: 8px; height: 8px; border-right: 2px solid var(--map-ink); border-bottom: 2px solid var(--map-ink); transform: rotate(-45deg); transition: transform 0.15s; }
+.sv-exp[aria-expanded="true"] .chev { transform: rotate(45deg); }
+.sv-n { font: 400 13px var(--font-ui); color: var(--map-ink2); font-variant-numeric: tabular-nums; }
+.sv-only[aria-pressed="true"] { background: var(--field); color: var(--ink); border-color: var(--field); }
+.sv-body { grid-column: 1 / -1; display: grid; gap: 4px; padding-left: 32px; }
 #svList li.off .sv-name, #svList li.off .sv-meta { opacity: 0.7; }
 .sv-sw { width: 20px; height: 20px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 1.5px var(--map-ring); position: relative; cursor: pointer; overflow: hidden; }
 .sv-sw input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; padding: 0; border: 0; cursor: pointer; }
@@ -779,6 +786,8 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
 .mt-meta { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
 .mt-meta .psw { width: 10px; height: 10px; border-radius: 2px; flex: none; }
 .mt-pct { display: inline-block; min-width: 3.5em; padding: 2px 8px; border-radius: 999px; text-align: right; font-weight: 600; font-size: 13px; }
+.mt-look { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 12px 12px; }
+.mt-look .hmwrap { overflow: visible; border: 0; }
 .mt-more { padding: 8px 12px; font: 400 13px var(--font-ui); color: var(--muted); }
 .sl-links { display: inline-flex; gap: 12px; }
 .sliders { grid-area: sl; overflow-y: auto; overscroll-behavior: contain; border-right: 1px solid var(--line);
@@ -1137,6 +1146,7 @@ tr.self td { font-weight: 600; background: none; }
     <p class="mt-sub" id="mtSub"></p>
     <input id="mtSearch" class="mt-search" type="search" placeholder="Find a pitcher in this table" autocomplete="off" aria-label="Find a pitcher in this table">
     <div class="mt-scroll" id="mtScroll"><table class="mt"><thead id="mtHeadRow"></thead><tbody id="mtBody"></tbody></table></div>
+    <div class="mt-look" id="mtLook" hidden></div>
   </div></section>
   <header class="head">
     <div class="hdrow hdrow1">
@@ -1277,6 +1287,7 @@ tr.self td { font-weight: 600; background: none; }
     <aside class="mrail" id="rail" aria-label="Pitchers, comps and groups" hidden>
       <div class="railtabs" role="tablist">
         <button type="button" class="railtab" role="tab" id="tabPitchers" data-tab="pitchers" aria-selected="false" aria-controls="matchBox">Pitchers</button>
+        <button type="button" class="railtab" role="tab" id="tabLook" data-tab="look" aria-selected="false" aria-controls="lookBox">Lookalikes</button>
         <button type="button" class="railtab" role="tab" id="tabGroups" data-tab="groups" aria-selected="false" aria-controls="savedBox">Groups</button>
         <button type="button" class="railx" id="railClose" aria-label="Close the panel" title="Close">×</button>
       </div>
@@ -1291,15 +1302,18 @@ tr.self td { font-weight: 600; background: none; }
         <input id="mbSearch" type="search" placeholder="Filter names" autocomplete="off" aria-label="Filter the list by name">
         <ol class="rp-list" id="mbList"></ol>
       </section>
-      <section class="railpane" id="savedBox" role="tabpanel" aria-labelledby="svTitle" hidden>
-        <section class="svlook" id="compBox" aria-label="Lookalikes of the selected pitcher" hidden>
+      <section class="railpane" id="lookBox" role="tabpanel" aria-label="Lookalikes" hidden>
+        <p class="rp-help" id="lookEmpty">Search for a pitcher or click a dot on the map: his ten closest lookalikes are listed here and numbered on the map.</p>
+        <section id="compBox" aria-label="Lookalikes of the selected pitcher" hidden>
           <div class="rp-head" id="cbTitle"></div>
           <div class="cbchips" id="cbChips" role="group" aria-label="Lookalikes for which of his pitches"></div>
           <div class="cbchips" id="cbPool" role="group" aria-label="Lookalikes among which pitchers" hidden></div>
           <p class="rp-help" id="cbHelp"></p>
-          <div class="rp-acts"><button type="button" class="obtn" id="cbSave" title="Keep him and these lookalikes as a named group: a region on the map, with everyone inside it listed">Save as group</button></div>
+          <div class="rp-acts"><button type="button" class="obtn" id="cbTable" aria-pressed="false" title="A table of him and his lookalikes on every measure, in the map's place">Show table</button><button type="button" class="obtn" id="cbSave" title="Keep him and these lookalikes as a named group: a region on the map, with everyone inside it listed">Save as group</button></div>
           <ol class="rp-list" id="cbList"></ol>
         </section>
+      </section>
+      <section class="railpane" id="savedBox" role="tabpanel" aria-labelledby="svTitle" hidden>
         <section class="svnew" id="svNew" aria-label="New group" hidden>
           <div class="svnew-head"><b>New group</b> <span class="rp-n" id="svNewN"></span></div>
           <ul class="svnew-list" id="svNewList"></ul>
@@ -1308,7 +1322,7 @@ tr.self td { font-weight: 600; background: none; }
         </section>
         <div class="rp-head"><span id="svTitle">Your groups</span> <span class="rp-n" id="svCount"></span></div>
         <div class="rp-acts"><button type="button" class="obtn" id="svOnly" aria-pressed="false" title="Keep the pitchers in your groups in color and gray out everyone else">Highlight my groups</button></div>
-        <p class="rp-help" id="svEmpty">No groups yet. Select a pitcher and his lookalikes appear above, ready to save; or pick pitchers with Add (in the Pitchers list, on a profile or beside a lookalike) or Draw a group on the map; or save a highlighted pitcher list. A group is a region of the map: it is circled on the pitch type it was built on, and this panel lists everyone inside it, at either level.</p>
+        <p class="rp-help" id="svEmpty">No groups yet. Save a pitcher’s lookalikes (Lookalikes tab), or pick pitchers with Add (in the Pitchers list, on a profile or beside a lookalike) or Draw a group on the map; or save a highlighted pitcher list. A group is a region of the map: it is circled on the pitch type it was built on, and this panel lists everyone inside it, at either level.</p>
         <ul id="svList"></ul>
         <p class="sv-undo" id="svUndo" hidden></p>
       </section>
@@ -1714,7 +1728,14 @@ function visibleRows(view) {
   return viewRows(view).filter(r => T.level[r] === state.level && state.seasons.has(T.season[r])
     && (state.throws === "all" || T.p_throws[r] === state.throws) && T.n[r] >= state.minN
     && (state.team === "all" || tOrgs[r].includes(state.team))
-    && (state.minIP === 0 || tIP[r] >= state.minIP));
+    && (state.minIP === 0 || tIP[r] >= state.minIP)
+    && (!state.onlyGroup || inOnlyGroup(r)));
+}
+// "Only these" on a group: the map (and the lists) keep only that group's pitchers
+let OG = null;
+function inOnlyGroup(r) {
+  if (!OG || OG.id !== state.onlyGroup) { const e = saved.find(x => x.id === state.onlyGroup); OG = { id: state.onlyGroup, keys: new Set(e ? e.keys : []) }; }
+  return rowInKeys(OG.keys, r);
 }
 
 function colorGetter(kind) {
@@ -2108,31 +2129,32 @@ function hideToast() {
 // The rail docked on the map's right: Pitchers (the highlighted list), Comps (a previewed pitcher's lookalikes),
 // Groups. It opens by itself when a list appears, comps are asked for or a group is saved; × closes it and the
 // tabs stay available as pills under the toolbar.
-const RAIL_TABS = ["pitchers", "groups"];   // a pitcher's lookalikes live at the top of Groups
+const RAIL_TABS = ["pitchers", "look", "groups"];
 function railOpen(tab) { state.rail.open = true; if (tab) state.rail.tab = tab; syncRail(); }
 function railClose() { state.rail.open = false; if (state.showComps && state.preview) { state.showComps = false; render(); } else syncRail(); }
 function syncRail() {
   const n = state.mbRows ? state.mbRows.length : 0, nG = saved.length;
-  const can = { pitchers: true, groups: true };
+  const can = { pitchers: true, look: true, groups: true };
   const open = !!state.rail.open;
   $("#rail").hidden = !open;
-  const label = { pitchers: `Pitchers${n ? ` <b>${n.toLocaleString()}</b>` : ""}`, groups: `Groups${nG ? ` <b>${nG}</b>` : ""}` };
+  const label = { pitchers: `Pitchers${n ? ` <b>${n.toLocaleString()}</b>` : ""}`, look: "Lookalikes", groups: `Groups${nG ? ` <b>${nG}</b>` : ""}` };
   RAIL_TABS.forEach(t => {
     const b = $("#tab" + t[0].toUpperCase() + t.slice(1));
     b.disabled = !can[t]; b.innerHTML = label[t]; b.setAttribute("aria-selected", String(open && state.rail.tab === t));
   });
   $("#matchBox").hidden = !(open && state.rail.tab === "pitchers");
-  $("#compBox").hidden = !compsOnMap();   // his lookalikes, at the top of Groups, while a pitcher is selected
+  $("#lookBox").hidden = !(open && state.rail.tab === "look");
+  $("#compBox").hidden = !compsOnMap(); $("#lookEmpty").hidden = compsOnMap();
   $("#savedBox").hidden = !(open && state.rail.tab === "groups");
   $("#railPills").hidden = open;
   $("#railPills").innerHTML = RAIL_TABS.filter(t => can[t]).map(t => `<button type="button" class="pill" data-tab="${t}">${label[t]}</button>`).join("");
   if (!$("#matchBox").hidden && state.mbDirty) renderMatchList();
-  if (!$("#savedBox").hidden && !$("#compBox").hidden) renderCompBox();
+  if (!$("#lookBox").hidden && !$("#compBox").hidden) renderCompBox();
 }
-// Opening a tab: Groups also numbers the selected pitcher's lookalikes on the map; leaving it takes them off.
+// Opening a tab: Lookalikes also numbers the selected pitcher's lookalikes on the map; leaving it takes them off.
 function setRailTab(t) {
   state.rail.open = true; state.rail.tab = t;
-  const wantComps = t === "groups" && !!state.preview && state.sel !== null && state.sel !== undefined;
+  const wantComps = t === "look" && !!state.preview && state.sel !== null && state.sel !== undefined;
   if (!!state.showComps !== wantComps && state.preview) { state.showComps = wantComps; render(); } else syncRail();
 }
 
@@ -2213,6 +2235,7 @@ try {
       // comps: set when the group was saved from a pitcher's similar-pitchers list (him + his comps)
       comps: e.comps && typeof e.comps === "object" ? { key: String(e.comps.key || ""), of: String(e.comps.of || ""), pt: String(e.comps.pt || ""), tol: typeof e.comps.tol === "number" ? e.comps.tol : null } : null }));
 } catch (e) {}
+const svExpanded = new Set();   // groups whose details are showing (all others are one line)
 const svOpen = new Set();   // ids whose "What they share" readout is open (a newly saved group opens with it)
 const svAll = new Set();    // ids whose region list shows everyone rather than the first REGION_SHOW
 const REGION_SHOW = 12;
@@ -2312,7 +2335,7 @@ function saveGroup(rows, base, comps, pt) {
   const used = new Set(saved.map(e => e.color.toLowerCase()));
   const color = SAVED_COLORS.find(c => !used.has(c)) || SAVED_COLORS[saved.length % SAVED_COLORS.length];
   const e = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, color, on: true, keys, comps: comps || null, pt: pt || null };
-  saved.push(e); svOpen.add(e.id);   // a new group opens with "What they share" showing
+  saved.push(e); svOpen.add(e.id); svExpanded.clear(); svExpanded.add(e.id);   // the new group opens (what they share showing); the rest fold
   persistSaved(); svDeleted = null;
   renderSaved(); railOpen("groups"); render();
   return e;
@@ -2400,15 +2423,21 @@ function renderSaved() {
   $("#svCount").textContent = saved.length ? String(saved.length) : "";
   $("#svEmpty").hidden = saved.length > 0 || !!svDeleted;
   syncGroupsHi();
-  $("#svList").innerHTML = saved.map(e => `<li data-id="${esc(e.id)}" class="${e.on ? "" : "off"}">`
+  $("#svList").innerHTML = saved.map(e => { const x = svExpanded.has(e.id), only = state.onlyGroup === e.id;
+    const n = new Set(e.keys.map(k => k.split("|")[0])).size;
+    return `<li data-id="${esc(e.id)}" class="${e.on ? "" : "off"}${x ? " open" : ""}">`
+    + `<button type="button" class="sv-exp" data-exp aria-expanded="${x}" aria-label="${x ? "Fold" : "Open"} ${esc(e.name)}" title="${x ? "Fold" : "Show what they share and who is inside"}"><i class="chev" aria-hidden="true"></i></button>`
     + `<label class="sv-sw" style="--c:${e.color}" title="Change color"><input type="color" value="${e.color}" data-color aria-label="Color for ${esc(e.name)}"></label>`
     + `<span class="sv-name" contenteditable="true" role="textbox" spellcheck="false" data-name aria-label="Group name" title="Click to rename">${esc(e.name)}</span>`
+    + `<span class="sv-n">${n}</span>`
+    + `<button type="button" class="sv-tog sv-only" data-only aria-pressed="${only}" title="${only ? "Show everyone again" : "Show only this group’s pitchers on the map"}">${only ? "Show everyone" : "Only these"}</button>`
     + `<button type="button" class="sv-tog" data-tog aria-pressed="${e.on}">${e.on ? "Hide" : "Show"}</button>`
     + `<button type="button" class="sv-del" data-del aria-label="Delete ${esc(e.name)}" title="Delete">×</button>`
-    + `<span class="sv-meta">${esc(savedMeta(e, state.view))}</span>`
-    + `<button type="button" class="sv-why" data-why aria-expanded="${svOpen.has(e.id)}">${svOpen.has(e.id) ? "Hide what they share" : "What they share"}</button>`
-    + `<div class="sv-traits" data-traits${svOpen.has(e.id) ? "" : " hidden"}>${svOpen.has(e.id) ? sharedTraitsHTML(e) : ""}</div>`
-    + `<div class="sv-traits" data-region>${regionListHTML(e)}</div></li>`).join("");
+    + (x ? `<div class="sv-body"><span class="sv-meta">${esc(savedMeta(e, state.view))}</span>`
+      + `<button type="button" class="sv-why" data-why aria-expanded="${svOpen.has(e.id)}">${svOpen.has(e.id) ? "Hide what they share" : "What they share"}</button>`
+      + `<div class="sv-traits" data-traits${svOpen.has(e.id) ? "" : " hidden"}>${svOpen.has(e.id) ? sharedTraitsHTML(e) : ""}</div>`
+      + `<div class="sv-traits" data-region>${regionListHTML(e)}</div></div>` : "")
+    + `</li>`; }).join("");
   const u = $("#svUndo");
   u.hidden = !svDeleted;
   if (svDeleted) u.innerHTML = `Deleted “${esc(svDeleted.e.name)}”. <button type="button" class="link" data-undo>Undo</button>`;
@@ -2416,7 +2445,7 @@ function renderSaved() {
 }
 function refreshSavedMeta() {
   $("#svList").querySelectorAll("li[data-id]").forEach(li => {
-    const e = saved.find(x => x.id === li.dataset.id); if (!e) return;
+    const e = saved.find(x => x.id === li.dataset.id); if (!e || !svExpanded.has(e.id)) return;
     const m = li.querySelector(".sv-meta"); if (m) m.textContent = savedMeta(e, state.view);
     const tb = li.querySelector("[data-traits]"); if (tb && svOpen.has(e.id)) tb.innerHTML = sharedTraitsHTML(e);
     const rg = li.querySelector("[data-region]"); if (rg) { const h = regionListHTML(e); if (rg.innerHTML !== h) rg.innerHTML = h; }   // the list follows the level on screen
@@ -2470,6 +2499,10 @@ function saveNewGroup() {
 function wireSaved() {
   $("#svBtn").addEventListener("click", saveCurrentGroup);
   $("#svNewSave").addEventListener("click", saveNewGroup);
+  $("#cbTable").addEventListener("click", () => {   // Show table: him and his lookalikes in the map's place
+    const r = state.sel; if (r === null || r === undefined) return;
+    state.lookTbl = state.lookTbl === null || state.lookTbl === undefined ? r : null; syncTable(); relayout();
+  });
   $("#svNewName").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); saveNewGroup(); } });
   $("#svNewClear").addEventListener("click", () => { state.picks.clear(); renderPicks(); render(); });
   $("#svNewList").addEventListener("click", e => { const b = e.target.closest("[data-unpick]"); if (b) togglePick(+b.dataset.unpick); });
@@ -2481,10 +2514,13 @@ function wireSaved() {
     const go = ev.target.closest("[data-goto]");
     if (go) { preview(+go.dataset.goto); return; }
     if (ev.target.closest("[data-more]")) { if (svAll.has(e.id)) svAll.delete(e.id); else svAll.add(e.id); refreshSavedMeta(); }
+    else if (ev.target.closest("[data-exp]")) { if (svExpanded.has(e.id)) svExpanded.delete(e.id); else svExpanded.add(e.id); renderSaved(); }
+    else if (ev.target.closest("[data-only]")) { state.onlyGroup = state.onlyGroup === e.id ? null : e.id; OG = null; renderSaved(); render(); }
     else if (ev.target.closest("[data-tog]")) { e.on = !e.on; persistSaved(); renderSaved(); render(); }
     else if (ev.target.closest("[data-why]")) { if (svOpen.has(e.id)) svOpen.delete(e.id); else svOpen.add(e.id); renderSaved(); }
     else if (ev.target.closest("[data-del]")) {
       svDeleted = { e, at: saved.indexOf(e) }; saved = saved.filter(x => x !== e);
+      if (state.onlyGroup === e.id) { state.onlyGroup = null; OG = null; }
       persistSaved(); renderSaved(); render();
     }
   });
@@ -2631,7 +2667,7 @@ function syncFA() {
 // Anything narrowing the map that "Reset filters" clears
 const anyFilter = () => Object.keys(state.ranges).length > 0 || !!state.archetype
   || state.fa !== "all" || !!(state.keyRange && (state.keyRange.lo > 0 || state.keyRange.hi < 1))
-  || state.seasons.size !== D.seasons.length || state.throws !== "all" || !!state.groupsHi;
+  || state.seasons.size !== D.seasons.length || state.throws !== "all" || !!state.groupsHi || !!state.onlyGroup;
 const andMatch = (a, b) => a && b ? r => a(r) && b(r) : a || b;
 function typesLine(j) {
   const names = archNames(j);
@@ -3221,11 +3257,7 @@ function sortHeat(btn) {
   wrap.outerHTML = heatTable(view, j, compsOf(view, j));
   const nw = document.querySelector(`.hmwrap[data-hmj="${j}"]`);
   if (nw) { nw.scrollLeft = x; const b = nw.querySelector(`[data-hk="${CSS.escape(key)}"]`); if (b) b.focus({ preventScroll: true });
-    nw.querySelectorAll("[data-go]").forEach(tr => {   // rows open the comp, by click or Enter / Space, as before the sort
-      const go = () => { const [vv, rr] = tr.dataset.go.split(":"); if (vv !== state.view) setView(vv, +rr); else select(+rr); };
-      tr.tabIndex = 0; tr.addEventListener("click", go);
-      tr.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
-    }); }
+    wireHeatRows(nw); }
 }
 
 // ------------------------------------------------- best-xERA comp, and how they differ
@@ -3281,7 +3313,8 @@ function updateMatchBox(view, rows, match, cg) {
     return cur;
   }).sort((a, b) => sortName(T.name[a[0]]).localeCompare(sortName(T.name[b[0]])));
   state.mbRows = items;
-  $("#mbTitle").textContent = `${filtered ? title || "Highlighted" : "Everyone on this map"} · ${items.length.toLocaleString()} pitcher${items.length === 1 ? "" : "s"}`;
+  const og = state.onlyGroup ? saved.find(x => x.id === state.onlyGroup) : null;
+  $("#mbTitle").textContent = `${filtered ? title || "Highlighted" : og ? `Only “${og.name}”` : "Everyone on this map"} · ${items.length.toLocaleString()} pitcher${items.length === 1 ? "" : "s"}`;
   // the pitcher type's one-line definition leads the list, as it does under the finder
   const a = ARCH_BY_ID[state.archetype]; $("#mbDef").textContent = a && a.def ? a.def : "";
   if (filtered && !had) railOpen("pitchers");   // a highlight just appeared: show its list
@@ -4164,7 +4197,8 @@ function select(r) {
 function preview(r) {
   followLevel(r);
   if (r !== state.sel) remember(state.view, state.sel, r);
-  state.preview = true; state.showComps = !!(state.rail.open && state.rail.tab === "groups"); state.sel = r;
+  state.preview = true; state.showComps = !!(state.rail.open && state.rail.tab === "look"); state.sel = r;
+  if (state.lookTbl !== null && state.lookTbl !== undefined) state.lookTbl = r;   // an open lookalikes table follows the pitcher
   render(); renderDetail();
   if (state.simOpen) { renderSim(); return; }
   const b = $("#ctaOpen"); if (b && !$("#selCta").hidden) b.focus({ preventScroll: true });
@@ -4196,7 +4230,7 @@ const compsOnMap = () => !!state.preview && !!state.showComps && state.sel !== n
 function toggleComps() {
   if (state.sel === null || state.sel === undefined) return;
   state.showComps = !state.showComps;
-  if (state.showComps) railOpen("groups");
+  if (state.showComps) railOpen("look");
   render();
 }
 function renderCompBox() {
@@ -4707,9 +4741,13 @@ function setSlidersOpen(open, quiet) {   // quiet: no focus move (used when a ca
 const TABLE_CAP = 300;   // rows drawn per scroll step
 const relayout = () => requestAnimationFrame(() => { try { Plotly.Plots.resize(plotEl); } catch (e) {} });
 function syncTable() {
-  const on = state.slidersOpen && !!state.tblGroup && sliderVars().some(v => v.group === state.tblGroup);
+  const look = state.lookTbl !== null && state.lookTbl !== undefined;
+  const on = look || (state.slidersOpen && !!state.tblGroup && sliderVars().some(v => v.group === state.tblGroup));
   $("#mTable").hidden = !on;
   $("#app").classList.toggle("with-table", on);
+  $("#mtSearch").hidden = look; $("#mtScroll").hidden = look; $("#mtLook").hidden = !look;
+  const cb = $("#cbTable"); if (cb) { cb.setAttribute("aria-pressed", String(look)); cb.textContent = look ? "Hide table" : "Show table"; }
+  if (look) { renderLookTable(); return; }
   $("#slList").querySelectorAll(".sltbl").forEach(b => {
     const me = on && b.dataset.g === state.tblGroup;
     b.setAttribute("aria-pressed", String(me)); b.textContent = me ? "Hide table" : "Show table";
@@ -4717,6 +4755,21 @@ function syncTable() {
   if (on) renderTable();
 }
 const tableColumns = () => sliderVars().filter(v => v.group === state.tblGroup);
+// the lookalikes table: him and his ten lookalikes on every measure (the profile card's heat table), sortable
+function renderLookTable() {
+  const r = state.lookTbl, view = state.view, comps = compsOf(view, r);
+  $("#mtTitle").textContent = `Lookalikes of ${T.name[r]}, ${PTN[T.pitch_type[r]].toLowerCase()}`;
+  $("#mtSub").textContent = `${T.season[r]} · ${teamStr(r)}. Each cell is the value, shaded by its percentile among MLB ${PTN[T.pitch_type[r]].toLowerCase()}s (red high, blue low, flipped where lower is better). Click a column to sort, a row to open him.`;
+  $("#mtLook").innerHTML = comps.length ? heatTable(view, r, comps) : `<p class="mt-more">No lookalikes for this pitch.</p>`;
+  wireHeatRows($("#mtLook"));
+}
+function wireHeatRows(el) {   // rows open the pitcher, by click or Enter / Space
+  el.querySelectorAll("[data-go]").forEach(tr => {
+    const go = () => { const [vv, rr] = tr.dataset.go.split(":"); if (vv !== state.view) setView(vv, +rr); else select(+rr); };
+    tr.tabIndex = 0; tr.addEventListener("click", go);
+    tr.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+  });
+}
 function renderTable() {
   if (!state.slidersOpen || !state.tblGroup || !state.tblData) return;
   const { view, rows, match } = state.tblData, pct = state.rangeMode === "pct";
@@ -4814,7 +4867,7 @@ function wireTable() {
     else if (e.key === "ArrowDown" || e.key === "Enter") { const tr = $("#mtBody").querySelector("tr[data-r]"); if (tr) { e.preventDefault(); if (e.key === "Enter") tr.click(); else tr.focus(); } }
   });
   $("#mtHide").addEventListener("click", () => {
-    const g = state.tblGroup; state.tblGroup = null; syncTable(); relayout();
+    const g = state.tblGroup; state.tblGroup = null; state.lookTbl = null; syncTable(); relayout();
     const b = [...$("#slList").querySelectorAll(".sltbl")].find(x => x.dataset.g === g); if (b) b.focus();
   });
 }
@@ -4976,7 +5029,7 @@ function buildStatic() {
     state.fa = "all"; syncFA();
     if (state.keyRange) { state.keyRange.lo = 0; state.keyRange.hi = 1; }
     state.seasons = new Set(D.seasons); state.throws = "all"; syncSeasons(); syncThrows();
-    state.groupsHi = false; syncGroupsHi();
+    state.groupsHi = false; syncGroupsHi(); state.onlyGroup = null; OG = null; renderSaved();
     if (state.slidersOpen) buildSliders();
     render(); renderDetail();
   });
@@ -4987,7 +5040,7 @@ function buildStatic() {
     state.ranges = {}; state.archetype = ""; $("#ptype").value = ""; syncArchetype();
     state.fa = "all"; syncFA(); state.keyRange = null;
     state.seasons = new Set(D.seasons); state.throws = "all"; syncSeasons(); syncThrows();
-    state.groupsHi = false; syncGroupsHi();
+    state.groupsHi = false; syncGroupsHi(); state.onlyGroup = null; OG = null; state.lookTbl = null; syncTable(); renderSaved();
     state.color = { all: "cat:pitch_type", t: "cat:pitch_type" }; state.op = "none"; state.explainOpen = false;
     state.ellipses = false; state.lasso = false; hideToast();
     state.picks.clear(); renderPicks();
