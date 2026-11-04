@@ -888,7 +888,7 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
 .rule .pct { width: 3.2em; text-align: right; font-weight: 600; }
 
 /* ------------------------------------------------------------------ caption */
-/* "How to read it": under the map, above the data line */
+/* "How to read it": under the map, above the data line; Hide folds it into a link in the same place */
 .howto { display: flex; align-items: center; gap: 18px; margin: 0; padding: 10px 14px; background: var(--field);
   border: 1px solid var(--line); border-radius: var(--r); }
 .howto p { margin: 0; flex: 1 1 auto; font: 400 15px/1.45 var(--font-serif); color: var(--ink); }
@@ -910,6 +910,10 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
 .heropool { font: 400 13px/1.3 var(--font-ui); color: var(--ink2); }
 .heropool button { border: 0; background: none; padding: 0; font: inherit; color: var(--link); text-decoration: underline; cursor: pointer; }
 .howfig { flex: none; width: 170px; height: 64px; }
+.howhide { flex: none; align-self: flex-start; font: 600 13px var(--font-ui); color: var(--ink2); background: none; border: 1.5px solid var(--rule);
+  border-radius: var(--r); min-height: 30px; padding: 0 10px; cursor: pointer; }
+.howhide:hover { color: var(--ink); border-color: var(--ink); }
+.howshow { display: block; margin: 4px 0; font: 600 13px var(--font-ui); }
 .howfig rect { fill: var(--map); }
 .howfig .hf-near circle { fill: #d22d49; }   /* Savant four-seam */
 .howfig .hf-far { fill: #00d1ed; }            /* Savant curveball */
@@ -1345,7 +1349,9 @@ tr.self td { font-weight: 600; background: none; }
         <text x="38" y="55">alike</text><text x="138" y="55">different</text>
       </svg>
       <p><b>How to read it.</b> Each dot is one pitcher’s pitch type over one season. Pitches that are alike in movement, release, delivery, command and consistency sit near each other, and the farther apart two dots are, the less alike the pitches. The axes have no units.</p>
+      <button type="button" class="howhide" id="howHide" aria-controls="howto">Hide</button>
     </section>
+    <button type="button" class="link howshow" id="howShow" aria-controls="howto" hidden>How to read the map</button>
     <p class="source" id="source"></p>
   </div>
 
@@ -5048,6 +5054,17 @@ function buildStatic() {
   $("#railClose").addEventListener("click", railClose);
   $("#railPills").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b) setRailTab(b.dataset.tab); });
   $("#simScrim").addEventListener("click", () => closeSim());
+
+  // "How to read it" box: Hide / show, remembered for this viewer (storage may be blocked)
+  const setHow = (hidden, focus) => {
+    $("#howto").hidden = hidden; $("#howShow").hidden = !hidden;
+    try { localStorage.setItem("atlas.howHidden", hidden ? "1" : "0"); } catch (e) {}
+    if (focus) (hidden ? $("#howShow") : $("#howHide")).focus({ preventScroll: true });
+  };
+  let howHidden = false; try { howHidden = localStorage.getItem("atlas.howHidden") === "1"; } catch (e) {}
+  if (howHidden) { $("#howto").hidden = true; $("#howShow").hidden = false; }
+  $("#howHide").addEventListener("click", () => setHow(true, true));
+  $("#howShow").addEventListener("click", () => setHow(false, true));
 
   // download: shown once this view can save files (framed in claude.ai), or always on a standalone copy
   $("#dlBtn").addEventListener("click", downloadCSV);
