@@ -89,54 +89,48 @@ button, input, select { font: inherit; color: inherit; }
    One slate panel: the plot (with its toolbar, key, toast and the docked name bar) and, docked on the right,
    a rail with three tabs: Pitchers, Comps, Groups. Two elevations only: docked surfaces (rail, toolbar, key,
    name bar) carry a hairline and no shadow; transient overlays (menus, the toast, the simulation) a shadow. */
-.map { grid-area: map; min-height: 0; min-width: 0; position: relative; display: flex; flex-direction: row;
-  background: var(--map); border-radius: var(--r-lg); overflow: hidden; --mi: 8px; --rw: 320px; }
+/* only the plot is dark: the toolbar above it and the pitch types beside it sit on the light page */
+.map { grid-area: map; min-height: 0; min-width: 0; position: relative; display: flex; flex-direction: row; gap: 8px; --mi: 8px; --rw: 320px; }
 .plotwrap { flex: 1 1 auto; min-width: 0; min-height: 0; position: relative; display: flex; flex-direction: column; }
 /* the plot and what floats on it (pills, colour key, toast, the docked name bar), under the toolbar */
-.plotarea { flex: 1 1 auto; min-height: 0; position: relative; display: flex; flex-direction: column; }
+.plotarea { flex: 1 1 auto; min-width: 0; min-height: 0; position: relative; display: flex; flex-direction: column;
+  background: var(--map); border-radius: var(--r-lg); overflow: hidden; }
 #plot { flex: 1; min-height: 0; height: 100%; background: var(--map); position: relative; }
 #plot > canvas { display: block; cursor: grab; touch-action: none; }
 #plot > canvas:active { cursor: grabbing; }
 #plot.dot-hover > canvas { cursor: pointer; }
-.map :focus-visible { outline-color: var(--map-ink); }   /* the page's blue focus ring vanishes on slate */
-/* toolbar: docked along the top of the map panel (a surface of its own, so it never covers dots); its lines wrap */
-.maptool { flex: none; position: relative; z-index: 20; display: flex; flex-direction: column; gap: 6px; padding: 8px var(--mi);
-  background: var(--map-panel); border-bottom: 1px solid var(--map-line); container: mtool / inline-size; }
-.tline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0; }
+.plotarea :focus-visible, .mrail :focus-visible { outline-color: var(--map-ink); }   /* the page's blue focus ring vanishes on slate */
+/* toolbar: one line on the light page above the map, in the page's own buttons (filled = chosen, outline otherwise) */
+.maptool { flex: none; position: relative; z-index: 20; display: flex; flex-direction: column; gap: 6px; padding: 0 0 8px; }
+.tline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
 .tright { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
-.tlbl, .maptool .colorlbl, .maptool .lbl { font: 600 14px var(--font-ui); color: var(--map-ink2); white-space: nowrap; }
-/* the controls that came from the header, in the map's dark dress: outline, the chosen one filled */
-.maptool .measseg { border-color: var(--map-ink); background: transparent; }
-.maptool .measbtn { background: var(--field); color: var(--ink); }
-.maptool .measbtn:hover { background: var(--wash); }
-.maptool .resetbtn { color: var(--map-ink); border-left-color: var(--map-ink); }
-.maptool .resetbtn:hover:not(:disabled) { background: var(--map-hover); }
-.maptool .resetbtn:disabled { color: var(--map-muted); }
-/* under the toolbar: the pitch types down the left edge, then the plot */
-.mapbody { flex: 1 1 auto; min-height: 0; display: flex; }
-.typecol { flex: none; width: 148px; display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: var(--mi);
-  overflow-y: auto; overscroll-behavior: contain; background: var(--map-panel); border-right: 1px solid var(--map-line); }
-.typecol .ubtn { width: 100%; justify-content: flex-start; background: transparent; color: var(--map-ink); border-color: var(--map-muted); }
-.typecol .ubtn:hover { background: var(--map-hover); }
-.typecol .ubtn[aria-pressed="true"] { background: var(--field); color: var(--ink); border-color: var(--field); }
-.typecol .udiv { width: 100%; height: 1px; margin: 2px 0; background: var(--map-line); }
-.maptool #colorAWrap, .maptool .mselect { background: transparent; color: var(--map-ink); border: 1.5px solid var(--map-muted); border-radius: var(--r); }
-.maptool #colorAWrap:hover, .maptool .mselect:hover { background: var(--map-hover); }
-.maptool #colorAWrap::after, .maptool .mselect::after { border-color: var(--map-ink); }
-.maptool #colorAWrap.on { background: var(--field); color: var(--ink); border-color: var(--field); }
-.maptool #colorAWrap.on::after { border-color: var(--ink); }
-.maptool .mselect select { font: 600 14px var(--font-ui); color: var(--map-ink); background: transparent; border: 0; min-height: calc(var(--ctl) - 3px);
+.tlbl, .maptool .colorlbl { font: 600 14px var(--font-ui); color: var(--ink2); white-space: nowrap; }
+.mselect { border: 1.5px solid var(--ink); border-radius: var(--r); background: var(--field); color: var(--ink); }
+.mselect:hover { background: var(--wash); }
+.mselect select { font: 600 14px var(--font-ui); color: var(--ink); background: transparent; border: 0; min-height: calc(var(--ctl) - 3px);
   padding: 0 32px 0 12px; max-width: min(28ch, 100%); }
-.maptool .mselect select option { color: var(--ink); background: var(--field); }
-.maptool .explbtn, .maptool .resetcolor, .maptool #opWrap select, .maptool #colorBWrap select { background: transparent; color: var(--map-ink); border-color: var(--map-muted); }
-.maptool .explbtn:hover, .maptool .resetcolor:hover:not(:disabled) { background: var(--map-hover); }
-.maptool .explbtn[aria-expanded="true"] { background: var(--field); color: var(--ink); border-color: var(--field); }
-.maptool .resetcolor:disabled { color: var(--map-muted); border-color: var(--map-line); }
-.maptool #opWrap select option, .maptool #colorBWrap select option { color: var(--ink); background: var(--field); }
-.maptool #opWrap::after, .maptool #colorBWrap::after { border-color: var(--map-ink); }
-.maptool .asof { color: var(--map-muted); }
-.maptool .facount { font: 400 13px var(--font-ui); color: var(--map-ink2); }
+.mselect::after { border-color: var(--ink); }
+.maptool .facount { font: 400 13px var(--font-ui); color: var(--ink2); }
 .maptool .facount:empty { display: none; }
+/* left of the map: the pitch types, then Season and Hand */
+.mapbody { flex: 1 1 auto; min-height: 0; display: flex; gap: 10px; }
+.typecol { flex: none; width: 168px; display: flex; flex-direction: column; align-items: stretch; gap: 6px; overflow-y: auto; overscroll-behavior: contain; }
+.typecol .universe { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+.typecol .ubtn { width: 100%; justify-content: flex-start; }
+.typecol .udiv { width: 100%; height: 1px; margin: 2px 0; background: var(--line); }
+.tcsub { margin-top: 8px; font: 600 13px var(--font-ui); color: var(--ink2); }
+.typecol .mseg { display: flex; }
+.typecol .mseg button { flex: 1 1 0; padding: 0 4px; }
+/* map controls off the map: light outline buttons, the chosen one filled in ink */
+.maptool .dimseg, .maptool .ellp, .typecol .mseg { border-color: var(--ink); background: var(--field); }
+.maptool .dimseg button, .maptool .ellp button, .typecol .mseg button { color: var(--ink); }
+.maptool .dimseg button + button, .maptool .ellp button + button, .typecol .mseg button + button { border-left-color: var(--ink); }
+.maptool .dimseg button:hover:not([aria-pressed="true"]), .maptool .ellp button:hover:not([aria-pressed="true"]), .typecol .mseg button:hover:not([aria-pressed="true"]) { background: var(--wash); }
+.maptool .dimseg button[aria-pressed="true"], .maptool .ellp button[aria-pressed="true"], .typecol .mseg button[aria-pressed="true"] { background: var(--ink); color: var(--field); }
+.maptool .mbtn { border-color: var(--ink); background: var(--field); color: var(--ink); }
+.maptool .mbtn:hover { background: var(--wash); }
+.maptool .mbtn[aria-pressed="true"] { background: var(--ink); color: var(--field); border-color: var(--ink); }
+.typecol #seasonChips button[aria-pressed="false"] { color: var(--muted); }
 .grp-fa { display: flex; align-items: center; gap: 6px 8px; }
 .tgroup { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .ellrow { display: inline-flex; align-items: center; gap: 4px; }
@@ -165,7 +159,8 @@ button, input, select { font: inherit; color: inherit; }
 .maptoast.show { opacity: 1; }
 .maptoast[hidden] { display: none; }
 /* the rail */
-.mrail { flex: none; width: var(--rw); max-width: 48%; display: flex; flex-direction: column; min-height: 0; background: var(--map-chrome); color: var(--map-ink); border-left: 1px solid var(--map-line); }
+.mrail { flex: none; width: var(--rw); max-width: 48%; display: flex; flex-direction: column; min-height: 0; background: var(--map-panel); color: var(--map-ink);
+  border-radius: var(--r-lg); overflow: hidden; }
 .mrail[hidden] { display: none; }
 .railtabs { flex: none; display: flex; align-items: stretch; border-bottom: 1px solid var(--map-line); }
 .railtab { flex: 1 1 0; min-width: 0; font: 600 14px var(--font-ui); min-height: var(--ctl); padding: 0 6px; border: 0; background: none; color: var(--map-ink2); cursor: pointer;
@@ -1005,11 +1000,14 @@ tr.self td { font-weight: 600; background: none; }
   .mk-title { font-size: 15px; } .mk-dual, .mk-ticks { width: 240px; }
   .selcta { position: static; }
   .plotarea { flex: none; }
-  .mapbody { flex-direction: column; }
-  .typecol { width: auto; flex-direction: row; flex-wrap: wrap; overflow: visible; border-right: 0; border-bottom: 1px solid var(--map-line); }
+  .mapbody { flex-direction: column; gap: 8px; }
+  .typecol { width: auto; flex-direction: row; flex-wrap: wrap; align-items: center; overflow: visible; }
+  .typecol .universe { flex-direction: row; flex-wrap: wrap; }
   .typecol .ubtn { width: auto; }
   .typecol .udiv { width: 1px; height: 24px; margin: 0; align-self: center; }
-  .mrail { width: auto; max-width: none; max-height: 44vh; border-left: 0; border-top: 1px solid var(--map-line); }
+  .tcsub { margin-top: 0; }
+  .plotarea { min-height: 340px; }
+  .mrail { width: auto; max-width: none; max-height: 44vh; }
   /* a selected pitcher: the card is a sheet over the map */
   .app.has-sel { grid-template-areas: "head" "controls" "map" "caption"; grid-template-rows: auto auto auto auto; }
   .app.has-sel .controls { display: flex; } .app.has-sel .map { display: flex; } .app.has-sel .caption { display: flex; }
@@ -1151,19 +1149,21 @@ tr.self td { font-weight: 600; background: none; }
           </div>
           <button type="button" class="mbtn" id="teamOn" aria-pressed="false">Team colors</button>
         </div>
-        <div class="tgroup">
-          <div class="mseg" id="seasonChips" role="group" aria-label="Seasons shown"></div>
-          <div class="mseg" id="throwsSeg" role="group" aria-label="Pitcher hand">
-            <button type="button" id="thAll" data-v="all" aria-label="Both hands">R + L</button>
-            <button type="button" id="thR" data-v="R" aria-label="Right-handed pitchers">RHP</button>
-            <button type="button" id="thL" data-v="L" aria-label="Left-handed pitchers">LHP</button>
-          </div>
-        </div>
           </div>
         </div>
       </div>
       <div class="mapbody">
-      <nav class="universe typecol" id="universe" aria-label="Choose a map: all pitches or one pitch type"></nav>
+      <div class="typecol" id="typeCol">
+        <nav class="universe" id="universe" aria-label="Choose a map: all pitches or one pitch type"></nav>
+        <span class="tcsub" id="seasonLbl">Season</span>
+        <div class="mseg" id="seasonChips" role="group" aria-labelledby="seasonLbl"></div>
+        <span class="tcsub" id="handLbl">Hand</span>
+        <div class="mseg" id="throwsSeg" role="group" aria-labelledby="handLbl">
+          <button type="button" id="thAll" data-v="all" aria-label="Both hands">R + L</button>
+          <button type="button" id="thR" data-v="R" aria-label="Right-handed pitchers">RHP</button>
+          <button type="button" id="thL" data-v="L" aria-label="Left-handed pitchers">LHP</button>
+        </div>
+      </div>
       <div class="plotarea" id="plotArea">
         <div id="plot"></div>
       <div class="pills" id="railPills" hidden></div>
@@ -4245,7 +4245,7 @@ function buildVarSelects() {
   $("#colorB").innerHTML = optionsHTML(vars, state.colorB[kind], "", false);
   $("#colorAWrap").classList.toggle("on", !NOT_IN_LIST.has(cur));   // filled in while a measure is the color
   $("#teamOn").setAttribute("aria-pressed", String(cur === "cat:team"));
-  $("#colorReset").disabled = cur === "cat:pitch_type" && state.op === "none";
+  $("#colorReset").hidden = $("#colorReset").disabled = cur === "cat:pitch_type" && state.op === "none";
   syncExplain();
   $("#teamPick").hidden = cur !== "cat:team";
   paintTeamChips();
