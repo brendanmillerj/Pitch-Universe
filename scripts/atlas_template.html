@@ -316,7 +316,20 @@ button, input, select { font: inherit; color: inherit; }
 .simtype.added { border-style: dashed; }
 .simtype .x { margin-left: 2px; font-weight: 400; color: var(--map-ink2); }
 /* the canvas with the camera switch and Replay laid over its top right corner */
-.simstage { position: relative; width: min(100%, max(320px, calc((100dvh - 300px) * 1.45))); margin: 0 auto; }   /* controls + animation on one screen */
+.simstage { position: relative; width: min(100%, max(320px, calc((100dvh - 330px) * 1.45))); margin: 0 auto; }   /* controls + animation on one screen */
+.simtype .psw.dash { border: 2px dashed; box-sizing: border-box; }
+.simtype .psw.ring { box-shadow: 0 0 0 2px #ffffff, 0 0 0 3px var(--map-panel); }
+.simin { cursor: default; padding-right: 4px; color: var(--map-ink); border-color: var(--map-ink); }
+.simx { width: 24px; height: 24px; margin-left: 2px; border: 0; border-radius: 50%; background: none; color: var(--map-ink2); font: 400 18px/1 var(--font-ui); cursor: pointer; }
+.simx:hover { background: var(--map-hover); color: var(--map-ink); }
+.simadd { display: flex; flex-direction: column; gap: 6px; }
+.simaddq { width: min(100%, 520px); min-height: var(--ctl); padding: 0 12px; border: 1.5px solid var(--map-muted); border-radius: var(--r); background: rgba(0, 0, 0, 0.25); color: var(--map-ink); font: 500 14px var(--font-ui); }
+.simaddq::placeholder { color: var(--map-muted); }
+.simpal { display: flex; flex-direction: column; gap: 6px; max-height: 26vh; overflow-y: auto; }
+.simpal-g { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.simpal-t { font: 600 13px var(--font-ui); color: var(--map-ink2); min-width: 0; }
+.simput { min-height: 30px; padding: 0 10px; font-size: 13px; }
+.simput:hover { border-color: var(--map-ink); color: var(--map-ink); }
 .simsel select { font: 600 14px var(--font-ui); color: var(--map-ink); background: var(--map-chrome); border: 1.5px solid var(--map-muted); border-radius: var(--r);
   min-height: var(--ctl); padding: 0 12px; max-width: min(56ch, 100%); }
 .simsel select option, .simsel select optgroup { color: var(--ink); background: var(--field); }
@@ -3538,6 +3551,7 @@ function flightSetup() {
   // release: usage-weighted mean of his release points, drawn as a ball-sized sphere behind the pitcher
   let rx = 0, ry = 0, rz = 0, wsum = 0;
   for (const p of paths) if (!p.ghost && !p.alt) { const w = Math.max(T.usage[p.row] || 1, 1); rx += w * p.pos[0]; ry += w * p.pos[1]; rz += w * p.pos[2]; wsum += w; }
+  if (!wsum) for (const p of paths) { rx += p.pos[0]; ry += p.pos[1]; rz += p.pos[2]; wsum += 1; }   // none of his in the air: the mean of what is
   const rel = proj(new Float64Array([rx / wsum, ry / wsum, rz / wsum]));
   Object.assign(F, { W, H, dpr, paths, zone, plate, grid, rel, ...fr, sx: (s, k) => W / 2 + fr.focal * s.x[k] + fr.ox, sy: (s, k) => H / 2 - (fr.focal * s.y[k] + fr.oy) });
 }
@@ -3614,102 +3628,120 @@ window.addEventListener("resize", () => { if (!FLS) return; flightSetup(); fligh
 // Opened from the name bar. One list of pitches is in the air: his (each on or off) plus any single pitch added
 // from a lookalike's row below. The lookalike table shows arm angle, so a pitch from a similar slot is easy to
 // pick, and ERA, best first. Same trajectory engine and cameras as the card's flight panel.
-const SIM_MODES = [["ghost", "Ghost"], ["fade", "Faded"], ["solid", "Full pitch"]];
-const COMP_COLOR = "#ffffff";   // every comp's pitch flies in white, so two sliders are never yellow on yellow
+// The simulation is a pitch designer: S.items is what is in the air, each either a pitch row {kind:"row", r} or a league
+// average {kind:"avg", t, hand, season}. It opens with his arsenal and the MLB average of each of his pitches.
+const SIM_OTHER = ["#ffffff", "#ff6ad5", "#c4b5fd", "#60a5fa", "#f9a8d4", "#9ae6b4"];   // other pitchers, in the order added
 function simState(j) {
   const key = T.pitcher[j] + "|" + T.season[j] + "|" + T.level[j];
   if (!state.sim || state.sim.key !== key) {
-    const mine = TYPES.filter(t => { const r = tRow(T.pitcher[j], T.season[j], t, T.level[j]); return r !== undefined && trajOf(r); });
-    // vs: what flies beside his pitches: "avg" (the MLB average of each, the default), a lookalike's row, or "none"
-    state.sim = { key, types: new Set(mine), compType: mine.includes(T.pitch_type[j]) ? T.pitch_type[j] : mine[0], added: [], mode: (state.sim && state.sim.mode) || "ghost",
-      vs: "avg", lookOpen: false };
+    const mine = TYPES.map(t => tRow(T.pitcher[j], T.season[j], t, T.level[j])).filter(r => r !== undefined && trajOf(r))
+      .sort((x, y) => (T.usage[y] || 0) - (T.usage[x] || 0));
+    const items = mine.map(r => ({ kind: "row", r }));
+    mine.forEach(r => items.push({ kind: "avg", t: T.pitch_type[r], hand: T.p_throws[j], season: T.season[j] }));
+    state.sim = { key, items, q: "" };
   }
   return state.sim;
+}
+const simItemKey = it => it.kind === "row" ? "r" + it.r : `a|${it.season}|${it.hand}|${it.t}`;
+function simLeague(season, hand, t) { const d = flightData(); if (d.none) return null; const L = d.league[`${season}|${hand}|${t}`]; return L ? L.slice(0, 9) : null; }
+const simMine = (j, r) => T.pitcher[r] === T.pitcher[j] && T.season[r] === T.season[j] && T.level[r] === T.level[j];
+// colour of another pitcher's pitches: one colour per pitcher-season, in the order they joined the tray
+function simOtherColor(j, S, r) {
+  const who = [...new Set(S.items.filter(it => it.kind === "row" && !simMine(j, it.r)).map(it => T.pitcher[it.r] + "|" + T.season[it.r]))];
+  const k = who.indexOf(T.pitcher[r] + "|" + T.season[r]);
+  return SIM_OTHER[(k < 0 ? who.length : k) % SIM_OTHER.length];
+}
+function simPaths(j, S) {
+  return S.items.map(it => {
+    if (it.kind === "avg") { const p = simLeague(it.season, it.hand, it.t); return p && { it, type: it.t, avg: true, ghost: true, color: SAVANT_PITCH[it.t], ...flightPath(p) }; }
+    const p = trajOf(it.r); if (!p) return null;
+    const mine = simMine(j, it.r);
+    return { it, type: T.pitch_type[it.r], row: it.r, alt: !mine, ring: !mine, color: mine ? SAVANT_PITCH[T.pitch_type[it.r]] : simOtherColor(j, S, it.r), ...flightPath(p) };
+  }).filter(Boolean);
+}
+// a chip's swatch and words, for the tray and the palette alike
+function simChip(j, S, it) {
+  if (it.kind === "avg") {
+    const p = simLeague(it.season, it.hand, it.t), mph = p ? flightPath(p).mph : null;
+    return { sw: `<i class="psw dash" style="background:none;border-color:${SAVANT_PITCH[it.t]}"></i>`, label: `MLB avg ${PTN[it.t].toLowerCase()}`, sub: `${it.hand}HP ${it.season}${isNum(mph) ? ` · ${mph.toFixed(1)}` : ""}` };
+  }
+  const r = it.r, mine = simMine(j, r), c = mine ? SAVANT_PITCH[T.pitch_type[r]] : simOtherColor(j, S, r);
+  return { sw: `<i class="psw${mine ? "" : " ring"}" style="background:${c}"></i>`, label: mine ? PTN[T.pitch_type[r]] : `${lastName(T.name[r])} ${PTN[T.pitch_type[r]].toLowerCase()}`,
+    sub: `${mine ? "" : T.season[r] + " · "}${fmt(T.velo[r], 1)}` };
 }
 // his ten closest comps' version of one of his pitches (MLB comps, so each has an ERA), best ERA first
 function simLookalikes(j, t) {
   const r = tRow(T.pitcher[j], T.season[j], t, T.level[j]); if (r === undefined) return [];
   return (D.tcomps[r] || []).slice(0, K_SHOWN).map(([c, q]) => { const i = pRow(T.pitcher[c], T.season[c], T.level[c]);
-    // slot and release are the pitcher's (pitch-weighted over his arsenal), since his whole arsenal is on offer
-    return { c, q, i, era: i === undefined ? null : P.era[i], arm: i === undefined ? null : P.arm_angle[i], relh: i === undefined ? null : P.rel_height[i], rels: i === undefined ? null : P.rel_side[i],
-      arsenal: TYPES.map(t => tRow(T.pitcher[c], T.season[c], t, T.level[c])).filter(x => x !== undefined && trajOf(x)) }; })
+    return { c, q, i, era: i === undefined ? null : P.era[i], arm: i === undefined ? null : P.arm_angle[i] }; })
     .sort((a, b) => (isNum(a.era) ? a.era : 99) - (isNum(b.era) ? b.era : 99));
 }
-function renderSim() {
+// the palette under the Add box: empty query = his unplugged pitches, MLB averages, his lookalikes' pitches;
+// a name = that pitcher's pitches (newest season)
+function simPalette(j, S, q) {
+  const have = new Set(S.items.map(simItemKey)), groups = [];
+  const add = (title, its) => { its = its.filter(it => !have.has(simItemKey(it))); if (its.length) groups.push({ title, its }); };
+  if (!q.trim()) {
+    const mine = TYPES.map(t => tRow(T.pitcher[j], T.season[j], t, T.level[j])).filter(r => r !== undefined && trajOf(r));
+    add("His pitches", mine.map(r => ({ kind: "row", r })));
+    add(`MLB average, ${T.p_throws[j]}HP ${T.season[j]}`, TYPES.filter(t => simLeague(T.season[j], T.p_throws[j], t)).map(t => ({ kind: "avg", t, hand: T.p_throws[j], season: T.season[j] })));
+    const main = T.pitch_type[j];
+    add(`His lookalikes’ ${PTN[main].toLowerCase()}s, best ERA first`, simLookalikes(j, main).slice(0, 6).map(o => ({ kind: "row", r: o.c })).filter(it => trajOf(it.r)));
+    return groups;
+  }
+  const { names, folded, latest } = suggIndex(), fq = fold(q.trim()), hits = [];
+  for (let k = 0; k < names.length && hits.length < 6; k++) if (folded[k].includes(fq)) hits.push(names[k]);
+  hits.sort((a, b) => (fold(a).startsWith(fq) ? 0 : 1) - (fold(b).startsWith(fq) ? 0 : 1));
+  hits.forEach(n => {
+    const e = latest[n], i = P.name.findIndex((x, ii) => x === n && P.season[ii] === e.season && P.level[ii] === e.level); if (i < 0) return;
+    const rows = TYPES.map(t => tRow(P.pitcher[i], P.season[i], t, P.level[i])).filter(r => r !== undefined && trajOf(r)).sort((x, y) => (T.usage[y] || 0) - (T.usage[x] || 0));
+    add(`${n}, ${e.season}${e.level === "mlb" ? "" : " Triple-A"}`, rows.map(r => ({ kind: "row", r })));
+  });
+  if (!groups.length) groups.push({ title: `No pitcher named “${q.trim()}” with tracked pitches`, its: [] });
+  return groups;
+}
+function renderSimPalette() {
+  const j = state.sel, S = state.sim, pal = $("#simPal"); if (!pal || j === null || j === undefined || !S) return;
+  S.palette = simPalette(j, S, S.q || "");
+  pal.innerHTML = S.palette.map((g, gi) => `<div class="simpal-g"><span class="simpal-t">${esc(g.title)}</span><div class="simtypes">${g.its.map((it, k) => {
+    const c = simChip(j, S, it);
+    return `<button type="button" class="simtype simput${it.kind === "avg" ? " added" : ""}" data-put="${gi}:${k}" title="Put it in the air">${c.sw}${esc(c.label)} <span class="tm">${esc(c.sub)}</span></button>`;
+  }).join("")}</div></div>`).join("");
+  pal.querySelectorAll("[data-put]").forEach(b => b.onclick = () => {
+    const [gi, k] = b.dataset.put.split(":").map(Number), it = S.palette[gi].its[k]; if (!it) return;
+    S.items.push(it); renderSim(true);
+  });
+}
+function renderSim(keepFocus) {
   stopFlight();
   const box = $("#simBox"), j = state.sel; if (j === null || j === undefined) { box.hidden = true; return; }
-  const S = simState(j), pid = T.pitcher[j], s = T.season[j], lvl = T.level[j];
-  const mine = TYPES.map(t => [t, tRow(pid, s, t, lvl)]).filter(([, r]) => r !== undefined && trajOf(r));
-  S.added = S.added.filter(r => trajOf(r));
-  const looks = simLookalikes(j, S.compType), best = looks.findIndex(o => isNum(o.era)), cam = state.flightCam || "catcher";
+  const S = simState(j), pid = T.pitcher[j], s = T.season[j], lvl = T.level[j], cam = state.flightCam || "catcher";
   const i0 = pRow(pid, s, lvl), myArm = i0 === undefined ? null : P.arm_angle[i0];
-  const deg = v => isNum(v) ? `${Math.round(v)}°` : "—", ft = v => isNum(v) ? `${v.toFixed(1)} ft` : "—";
-  // his slot and release point (pitch-weighted over his arsenal): the table shows each lookalike's against them
-  const myRelH = i0 === undefined ? null : P.rel_height[i0], myRelS = i0 === undefined ? null : P.rel_side[i0];
-  const myTypes = new Set(mine.map(([t]) => t));
-  // the difference from his own, tinted blue (lower) through white (the same) to red (higher); full colour at
-  // `span` (12° of arm angle, a foot of release), so white means "release like his"
-  const delta = (v, mine, dec, span) => {
-    if (!isNum(v) || !isNum(mine)) return "";
-    const d = v - mine, t = Math.max(-1, Math.min(1, d / span)), a = Math.abs(t);
-    const bg = t < 0 ? mixHex("#1c5cab", "#e6e5e0", a) : mixHex("#c23a3a", "#e6e5e0", a);
-    return `<span class="dlt" style="background:${bg};color:${a > 0.55 ? "#ffffff" : "#1f242b"}">${d >= 0 ? "+" : "−"}${Math.abs(d).toFixed(dec)}</span>`;
-  };
-  const his = mine.map(([t, r]) => `<button type="button" class="simtype" data-simtype="${t}" aria-pressed="${S.types.has(t)}" title="${S.types.has(t) ? "Take" : "Put"} his ${PTN[t].toLowerCase()} ${S.types.has(t) ? "out of" : "in"} the animation"><i class="psw" style="background:${SAVANT_PITCH[t]}"></i>${PTN[t]} <span class="tm">${fmt(T.velo[r], 1)}</span></button>`);
-  const extra = S.added.map(r => `<button type="button" class="simtype added" data-simdrop="${r}" aria-pressed="true" title="Take this pitch out of the animation"><i class="psw" style="background:${SAVANT_PITCH[T.pitch_type[r]]}"></i>${esc(lastName(T.name[r]))} ${PTN[T.pitch_type[r]].toLowerCase()} <span class="tm">${fmt(T.velo[r], 1)}</span><span class="x" aria-hidden="true">×</span></button>`);
-  const addedSet = new Set(S.added);
+  const typing = keepFocus && document.activeElement && document.activeElement.id === "simAddQ";
+  const paths = simPaths(j, S);
+  const tray = S.items.map((it, k) => { const c = simChip(j, S, it);
+    return `<span class="simtype simin${it.kind === "avg" ? " added" : ""}">${c.sw}${esc(c.label)} <span class="tm">${esc(c.sub)}</span><button type="button" class="simx" data-out="${k}" aria-label="Take ${esc(c.label)} out of the air" title="Take it out">×</button></span>`; });
   box.hidden = false;
   box.innerHTML = `<div class="sim-head"><div><h2 class="sim-name" id="simTitle">${esc(T.name[j])}</h2>
-      <p class="simsub">Pitch simulation · ${s}${lvl === "mlb" ? "" : " · Triple-A"} · ${esc(teamStr(j))}${isNum(myArm) ? ` · arm angle ${deg(myArm)}` : ""}${isNum(myRelH) ? ` · releases ${ft(myRelH)} high, ${ft(Math.abs(myRelS))} ${myRelS >= 0 ? "arm side" : "across"}` : ""}</p></div>
+      <p class="simsub">Pitch simulation · ${s}${lvl === "mlb" ? "" : " · Triple-A"} · ${esc(teamStr(j))}${isNum(myArm) ? ` · arm angle ${Math.round(myArm)}°` : ""} · plug pitches in and out</p></div>
       <button type="button" class="sim-x" id="simClose" aria-label="Close the pitch simulation" title="Close (Esc)">×</button></div>
-    <div class="simrow sim-ctl"><span class="flbl">His pitches</span><div class="simtypes">${his.join("")}${extra.join("")}</div></div>
-    <div class="simrow sim-ctl"><label class="flbl" for="simVs">Compare with</label><span class="simsel"><select id="simVs">
-      <option value="avg"${S.vs === "avg" ? " selected" : ""}>MLB average of each pitch (${T.p_throws[j]}HP, ${s})</option>
-      <optgroup label="A lookalike on his ${PTN[S.compType].toLowerCase()}, best ERA first">${looks.map(o => `<option value="${o.c}"${String(S.vs) === String(o.c) ? " selected" : ""}>${esc(T.name[o.c])} ${T.season[o.c]} · arm ${deg(o.arm)}${isNum(o.arm) && isNum(myArm) ? ` (${o.arm - myArm >= 0 ? "+" : "−"}${Math.abs(Math.round(o.arm - myArm))})` : ""} · ERA ${fmt(o.era, 2)}</option>`).join("")}</optgroup>
-      <option value="none"${S.vs === "none" ? " selected" : ""}>Nothing, just his</option>
-    </select></span></div>
+    <div class="simrow"><span class="flbl">In the air</span><div class="simtypes" id="simTray">${tray.join("") || `<span class="tm">Nothing yet: add a pitch below.</span>`}</div>
+      ${S.items.length ? `<button type="button" class="sim-replay" id="simClear">Clear all</button>` : ""}</div>
+    <div class="simadd"><input type="search" id="simAddQ" class="simaddq" placeholder="Add a pitch: type any pitcher’s name, or pick one below" autocomplete="off" aria-label="Add a pitch" value="${esc(S.q || "")}">
+      <div class="simpal" id="simPal"></div></div>
     <div class="simstage"><div class="simover"><div class="mseg simcam" role="group" aria-label="Camera">${["catcher", "pitcher"].map(c => `<button type="button" data-simcam="${c}" aria-pressed="${cam === c}">${c === "catcher" ? "Catcher view" : "Pitcher view"}</button>`).join("")}</div>
       <button type="button" class="sim-replay" id="simReplay">Replay</button></div>
-      <canvas id="simCv" class="simcv" role="img" aria-label="Animated flight of ${esc(T.name[j])}'s pitches"></canvas></div>
-    <p class="flkey simkey" id="simKey"></p>
-    <details class="simlook" id="simLook"${S.lookOpen ? " open" : ""}><summary>Pick single pitches from his lookalikes</summary>
-      <div class="simrow"><span class="flbl">Lookalikes for his</span><div class="simtypes">${mine.map(([t]) => `<button type="button" class="simtype" data-simcomp="${t}" aria-pressed="${S.compType === t}"><i class="psw" style="background:${SAVANT_PITCH[t]}"></i>${PTN[t]}</button>`).join("")}</div></div>
-      <p class="sim-help">Every pitch each of them throws is a button; press one and it flies beside his, in white. A dashed button is a pitch type he does not throw. The tinted numbers are how far each man's slot and release sit from his (${deg(myArm)}, ${ft(myRelH)} high, ${ft(myRelS)} to the arm side): white is the same, blue lower, red higher.</p>
-      <div class="tablewrap"><table class="simtab"><thead><tr><th></th><th>Pitcher</th><th class="num">Arm angle</th><th class="num" title="Release height, feet above the ground">Rel. height</th><th class="num" title="Release side, feet toward the arm side (negative = across the body)">Rel. side</th><th class="num">ERA</th><th>His pitches</th></tr></thead><tbody>
-      ${looks.map((o, k) => `<tr><td><span class="badge">${k + 1}</span></td><td>${esc(T.name[o.c])}${T.level[o.c] === "mlb" ? "" : `, Triple-A`}<div class="tm">${T.season[o.c]} · ${esc(teamStr(o.c))}${k === best ? " · best ERA of the ten" : ""}</div></td><td class="num">${deg(o.arm)} ${delta(o.arm, myArm, 0, 12)}</td><td class="num">${ft(o.relh)} ${delta(o.relh, myRelH, 1, 1)}</td><td class="num">${ft(o.rels)} ${delta(o.rels, myRelS, 1, 1)}</td><td class="num">${fmt(o.era, 2)}</td><td><div class="pchs">${o.arsenal.map(x => `<button type="button" class="pch${myTypes.has(T.pitch_type[x]) ? "" : " new"}" data-simadd="${x}" aria-pressed="${addedSet.has(x)}" title="${addedSet.has(x) ? "In the animation; press to take it out" : `Add his ${PTN[T.pitch_type[x]].toLowerCase()} to the animation`}${myTypes.has(T.pitch_type[x]) ? "" : ` (${esc(lastName(T.name[j]))} throws no ${PTN[T.pitch_type[x]].toLowerCase()})`}"><i class="psw" style="background:${SAVANT_PITCH[T.pitch_type[x]]}"></i>${PTN[T.pitch_type[x]]} <span class="tm">${fmt(T.velo[x], 1)}</span></button>`).join("")}</div></td></tr>`).join("")}
-      </tbody></table></div>
-      <div class="simrow simmoderow"><span class="flbl">Draw added pitches as</span><div class="mseg simmode" role="group" aria-label="How added pitches are drawn">${SIM_MODES.map(([m, l]) => `<button type="button" data-simmode="${m}" aria-pressed="${S.mode === m}">${l}</button>`).join("")}</div></div>
-    </details>`;
-  // paths: his chosen pitches, then every added pitch
-  const paths = mine.filter(([t]) => S.types.has(t)).map(([t, r]) => ({ type: t, row: r, color: SAVANT_PITCH[t], ...flightPath(trajOf(r)) }));
-  const vsPaths = [];
-  if (S.vs === "avg") mine.filter(([t]) => S.types.has(t)).forEach(([t, r]) => {   // the league's version of each: dashed, in the pitch's colour
-    const lg = leagueTraj(r); if (lg) vsPaths.push({ type: t, avg: true, ghost: true, color: SAVANT_PITCH[t], ...flightPath(lg) });
-  });
-  else if (S.vs !== "none" && Number.isInteger(+S.vs)) { const c = +S.vs;   // a lookalike's version of each, in white
-    mine.filter(([t]) => S.types.has(t)).forEach(([t]) => { const r2 = tRow(T.pitcher[c], T.season[c], t, T.level[c]);
-      if (r2 !== undefined && trajOf(r2)) vsPaths.push({ type: t, row: r2, alt: true, ring: true, color: COMP_COLOR, ...flightPath(trajOf(r2)) }); });
-  }
-  paths.push(...vsPaths);
-  S.added.forEach(r => paths.push({ type: T.pitch_type[r], row: r, alt: true, color: COMP_COLOR, ghost: S.mode === "ghost", fade: S.mode === "fade", ring: S.mode === "solid", ...flightPath(trajOf(r)) }));
-  $("#simKey").innerHTML = paths.length ? paths.map(p => p.avg
-    ? `<span><i class="psw dash" style="background:none;border-color:${p.color}"></i>MLB average ${PTN[p.type].toLowerCase()} ${p.mph.toFixed(1)} mph</span>`
-    : p.alt
-    ? `<span class="${p.ghost ? "flghost" : ""}"><i class="psw ${p.ghost ? "dash" : p.fade ? "fade" : "ring"}" style="background:${p.ghost ? "none" : p.color};border-color:${p.color}"></i>${esc(lastName(T.name[p.row]))}'s ${PTN[p.type].toLowerCase()} ${fmt(T.velo[p.row], 1)} mph</span>`
-    : `<span><i class="psw" style="background:${p.color}"></i><b>${PTN[p.type]}</b> ${fmt(T.velo[p.row], 1)} mph</span>`).join("")
-    : "Turn on a pitch to see it fly.";
-  if (Number.isInteger(+S.vs) && S.vs !== "avg" && S.vs !== "none" && !vsPaths.length) $("#simKey").innerHTML += `<span class="tm">${esc(T.name[+S.vs])} throws none of these pitch types.</span>`;
-  // wiring (rebuilt on every change, so plain onclick handlers)
+      <canvas id="simCv" class="simcv" role="img" aria-label="Animated flight of the pitches in the air"></canvas></div>`;
+  renderSimPalette();
   $("#simClose").onclick = () => closeSim();
   $("#simReplay").onclick = () => renderSim();
-  box.querySelectorAll("[data-simtype]").forEach(b => b.onclick = () => { const t = b.dataset.simtype; if (S.types.has(t)) S.types.delete(t); else S.types.add(t); renderSim(); });
-  box.querySelectorAll("[data-simdrop]").forEach(b => b.onclick = () => { S.added = S.added.filter(r => r !== +b.dataset.simdrop); renderSim(); });
-  box.querySelectorAll("[data-simadd]").forEach(b => b.onclick = () => { const r = +b.dataset.simadd; S.added = S.added.includes(r) ? S.added.filter(x => x !== r) : [...S.added, r]; renderSim(); });
-  box.querySelectorAll("[data-simcomp]").forEach(b => b.onclick = () => { S.compType = b.dataset.simcomp; renderSim(); });
-  box.querySelectorAll("[data-simmode]").forEach(b => b.onclick = () => { S.mode = b.dataset.simmode; renderSim(); });
+  const clr = $("#simClear"); if (clr) clr.onclick = () => { S.items = []; renderSim(); };
+  box.querySelectorAll("[data-out]").forEach(b => b.onclick = () => { S.items.splice(+b.dataset.out, 1); renderSim(); });
   box.querySelectorAll("[data-simcam]").forEach(b => b.onclick = () => { state.flightCam = b.dataset.simcam; renderSim(); });
-  $("#simVs").onchange = e => { S.vs = e.target.value; renderSim(); };
-  $("#simLook").addEventListener("toggle", e => { S.lookOpen = e.target.open; });
+  const qi = $("#simAddQ");
+  qi.oninput = () => { S.q = qi.value; renderSimPalette(); };
+  qi.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); const b = $("#simPal").querySelector("[data-put]"); if (b) b.click(); } };
+  if (typing) { qi.focus({ preventScroll: true }); try { qi.setSelectionRange(qi.value.length, qi.value.length); } catch (e) {} }
   if (!paths.length) return;
   const flight = Math.max(...paths.map(p => p.tEnd));
   const hold0 = Math.round(FL.HOLD0 * FL.FPS), nAnim = Math.max(2, Math.round(FL.FPS * flight * FL.SLOW)), hold1 = Math.round(FL.HOLD1 * FL.FPS);
