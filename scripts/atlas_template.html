@@ -165,7 +165,8 @@ button, input, select { font: inherit; color: inherit; }
 .sv-undo { padding: 8px 12px; font: 500 13px var(--font-ui); color: var(--map-ink2); border-top: 1px solid var(--map-hair); }
 .sv-undo .link { color: var(--map-ink); font-weight: 700; }
 .sv-undo[hidden] { display: none; }
-.savedbox.folded #svList, .savedbox.folded .sv-undo { display: none; }
+.savedbox.folded #svList, .savedbox.folded .sv-undo, .savedbox.folded #svOnly { display: none; }
+#svOnly[aria-pressed="true"] { background: var(--ink); color: var(--field); box-shadow: inset 0 0 0 2px var(--field); }
 /* small secondary buttons (Hide / Show, per-row toggles): one style, a page and a map version */
 .howhide, #mbHide, #svFold, .sv-tog { flex: none; font: 600 14px var(--font-ui); min-height: 32px; padding: 0 10px; border-radius: 6px; cursor: pointer;
   background: none; border: 1.5px solid var(--rule); color: var(--ink2); text-decoration: none; }
@@ -1176,6 +1177,7 @@ tr.self td { font-weight: 600; background: none; }
     </aside>
     <aside class="savedbox" id="savedBox" aria-label="Groups" hidden>
       <div class="sv-head"><b id="svTitle">Groups</b><button type="button" class="link" id="svFold" aria-expanded="true">Hide</button></div>
+      <button type="button" class="dlbtn keepbtn" id="svOnly" aria-pressed="false" title="Keep only the pitchers in your groups on the map; the pitcher list and the measure filters then work on them alone">Show only my groups</button>
       <ul id="svList"></ul>
       <p class="sv-undo" id="svUndo" hidden></p>
     </aside>
@@ -1433,6 +1435,7 @@ const state = {
   seasons: new Set(D.seasons),
   throws: "all",
   team: "all",
+  onlyGroups: false,   // "Show only my groups": the map keeps only pitchers in a kept group
   dim: 2,              // 2D UMAP by default; 3D is one click away
   showName: true,
   ellipses: false, ellP: 68,   // ellipses start off
@@ -1493,7 +1496,8 @@ function visibleRows(view) {
   return viewRows(view).filter(r => state.seasons.has(T.season[r])
     && (state.throws === "all" || T.p_throws[r] === state.throws) && T.n[r] >= state.minN
     && (state.team === "all" || tTeams[r].includes(state.team))
-    && (state.minIP === 0 || tIP[r] >= state.minIP));
+    && (state.minIP === 0 || tIP[r] >= state.minIP)
+    && (!state.onlyGroups || !groupsOn() || inGroups(r)));
 }
 
 function colorGetter(kind) {
@@ -1927,7 +1931,18 @@ try {
       comps: e.comps && typeof e.comps === "object" ? { key: String(e.comps.key || ""), of: String(e.comps.of || ""), pt: String(e.comps.pt || ""), tol: typeof e.comps.tol === "number" ? e.comps.tol : null } : null }));
 } catch (e) {}
 const svOpen = new Set();   // ids whose "What they share" readout is open
-const persistSaved = () => { try { localStorage.setItem(SAVED_STORE, JSON.stringify(saved)); } catch (e) {} };
+let GK = null;   // pitcher|season keys of every shown group; rebuilt after any change to the groups
+const persistSaved = () => { GK = null; try { localStorage.setItem(SAVED_STORE, JSON.stringify(saved)); } catch (e) {} };
+const groupsOn = () => saved.some(e => e.on);
+const inGroups = r => (GK || (GK = new Set(saved.filter(e => e.on).flatMap(e => e.keys)))).has(T.pitcher[r] + "|" + T.season[r]);
+// "Show only my groups" button in the Groups panel: pressed = everyone else leaves the map; the pitcher list,
+// the measure filters and their table then work on the groups alone
+function syncOnlyGroups() {
+  const b = $("#svOnly"), on = !!state.onlyGroups && groupsOn();
+  if (!on) state.onlyGroups = false;
+  b.setAttribute("aria-pressed", String(on)); b.disabled = !groupsOn();
+  b.textContent = on ? "Show everyone again" : "Show only my groups";
+}
 const svRowCache = new Map();   // id|view -> rows; a saved group never changes, so this never goes stale
 function savedRows(e, view) {
   const ck = e.id + "|" + view;
@@ -2046,6 +2061,7 @@ function renderSaved() {
   const box = $("#savedBox"), mapEl = document.querySelector(".map");
   box.hidden = !saved.length && !svDeleted;
   $("#svTitle").textContent = `Groups (${saved.length})`;
+  syncOnlyGroups();
   const folded = box.classList.contains("folded");
   $("#svFold").textContent = folded ? "Show" : "Hide"; $("#svFold").setAttribute("aria-expanded", String(!folded));
   $("#svList").innerHTML = saved.map(e => `<li data-id="${esc(e.id)}" class="${e.on ? "" : "off"}">`
@@ -2074,6 +2090,7 @@ function refreshSavedMeta() {
 }
 function wireSaved() {
   $("#svBtn").addEventListener("click", saveCurrentGroup);
+  $("#svOnly").addEventListener("click", () => { state.onlyGroups = !state.onlyGroups; syncOnlyGroups(); render(); });
   $("#svFold").addEventListener("click", () => { $("#savedBox").classList.toggle("folded"); renderSaved(); });
   const list = $("#svList"), of = el => saved.find(e => e.id === (el.closest("li[data-id]") || {}).dataset?.id);
   list.addEventListener("click", ev => {
@@ -2223,7 +2240,7 @@ function syncFA() {
 // Anything narrowing the map that "Reset filters" clears
 const anyFilter = () => Object.keys(state.ranges).length > 0 || !!state.archetype
   || state.fa !== "all" || !!(state.keyRange && (state.keyRange.lo > 0 || state.keyRange.hi < 1))
-  || state.seasons.size !== D.seasons.length || state.throws !== "all";
+  || state.seasons.size !== D.seasons.length || state.throws !== "all" || !!state.onlyGroups;
 const andMatch = (a, b) => a && b ? r => a(r) && b(r) : a || b;
 function typesLine(j) {
   const names = archNames(j);
@@ -2777,6 +2794,7 @@ const MB_MAX = 600;
 const sortName = n => { const w = String(n).replace(/\s+(Jr\.?|Sr\.?|II|III|IV)$/i, "").split(" "); return (w[w.length - 1] + " " + w.slice(0, -1).join(" ")).toLowerCase(); };
 function litDescription() {
   const parts = [];
+  if (state.onlyGroups && groupsOn()) parts.push("In your groups");
   const a = ARCH_BY_ID[state.archetype]; if (a) parts.push(a.name);
   if (state.fa !== "all") { const o = ($("#fa").selectedOptions || [])[0]; parts.push(o ? "Free agents: " + o.textContent : "Free agents"); }
   const nR = Object.keys(state.ranges).length; if (nR) parts.push(`${nR} measure filter${nR > 1 ? "s" : ""}`);
@@ -2787,6 +2805,7 @@ function updateMatchBox(view, rows, match, cg) {
   const box = $("#matchBox"), show = $("#mbShow"), cmp = compsOnMap();
   let lit = null, title = "";
   if (match) { lit = rows.filter(match); title = litDescription(); }
+  else if (state.onlyGroups && groupsOn()) { lit = rows; title = litDescription(); }   // the map is only your groups: list them
   else if (cg && cg.v && cg.v.key === "cat:team") {
     lit = rows.filter(r => state.teamPick.has(tMain[r]));
     title = [...state.teamPick].map(t => TEAM_NAMES[t] || t).join(", ");
@@ -4220,6 +4239,7 @@ function buildStatic() {
     state.fa = "all"; syncFA();
     if (state.keyRange) { state.keyRange.lo = 0; state.keyRange.hi = 1; }
     state.seasons = new Set(D.seasons); state.throws = "all"; syncSeasons(); syncThrows();
+    state.onlyGroups = false; syncOnlyGroups();
     if (state.slidersOpen) buildSliders();
     render(); renderDetail();
   });
