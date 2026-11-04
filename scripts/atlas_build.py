@@ -175,6 +175,26 @@ def free_agents(season=max(SEASONS)):
     return fa
 
 
+def free_agents_asof(season=max(SEASONS)):
+    """The day the free-agent list was last fetched (the cached file's date), shown as "as of" on the page."""
+    import datetime
+    path = paths.META / f"free_agents_{season}.parquet"
+    if not path.exists():
+        return None
+    return datetime.date.fromtimestamp(path.stat().st_mtime).isoformat()
+
+
+def data_through(level):
+    """Last game date with pitches in the store at this level: the page's "data through" line."""
+    last = None
+    for season in level_seasons(level):
+        m = pd.read_parquet(paths.meta_dir(level) / f"manifest_{season}.parquet")
+        m = m[m.n_pitches > 0]
+        if len(m):
+            last = max(last or "", str(m.game_date.max()))
+    return last
+
+
 def movement_sample(rebuild, level="mlb"):
     """Up to MOVE_PER_ROW pitches per pitcher x season x pitch type: raw (catcher's view, not mirrored)
     horizontal and induced vertical break in inches, for the Savant-style movement chart."""
@@ -705,6 +725,8 @@ def export(types, pitchers, t_space, lead, fa, spin, mv, tj, teams, levels, team
         "flight": trajectory_blob(types, tj),
         "archetypes": json.loads(PITCHER_TYPES.read_text()) if PITCHER_TYPES.exists() else [],
         "fa_season": max(SEASONS),
+        "fa_asof": free_agents_asof(),
+        "data_through": {l: data_through(l) for l in levels},
         "fa": {str(r.pitcher): [None if pd.isna(v) else v for v in
                                 (r.fa_from, r.fa_to, r.fa_signed, r.fa_declared, r.fa_notes)]
                for r in fa[fa.pitcher.isin(pitchers.pitcher)].itertuples()},
