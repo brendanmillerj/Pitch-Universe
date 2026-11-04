@@ -14,7 +14,7 @@ from __future__ import annotations
 import io
 import os
 
-from . import paths, physics, savant
+from . import paths, physics, savant, schedule
 from .schema import apply_dtypes, read_raw_frame
 
 ROW_GROUP_SIZE = 32_768
@@ -27,12 +27,17 @@ def month_of(date: str) -> str:
     return date[5:7]
 
 
-def build_month(month: str, dates: list[str], season: int = paths.SEASON) -> dict:
+def build_month(
+    month: str, dates: list[str], season: int = paths.SEASON, level: str = paths.LEVEL
+) -> dict:
     """Rebuild one month partition from the raw cache.
 
     Always a full rebuild of the month rather than an append: Statcast revises
     recent games (pitch types get reclassified, measurements corrected), so a
     re-fetched date must *replace* its old rows, not sit alongside them.
+
+    For a minor-league level the raw feed carries every tracked level at once,
+    so rows are kept only when their game_pk is on that level's schedule.
     """
     import pandas as pd
     import pyarrow as pa
@@ -40,7 +45,7 @@ def build_month(month: str, dates: list[str], season: int = paths.SEASON) -> dic
 
     frames = []
     for date in sorted(dates):
-        raw = paths.raw_path(date, season)
+        raw = paths.raw_path(date, season, level)
         if not raw.exists():
             continue
         frames.append(read_raw_frame(raw))
@@ -49,6 +54,11 @@ def build_month(month: str, dates: list[str], season: int = paths.SEASON) -> dic
         return {"month": month, "rows": 0, "written": False}
 
     df = pd.concat(frames, ignore_index=True)
+    if level != "mlb":
+        keep = schedule.expected_game_pks(season, level)
+        df = df[df["game_pk"].isin(keep)].reset_index(drop=True)
+        if df.empty:
+            return {"month": month, "rows": 0, "written": False}
     # Derived geometry before typing, so vaa/haa land in FLOAT32_COLUMNS with
     # every other measurement rather than staying float64. Concatenated in one
     # go -- assigning columns individually fragments a 113-column frame.
@@ -62,7 +72,7 @@ def build_month(month: str, dates: list[str], season: int = paths.SEASON) -> dic
     df = apply_dtypes(df)
     df = df.sort_values(SORT_KEY, kind="mergesort").reset_index(drop=True)
 
-    dest = paths.month_path(month, season)
+    dest = paths.month_path(month, season, level)
     dest.parent.mkdir(parents=True, exist_ok=True)
     tmp = dest.with_suffix(f".tmp{os.getpid()}.parquet")
 
@@ -75,7 +85,7 @@ def build_month(month: str, dates: list[str], season: int = paths.SEASON) -> dic
         use_dictionary=True,
     )
     os.replace(tmp, dest)
-    reset_connection(season)  # the parquet just changed under any open view
+    reset_connection(season, level)  # the parquet just changed under any open view
 
     return {
         "month": month,
@@ -86,23 +96,25 @@ def build_month(month: str, dates: list[str], season: int = paths.SEASON) -> dic
     }
 
 
-def build_months(dates: list[str], season: int = paths.SEASON) -> list[dict]:
+def build_months(
+    dates: list[str], season: int = paths.SEASON, level: str = paths.LEVEL
+) -> list[dict]:
     """Rebuild every month touched by `dates`, using all cached dates in it."""
     from collections import defaultdict
 
-    cached = cached_dates(season)
+    cached = cached_dates(season, level)
     touched = {month_of(d) for d in dates}
 
     by_month = defaultdict(list)
     for d in cached:
         by_month[month_of(d)].append(d)
 
-    return [build_month(m, by_month[m], season) for m in sorted(touched)]
+    return [build_month(m, by_month[m], season, level) for m in sorted(touched)]
 
 
-def cached_dates(season: int = paths.SEASON) -> list[str]:
+def cached_dates(season: int = paths.SEASON, level: str = paths.LEVEL) -> list[str]:
     """Dates present in the raw cache."""
-    root = paths.RAW / f"season={season}"
+    root = paths.raw_dir(level) / f"season={season}"
     if not root.exists():
         return []
     return sorted(p.name[len("date=") : -len(".csv.gz")] for p in root.glob("date=*.csv.gz"))
@@ -112,8 +124,8 @@ def cached_dates(season: int = paths.SEASON) -> list[str]:
 # Query helpers
 # --------------------------------------------------------------------------
 
-def pitches_glob(season: int = paths.SEASON) -> str:
-    return str(paths.PITCHES / f"season={season}" / "month=*" / "*.parquet")
+def pitches_glob(season: int = paths.SEASON, level: str = paths.LEVEL) -> str:
+    return str(paths.pitches_dir(level) / f"season={season}" / "month=*" / "*.parquet")
 
 
 # The columns a pitch-level view actually needs: identity, context, and the
@@ -131,11 +143,11 @@ FEATURE_COLUMNS = [
     "balls", "strikes", "at_bat_number", "pitch_number",
 ]
 
-_CONNECTIONS: dict[int, "duckdb.DuckDBPyConnection"] = {}
+_CONNECTIONS: dict[tuple[int, str], "duckdb.DuckDBPyConnection"] = {}
 
 
-def connect(season: int = paths.SEASON, fresh: bool = False):
-    """Cached DuckDB connection with a `pitches` view over the season's parquet.
+def connect(season: int = paths.SEASON, fresh: bool = False, level: str = paths.LEVEL):
+    """Cached DuckDB connection with a `pitches` view over one season+level.
 
     Reused across calls -- opening a connection and creating the view costs
     ~11 ms, which dominates an otherwise ~13 ms query. Call `reset_connection`
@@ -144,20 +156,29 @@ def connect(season: int = paths.SEASON, fresh: bool = False):
     """
     import duckdb
 
-    if fresh or season not in _CONNECTIONS:
+    key = (season, level)
+    if fresh or key not in _CONNECTIONS:
         con = duckdb.connect()
         con.execute(
-            f"CREATE VIEW pitches AS SELECT * FROM read_parquet('{pitches_glob(season)}')"
+            "CREATE VIEW pitches AS SELECT * FROM "
+            f"read_parquet('{pitches_glob(season, level)}')"
         )
-        _CONNECTIONS[season] = con
-    return _CONNECTIONS[season]
+        _CONNECTIONS[key] = con
+    return _CONNECTIONS[key]
 
 
-def reset_connection(season: int | None = None) -> None:
-    """Drop cached connections so the next query re-reads the parquet layout."""
-    seasons = list(_CONNECTIONS) if season is None else [season]
-    for s in seasons:
-        con = _CONNECTIONS.pop(s, None)
+def reset_connection(season: int | None = None, level: str | None = None) -> None:
+    """Drop cached connections so the next query re-reads the parquet layout.
+
+    With no arguments every connection is dropped; with a season (and
+    optionally a level) only the matching ones.
+    """
+    keys = [
+        k for k in _CONNECTIONS
+        if (season is None or k[0] == season) and (level is None or k[1] == level)
+    ]
+    for k in keys:
+        con = _CONNECTIONS.pop(k, None)
         if con is not None:
             con.close()
 
@@ -168,16 +189,19 @@ def _select(columns) -> str:
     return ", ".join(columns)
 
 
-def query(sql: str, season: int = paths.SEASON):
-    return connect(season).execute(sql).df()
+def query(sql: str, season: int = paths.SEASON, level: str = paths.LEVEL):
+    return connect(season, level=level).execute(sql).df()
 
 
-def pitcher(pitcher_id: int, season: int = paths.SEASON, columns=FEATURE_COLUMNS):
+def pitcher(
+    pitcher_id: int, season: int = paths.SEASON, columns=FEATURE_COLUMNS,
+    level: str = paths.LEVEL,
+):
     """Every pitch thrown by one pitcher -- the core dashboard lookup.
 
     Defaults to FEATURE_COLUMNS; pass columns="*" for all 113.
     """
-    return connect(season).execute(
+    return connect(season, level=level).execute(
         f"SELECT {_select(columns)} FROM pitches WHERE pitcher = ? "
         "ORDER BY game_date, at_bat_number, pitch_number",
         [pitcher_id],
@@ -243,7 +267,11 @@ def _baseline_inputs(angle: str) -> list[str]:
 
 
 def fit_angle_baseline(season: int = paths.SEASON):
-    """Fit per-pitch-type location baselines for all four angles; persist coefs."""
+    """Fit per-pitch-type location baselines for all four angles; persist coefs.
+
+    MLB only, by design: the baseline is the big-league norm that every level
+    is measured against, so it is never refitted on minor-league pitches.
+    """
     import pandas as pd
 
     angles = list(ANGLE_PREDICTORS)
@@ -301,7 +329,8 @@ def add_angles_adjusted(df, season: int = paths.SEASON, angles=None):
     approach than expected given location and release point. Same reading for
     the release-side `vra_above_avg` / `hra_above_avg`.
 
-    Requires pitch_type, p_throws, the angle itself, and its predictors.
+    Requires pitch_type, p_throws, the angle itself, and its predictors. The
+    baseline is always the MLB one, whichever level `df` came from.
     """
     base = load_angle_baseline(season).set_index("pitch_type")
     m = _mirror_lhp(df)
@@ -318,9 +347,9 @@ def add_angles_adjusted(df, season: int = paths.SEASON, angles=None):
     return out
 
 
-def build_pitcher_dim(season: int = paths.SEASON):
+def build_pitcher_dim(season: int = paths.SEASON, level: str = paths.LEVEL):
     """Small per-pitcher summary so dashboard dropdowns never scan the big table."""
-    df = connect(season).execute(
+    df = connect(season, level=level).execute(
         """
         SELECT pitcher            AS pitcher_id,
                any_value(player_name) AS player_name,
@@ -338,6 +367,6 @@ def build_pitcher_dim(season: int = paths.SEASON):
         """
     ).df()
 
-    paths.ensure_dirs()
-    df.to_parquet(paths.pitcher_dim_path(season), index=False)
+    paths.ensure_dirs(level)
+    df.to_parquet(paths.pitcher_dim_path(season, level), index=False)
     return df

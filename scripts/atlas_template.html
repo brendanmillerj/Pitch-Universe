@@ -307,6 +307,14 @@ button, input, select { font: inherit; color: inherit; }
 .fatog { display: inline-flex; flex: none; border: 2px solid var(--ink); border-radius: var(--r); overflow: hidden; }
 .fatog button { font: 700 20px/1 var(--font-ui); padding: 0 16px; min-height: 42px; border: 0; background: var(--field); color: var(--ink2); cursor: pointer; }
 .fatog button + button { border-left: 2px solid var(--ink); }
+/* MLB | AAA beside the title: which level's pitchers the maps show (Triple-A rides on the same maps) */
+.lvlseg { display: inline-flex; flex: none; margin-top: 26px; border: 2px solid var(--ink); border-radius: var(--r); overflow: hidden; }
+.lvlseg button { font: 700 20px/1 var(--font-ui); padding: 0 18px; min-height: 42px; border: 0; background: var(--field); color: var(--ink2); cursor: pointer; }
+.lvlseg button + button { border-left: 2px solid var(--ink); }
+.lvlseg button[aria-pressed="true"] { background: var(--ink); color: var(--field); }
+.lvlseg button:focus-visible { outline: 2px solid var(--focus); outline-offset: -3px; }
+.lvlseg[hidden] { display: none; }
+@media (max-width: 1000px) { .lvlseg { margin-top: 0; } }
 .fatog button:hover:not([aria-pressed="true"]) { background: var(--wash); color: var(--ink); }
 .fatog button[aria-pressed="true"] { background: var(--ink); color: var(--field); cursor: default; }
 .fatog button[data-on="0"][aria-pressed="true"] { background: var(--wash); color: var(--ink); }   /* ink fill only when a filter is on */
@@ -1041,6 +1049,9 @@ tr.self td { font-weight: 600; background: none; }
   </div></section>
   <header class="head">
     <h1>Pitch Universe</h1>
+    <div class="lvlseg" id="lvlSeg" role="group" aria-label="Level shown" hidden>
+      <button type="button" data-v="mlb" aria-pressed="true" title="Major-league pitchers">MLB</button><button type="button" data-v="aaa" aria-pressed="false" title="Triple-A pitchers on the same maps, every number measured against big-league norms">AAA</button>
+    </div>
     <div class="finders">
       <div class="find find-meas">
         <span class="find-lbl" id="measLabel">Filter by measures</span>
@@ -1232,6 +1243,12 @@ tr.self td { font-weight: 600; background: none; }
 const D = /*__ATLAS_DATA__*/null;
 const P = D.pitchers, T = D.types;
 const NP = P.pitcher.length, NT = T.pitcher.length;
+// Levels. MLB is the reference: the maps, comps, percentiles and baselines are all big-league. Triple-A
+// rows ("aaa") sit on the same maps, placed beside their nearest MLB pitches, and rank against MLB pools.
+const LEVELS = D.levels || ["mlb"];
+if (!T.level) { T.level = T.pitcher.map(() => "mlb"); P.level = P.pitcher.map(() => "mlb"); }
+const LVL_NAME = { mlb: "MLB", aaa: "Triple-A" };
+const lvlTag = r => T.level[r] === "mlb" ? "" : " · AAA";
 const TYPES = ["FF", "SI", "FC", "SL", "ST", "CU", "CH", "FS"];
 const PTN = { FF: "Four-seam", SI: "Sinker", FC: "Cutter", SL: "Slider", ST: "Sweeper", CU: "Curveball", CH: "Changeup", FS: "Splitter" };
 const $ = s => document.querySelector(s);
@@ -1247,11 +1264,12 @@ const NOT_IN_LIST = new Set(["cat:pitch_type", "cat:team", "cat:fa"]);   // pitc
 
 // ------------------------------------------------------------------ indexes
 const tKey = new Map(), pKey = new Map();
-for (let j = 0; j < NT; j++) tKey.set(T.pitcher[j] + "|" + T.season[j] + "|" + T.pitch_type[j], j);
-for (let i = 0; i < NP; i++) pKey.set(P.pitcher[i] + "|" + P.season[i], i);
-const tRow = (pid, s, pt) => tKey.get(pid + "|" + s + "|" + pt);
-const pRow = (pid, s) => pKey.get(pid + "|" + s);
-tIP = T.pitcher.map((pid, j) => { const i = pRow(pid, T.season[j]); return i === undefined || !isNum(P.ip[i]) ? 0 : P.ip[i]; });
+// A call-up has a row at both levels in one season, so every key carries the level.
+for (let j = 0; j < NT; j++) tKey.set(T.pitcher[j] + "|" + T.season[j] + "|" + T.pitch_type[j] + "|" + T.level[j], j);
+for (let i = 0; i < NP; i++) pKey.set(P.pitcher[i] + "|" + P.season[i] + "|" + P.level[i], i);
+const tRow = (pid, s, pt, lvl = "mlb") => tKey.get(pid + "|" + s + "|" + pt + "|" + lvl);
+const pRow = (pid, s, lvl = "mlb") => pKey.get(pid + "|" + s + "|" + lvl);
+tIP = T.pitcher.map((pid, j) => { const i = pRow(pid, T.season[j], T.level[j]); return i === undefined || !isNum(P.ip[i]) ? 0 : P.ip[i]; });
 // Lookalike ERA / xERA: for each of his pitches, the median value among its closest comps (20+ IP
 // only, at least 5 of them), averaged over his pitches weighted by usage. Gap = his value minus
 // that: + means pitchers whose stuff looks like his got better results than he did.
@@ -1259,9 +1277,9 @@ const LOOK_MIN_IP = 20, LOOK_MIN_COMPS = 5;
 function lookalike(stat) {
   const out = new Array(NP).fill(null), sum = new Float64Array(NP), wt = new Float64Array(NP);
   (D.tcomps || []).forEach((all, j) => { const comps = all.slice(0, 10);   // lookalike xERA uses the 10 shown comps
-    const xs = comps.map(([c]) => pRow(T.pitcher[c], T.season[c]))
+    const xs = comps.map(([c]) => pRow(T.pitcher[c], T.season[c], T.level[c]))
       .filter(i => i !== undefined && isNum(P.ip[i]) && P.ip[i] >= LOOK_MIN_IP && isNum(P[stat][i])).map(i => P[stat][i]).sort((a, b) => a - b);
-    const i = pRow(T.pitcher[j], T.season[j]), w = T.usage[j] || 0;
+    const i = pRow(T.pitcher[j], T.season[j], T.level[j]), w = T.usage[j] || 0;
     if (xs.length < LOOK_MIN_COMPS || i === undefined || w <= 0) return;
     const m = xs.length % 2 ? xs[xs.length >> 1] : (xs[xs.length / 2 - 1] + xs[xs.length / 2]) / 2;
     sum[i] += w * m; wt[i] += w;
@@ -1284,13 +1302,18 @@ const TEAM_NAMES = {
   TOR: "Toronto Blue Jays", WSH: "Washington Nationals",
 };
 // Team list per type row (via its pitcher-season); traded pitchers belong to each team
-const tTeams = T.pitcher.map((pid, j) => { const i = pRow(pid, T.season[j]); return i === undefined || !P.teams[i] ? [] : P.teams[i].split(","); });
+const tTeams = T.pitcher.map((pid, j) => { const i = pRow(pid, T.season[j], T.level[j]); return i === undefined || !P.teams[i] ? [] : P.teams[i].split(","); });
+// Triple-A clubs: code -> [club name, parent MLB code]. A Triple-A pitcher filters and colours by his organisation.
+const AAA_TEAMS = D.teams_aaa || {};
+const orgOf = c => AAA_TEAMS[c] ? AAA_TEAMS[c][1] || c : c;
+const teamName = c => TEAM_NAMES[c] || (AAA_TEAMS[c] ? AAA_TEAMS[c][0] : c);
+const tOrgs = tTeams.map(a => a.map(orgOf));
 // Free agents of the coming offseason, keyed by MLBAM id: [from, to, signed, declared, notes]
 const FA = D.fa || {};
 const faOf = j => FA[T.pitcher[j]];
 const FA_LABEL = `${D.fa_season}–${String(D.fa_season + 1).slice(2)} free agent`;
 const shortDate = d => d ? new Date(d + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "";
-const tMain = T.pitcher.map((pid, j) => { const i = pRow(pid, T.season[j]); return i === undefined ? null : P.team_main[i]; });
+const tMain = T.pitcher.map((pid, j) => { const i = pRow(pid, T.season[j], T.level[j]); return i === undefined ? null : orgOf(P.team_main[i]); });
 // Club colours (primary, or the secondary where it is the better-known identity)
 const TEAM_COLORS = {
   ATH: "#0b6b4f", ATL: "#ce1141", AZ: "#a71930", BAL: "#df4601", BOS: "#bd3039", CHC: "#0e3386",
@@ -1313,8 +1336,12 @@ const faStatus = j => {
   return f[4] && /minor league free agent/i.test(f[4]) ? "minor" : "open";
 };
 const teamStr = j => tTeams[j].join("/") || "—";
+const teamTitle = j => tTeams[j].map(teamName).join(" / ") || "";
+// typeRows: MLB pitches of each type -- the pool every percentile, league SD and peer average ranks against,
+// whatever level is on screen. typeRowsAll: every level, what a type's map can draw.
 const typeRows = Object.fromEntries(TYPES.map(t => [t, []]));
-for (let j = 0; j < NT; j++) typeRows[T.pitch_type[j]].push(j);
+const typeRowsAll = Object.fromEntries(TYPES.map(t => [t, []]));
+for (let j = 0; j < NT; j++) { typeRowsAll[T.pitch_type[j]].push(j); if (T.level[j] === "mlb") typeRows[T.pitch_type[j]].push(j); }
 
 // ---------------------------------------------------------------- variables
 // [key, label, unit, decimals, group, diverging]
@@ -1391,7 +1418,7 @@ function buildTypeVars(all) {
   TF.forEach(f => v.push(mk("t:" + f[0], f[1], f[2], f[3], f[4], f[5], j => T[f[0]][j])));
   PITCHER_RESULTS.filter(r => r[0] !== "n" && r[0] !== "rv100").forEach(([k, l, u, d, dv]) =>
     v.push(mk("P:" + k, "Pitcher " + (k === "luck" ? l : l.charAt(0).toLowerCase() + l.slice(1)), u, d, "Whole pitcher", dv,
-      j => { const i = pRow(T.pitcher[j], T.season[j]); return i === undefined ? null : P[k][i]; })));
+      j => { const i = pRow(T.pitcher[j], T.season[j], T.level[j]); return i === undefined ? null : P[k][i]; })));
   return v;
 }
 const VARS = { all: buildTypeVars(true), t: buildTypeVars(false) };
@@ -1403,7 +1430,7 @@ const VIEWS = { all: { label: "All pitches", kind: "all" } };
 TYPES.forEach(t => VIEWS[t] = { label: PTN[t], kind: "t", pt: t });
 const varKind = view => VIEWS[view].kind;
 const ALL_ROWS = Array.from({ length: NT }, (_, j) => j);
-const viewRows = view => view === "all" ? ALL_ROWS : typeRows[view];
+const viewRows = view => view === "all" ? ALL_ROWS : typeRowsAll[view];
 const xy = (view, r) => view === "all" ? [T.gx[r], T.gy[r]] : [T.tx[r], T.ty[r]];
 const mixHex = (fg, bg, a) => {
   const h = c => [1, 3, 5].map(k => parseInt(c.slice(k, k + 2), 16));
@@ -1432,6 +1459,7 @@ const state = {
   tblGroup: null,            // measure category shown in the table (null = no table)
   tblSort: { key: null, dir: -1 },   // measure table: column key ("name" or a measure) and direction
   slGroupsOpen: new Set(),   // measure-filter sections the user has opened (all start closed)
+  level: LEVELS[0],   // which level's pitchers the maps show; pools stay MLB
   seasons: new Set(D.seasons),
   throws: "all",
   team: "all",
@@ -1493,9 +1521,9 @@ function poolSorted(poolName, rows, v) {
 
 // ----------------------------------------------------------------- filters
 function visibleRows(view) {
-  return viewRows(view).filter(r => state.seasons.has(T.season[r])
+  return viewRows(view).filter(r => T.level[r] === state.level && state.seasons.has(T.season[r])
     && (state.throws === "all" || T.p_throws[r] === state.throws) && T.n[r] >= state.minN
-    && (state.team === "all" || tTeams[r].includes(state.team))
+    && (state.team === "all" || tOrgs[r].includes(state.team))
     && (state.minIP === 0 || tIP[r] >= state.minIP)
     && (!state.onlyGroups || !groupsOn() || inGroups(r)));
 }
@@ -1551,8 +1579,8 @@ function ruleMatcher(kind, rows) {
 // ------------------------------------------------------------------ naming
 const rowName = (view, r) => T.name[r];
 const shortSeason = s => "'" + String(s).slice(2);
-const rowLabel = (view, r) => `${T.name[r]} · ${T.season[r]} ${teamStr(r)} · ${PTN[T.pitch_type[r]]}${faOf(r) ? (faOf(r)[1] ? " · free agent, signed" : " · free agent, unsigned") : ""}`;
-const hoverHTML = r => `<b>${esc(T.name[r])}</b><br>${T.season[r]} · ${esc(teamStr(r))} · ${PTN[T.pitch_type[r]]}${faOf(r) ? (faOf(r)[1] ? " · free agent, signed" : " · free agent, unsigned") : ""}`;
+const rowLabel = (view, r) => `${T.name[r]} · ${T.season[r]} ${teamStr(r)}${lvlTag(r)} · ${PTN[T.pitch_type[r]]}${faOf(r) ? (faOf(r)[1] ? " · free agent, signed" : " · free agent, unsigned") : ""}`;
+const hoverHTML = r => `<b>${esc(T.name[r])}</b><br>${T.season[r]} · ${esc(teamStr(r))}${lvlTag(r)} · ${PTN[T.pitch_type[r]]}${faOf(r) ? (faOf(r)[1] ? " · free agent, signed" : " · free agent, unsigned") : ""}`;
 const tint = (hex, a) => /^#[0-9a-f]{6}$/i.test(hex) ? rgba(hex, a) : "rgba(0,0,0,0)";
 // "More options" summary: how many drawer settings differ from the defaults (rules excluded)
 function fmt(v, dec, unit) {
@@ -1712,7 +1740,7 @@ function render() {
     // In "All pitches" the whole arsenal that season is "him": every one of his pitches is redrawn at full
     // strength below (the card's All pitches chip says so); in a one-type universe it is just this pitch
     const arsenal = view === "all"
-      ? [sel, ...TYPES.map(t => tRow(T.pitcher[sel], T.season[sel], t)).filter(r => r !== undefined && r !== sel)]
+      ? [sel, ...TYPES.map(t => tRow(T.pitcher[sel], T.season[sel], t, T.level[sel])).filter(r => r !== undefined && r !== sel)]
       : [sel];
     const same = viewRows(view).filter(r => T.pitcher[r] === T.pitcher[sel]
       && T.pitch_type[r] === T.pitch_type[sel]).sort((a, b) => T.season[a] - T.season[b]);
@@ -1945,8 +1973,8 @@ function syncOnlyGroups() {
 }
 const svRowCache = new Map();   // id|view -> rows; a saved group never changes, so this never goes stale
 function savedRows(e, view) {
-  const ck = e.id + "|" + view;
-  if (!svRowCache.has(ck)) { const ks = new Set(e.keys); svRowCache.set(ck, viewRows(view).filter(r => ks.has(T.pitcher[r] + "|" + T.season[r]))); }
+  const ck = e.id + "|" + view + "|" + state.level;
+  if (!svRowCache.has(ck)) { const ks = new Set(e.keys); svRowCache.set(ck, viewRows(view).filter(r => T.level[r] === state.level && ks.has(T.pitcher[r] + "|" + T.season[r]))); }
   return svRowCache.get(ck);
 }
 function savedPieces(e, view) {
@@ -2172,9 +2200,9 @@ function unicornHits() {
 }
 const PITCH_GROUPS = { BB: ["SL", "ST", "CU"], OFF: ["CH", "FS"] };
 function condRows(c, i) {
-  const pid = P.pitcher[i], s = P.season[i];
+  const pid = P.pitcher[i], s = P.season[i], lvl = P.level[i];
   const pts = c.pitch === "FB" ? [P.primary_fb[i]] : PITCH_GROUPS[c.pitch] || [c.pitch];
-  return pts.map(pt => tRow(pid, s, pt)).filter(r => r !== undefined);
+  return pts.map(pt => tRow(pid, s, pt, lvl)).filter(r => r !== undefined);
 }
 function condValue(c, r) {
   const v = VMAP.t["t:" + c.var]; if (!v) return null;
@@ -2200,9 +2228,9 @@ function archetypeHits(id) {
       lit.push(...hit);
     }
     if (!ok) continue;
-    const pid = P.pitcher[i], s = P.season[i];
+    const pid = P.pitcher[i], s = P.season[i], lvl = P.level[i];
     keys.add(pid + "|" + s);
-    (lit.length ? lit : TYPES.map(pt => tRow(pid, s, pt)).filter(r => r !== undefined)).forEach(r => rows.add(r));
+    (lit.length ? lit : TYPES.map(pt => tRow(pid, s, pt, lvl)).filter(r => r !== undefined)).forEach(r => rows.add(r));
   }
   const out = { rows, keys }; archCache.set(id, out); return out;
 }
@@ -2250,7 +2278,7 @@ function archNames(j) {   // pitcher types this pitcher-season belongs to (unico
   const k = T.pitcher[j] + "|" + T.season[j];
   return ARCH.filter(a => archetypeHits(a.id).keys.has(k)).map(a => {
     if (a.id !== UNICORN.id) return a.name;
-    const pts = TYPES.filter(pt => { const r = tRow(T.pitcher[j], T.season[j], pt); return r !== undefined && unicornHits().rows.has(r); });
+    const pts = TYPES.filter(pt => { const r = tRow(T.pitcher[j], T.season[j], pt, T.level[j]); return r !== undefined && unicornHits().rows.has(r); });
     return `Unique unicorn (${pts.map(pt => PTN[pt].toLowerCase()).join(", ")})`;
   });
 }
@@ -2751,18 +2779,18 @@ function faLine(j) {
 }
 
 function compsPanel(view, j) {
-  const pal = mapPalette(), i = pRow(T.pitcher[j], T.season[j]), t = T.pitch_type[j];   // swatches match the map
+  const pal = mapPalette(), i = pRow(T.pitcher[j], T.season[j], T.level[j]), t = T.pitch_type[j];   // swatches match the map
   const comps = compsOf(view, j);
   const opts = comps.map(([c], k) => `<option value="${c}">${k + 1}. ${esc(T.name[c])} ${T.season[c]}</option>`).join("");
   let h = `<div class="card">${comps.length ? `<section class="sec"><h3>Pitch movement: him vs. a comp</h3>
     <p class="cmprow"><label class="flbl" for="cmpSel">Compare with</label><span class="sel"><select id="cmpSel">${opts}</select></span></p>
     <div class="cmpkey" id="cmpKey"></div>
     <div id="cmpPlot" class="moveplot" role="img" aria-label="Pitch movement of ${esc(T.name[j])} compared with a comp"></div></section>` : ""}
-    <section class="sec"><h3>Closest ${PTN[t].toLowerCase()} comps</h3>${comps.length ? `<button type="button" class="bigbtn primary keepcard" data-svcomps="${j}" data-label="Keep similar pitchers as a group"${compsSavedId(j) ? " disabled" : ""} title="Keep him and these ${comps.length} as a named group, circled on every map, with what they share">${compsSavedId(j) ? "Kept as a group" : "Keep similar pitchers as a group"}</button>` : ""}<p class="help">Nearest other pitchers'${PTN[t].toLowerCase()}s on shape, angles, delivery, command, consistency and usage, any season. Only ${T.p_throws[j] === "R" ? "right" : "left"}-handers with an arm angle within ±${isNum(T.comp_tol[j]) && isFinite(T.comp_tol[j]) ? T.comp_tol[j] : "any"}° of his${isNum(T.comp_tol[j]) && T.comp_tol[j] > 7.5 ? " (window widened: too few pitchers within ±7.5°)" : ""}. Whiff% is on this pitch; xERA is the comp's whole season.</p>
+    <section class="sec"><h3>Closest ${PTN[t].toLowerCase()} comps</h3>${comps.length ? `<button type="button" class="bigbtn primary keepcard" data-svcomps="${j}" data-label="Keep similar pitchers as a group"${compsSavedId(j) ? " disabled" : ""} title="Keep him and these ${comps.length} as a named group, circled on every map, with what they share">${compsSavedId(j) ? "Kept as a group" : "Keep similar pitchers as a group"}</button>` : ""}<p class="help">Nearest ${T.level[j] === "mlb" ? "other" : "big-league"} pitchers' ${PTN[t].toLowerCase()}s on shape, angles, delivery, command, consistency and usage, any season. Only ${T.p_throws[j] === "R" ? "right" : "left"}-handers with an arm angle within ±${isNum(T.comp_tol[j]) && isFinite(T.comp_tol[j]) ? T.comp_tol[j] : "any"}° of his${isNum(T.comp_tol[j]) && T.comp_tol[j] > 7.5 ? " (window widened: too few pitchers within ±7.5°)" : ""}. Whiff% is on this pitch; xERA is the comp's whole season.</p>
     <div class="tablewrap"><table><thead><tr><th></th><th>Pitcher</th><th>Season</th><th title="${FIT_TIP}">Fit</th><th class="num" title="${esc(EXPLAIN.whiff)}">Whiff%</th><th class="num" title="${esc(EXPLAIN["P:xera"])}">xERA</th></tr></thead><tbody>
     <tr class="self"><td><span class="badge self"></span></td><td>${esc(T.name[j])}</td><td>${T.season[j]} <span class="tm">${esc(teamStr(j))}</span></td><td></td><td class="num">${fmt(T.whiff[j], 1)}</td><td class="num">${i === undefined ? "—" : fmt(P.xera[i], 2)}</td></tr>`;
   comps.forEach(([c, q], k) => {
-    const [fc, fl] = fitOf(q), ci = pRow(T.pitcher[c], T.season[c]), fa = faOf(c);
+    const [fc, fl] = fitOf(q), ci = pRow(T.pitcher[c], T.season[c], T.level[c]), fa = faOf(c);
     const tag = fa ? ` <span class="fa-tag${fa[1] ? " signed" : ""}" title="${fa[1] ? "Free agent, signed with " + esc(fa[1]) : "Free agent, unsigned"}"><i class="sw" style="background:${faSwatch(c, pal)}"></i>FA</span>` : "";
     h += `<tr class="click" data-go="${view}:${c}"><td><span class="badge">${k + 1}</span></td><td>${esc(T.name[c])}${tag}</td><td>${T.season[c]} <span class="tm">${esc(teamStr(c))}</span></td>
       <td><span class="fit ${fc}" title="${FIT_TIP}">${fl}</span></td><td class="num">${fmt(T.whiff[c], 1)}</td><td class="num">${ci === undefined ? "—" : fmt(P.xera[ci], 2)}</td></tr>`;
@@ -2841,7 +2869,7 @@ function renderMatchList() {
 }
 
 const lastName = n => { const w = String(n).split(" "); return w.length > 1 ? w.slice(1).join(" ") : n; };
-const ALL_P = Array.from({ length: NP }, (_, k) => k);
+const ALL_P = Array.from({ length: NP }, (_, k) => k).filter(k => P.level[k] === "mlb");   // pitcher-level pools: MLB
 const SHAPE_DIFFS = [
   ["velo", 1, "mph", d => d > 0 ? "is harder" : "is softer"],
   // wording follows which side of zero the pitch lives on: a curve's "ride" is drop, a sweeper's break is glove-side
@@ -2871,7 +2899,7 @@ function pitchDiffs(i, c) {
         : `${him} throws his ${PTN[t].toLowerCase()} ${u2.toFixed(0)}% of the time, ${me} ${u1.toFixed(0)}%.`;
       out.push({ score: Math.abs(u2 - u1) / sd, z: Math.abs(u2 - u1) / sd, use: 100, kind: "Pitch mix", txt });
     }
-    const r1 = tRow(P.pitcher[i], P.season[i], t), r2 = tRow(P.pitcher[c], P.season[c], t);
+    const r1 = tRow(P.pitcher[i], P.season[i], t, P.level[i]), r2 = tRow(P.pitcher[c], P.season[c], t, P.level[c]);
     if (r1 === undefined || r2 === undefined) return;
     const w = Math.sqrt((u1 + u2) / 200);
     SHAPE_DIFFS.forEach(([k, dec, unit, say]) => {
@@ -2901,7 +2929,7 @@ const TOP_XERA = 5;
 const SA_MIN_IP = 20, SA_MIN_N = 5, SA_SHARE = 0.9, SA_Z = 1, SA_MIN_USE = 10;
 const med = a => { const b = a.slice().sort((x, y) => x - y), n = b.length; return n % 2 ? b[n >> 1] : (b[n / 2 - 1] + b[n / 2]) / 2; };
 function standApart(i, j) {
-  const better = [...new Set(nbhdOf(j).map(([c]) => pRow(T.pitcher[c], T.season[c])))]
+  const better = [...new Set(nbhdOf(j).map(([c]) => pRow(T.pitcher[c], T.season[c], T.level[c])))]
     .filter(k => k !== undefined && isNum(P.ip[k]) && P.ip[k] >= SA_MIN_IP && isNum(P.xera[k]) && isNum(P.xera[i]) && P.xera[k] < P.xera[i]);
   if (better.length < SA_MIN_N) return { n: better.length, notes: [] };
   const by = new Map();
@@ -2949,7 +2977,7 @@ function pairFeatures(i, c) {
   TYPES.forEach(t => {
     const u1 = P["use_" + t][i] || 0, u2 = P["use_" + t][c] || 0;
     out.push({ key: "use:" + t, kind: "Pitch mix", t, x1: u1, x2: u2, sd: leagueSD("use_" + t, ALL_P, k => P["use_" + t][k]), w: 1 });
-    const r1 = tRow(P.pitcher[i], P.season[i], t), r2 = tRow(P.pitcher[c], P.season[c], t);
+    const r1 = tRow(P.pitcher[i], P.season[i], t, P.level[i]), r2 = tRow(P.pitcher[c], P.season[c], t, P.level[c]);
     if (r1 === undefined || r2 === undefined) return;
     const w = Math.sqrt((u1 + u2) / 200);
     SHAPE_DIFFS.forEach(([k, dec, unit, say]) => {
@@ -2966,7 +2994,7 @@ function pairFeatures(i, c) {
 
 function bestCompSection(view, i, comps, j) {
   // only comps with MIN_COMP_IP+ innings that season: xERA over a handful of innings is noise
-  const cand = comps.map(([c], k) => ({ c, k, pi: pRow(T.pitcher[c], T.season[c]) }))
+  const cand = comps.map(([c], k) => ({ c, k, pi: pRow(T.pitcher[c], T.season[c], T.level[c]) }))
     .filter(x => x.pi !== undefined && isNum(P.xera[x.pi]) && isNum(P.ip[x.pi]) && P.ip[x.pi] >= MIN_COMP_IP)
     .sort((x, y) => P.xera[x.pi] - P.xera[y.pi]).slice(0, TOP_XERA);
   const head = `<h3>Top ${TOP_XERA} xERA comps</h3><p class="help">Lowest xERA among his ${comps.length} closest comps, counting only seasons of ${MIN_COMP_IP}+ innings. Open one to see every difference of ${DIFF_Z}+ league SD.</p>`;
@@ -3073,8 +3101,8 @@ function renderFlight(j) {
   stopFlight();
   const sec = document.getElementById("flight"), cv = document.getElementById("flightCv");
   if (!sec || !cv) return;
-  const pid = T.pitcher[j], s = T.season[j];
-  const ars = TYPES.map(x => [x, tRow(pid, s, x)]).filter(x => x[1] !== undefined).sort((a, b) => T.usage[b[1]] - T.usage[a[1]]);
+  const pid = T.pitcher[j], s = T.season[j], lvl = T.level[j];
+  const ars = TYPES.map(x => [x, tRow(pid, s, x, lvl)]).filter(x => x[1] !== undefined).sort((a, b) => T.usage[b[1]] - T.usage[a[1]]);
   const paths = ars.map(([x, r]) => { const p = trajOf(r); return p && { type: x, row: r, color: SAVANT_PITCH[x], ...flightPath(p) }; }).filter(Boolean);
   const lg = leagueTraj(j);
   if (lg) paths.push({ type: T.pitch_type[j], ghost: true, color: css("--map-ink2"), ...flightPath(lg) });
@@ -3197,8 +3225,8 @@ function movementData() {
 const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
 function renderMovement(j) {
   const el = document.getElementById("movePlot"); if (!el) return;
-  const pal = mapPalette()   /* same dim slate and light ink as the map */, mv = movementData(), pid = T.pitcher[j], s = T.season[j], R = T.p_throws[j] === "R";
-  const i = pRow(pid, s), arm = i === undefined ? null : P.arm_angle[i];
+  const pal = mapPalette()   /* same dim slate and light ink as the map */, mv = movementData(), pid = T.pitcher[j], s = T.season[j], lvl = T.level[j], R = T.p_throws[j] === "R";
+  const i = pRow(pid, s, lvl), arm = i === undefined ? null : P.arm_angle[i];
   const side = hb => R ? hb : -hb;   // arm-side-positive inches -> pitcher's view, as on Savant
   const traces = [], rings = [];
   let armLabel = null;
@@ -3211,7 +3239,7 @@ function renderMovement(j) {
     armLabel = { x: (R ? 1 : -1) * L * Math.cos(a), y: L * Math.sin(a), text: `Arm angle ${Math.round(arm)}°`, showarrow: false,
       xanchor: R ? "left" : "right", yanchor: "bottom", font: { size: 13, color: pal.ink } };
   }
-  const own = TYPES.map(pt => [pt, tRow(pid, s, pt)]).filter(x => x[1] !== undefined);
+  const own = TYPES.map(pt => [pt, tRow(pid, s, pt, lvl)]).filter(x => x[1] !== undefined);
   own.forEach(([pt, r]) => {
     const col = SAVANT_PITCH[pt], xs = [], zs = [];
     for (let k = mv.off[r]; k < mv.off[r + 1]; k++) { xs.push(-mv.x[k] / 2); zs.push(mv.z[k] / 2); }
@@ -3251,12 +3279,12 @@ function renderMovement(j) {
 // All pitches, fall back to that season's primary fastball, then his most-used pitch. Years with
 // no data for this map are left out.
 function seasonRow(view, j, season) {
-  const pid = T.pitcher[j], t = T.pitch_type[j];
-  const same = tRow(pid, season, t);
+  const pid = T.pitcher[j], t = T.pitch_type[j], lvl = T.level[j];
+  const same = tRow(pid, season, t, lvl);
   if (same !== undefined || view !== "all") return same;
-  const i = pRow(pid, season); if (i === undefined) return undefined;
-  const fb = tRow(pid, season, P.primary_fb[i]); if (fb !== undefined) return fb;
-  const rows = TYPES.map(pt => tRow(pid, season, pt)).filter(r => r !== undefined);
+  const i = pRow(pid, season, lvl); if (i === undefined) return undefined;
+  const fb = tRow(pid, season, P.primary_fb[i], lvl); if (fb !== undefined) return fb;
+  const rows = TYPES.map(pt => tRow(pid, season, pt, lvl)).filter(r => r !== undefined);
   return rows.sort((a, b) => (T.usage[b] || 0) - (T.usage[a] || 0))[0];
 }
 
@@ -3265,10 +3293,10 @@ function renderCompMovement(j, c) {
   const el = document.getElementById("cmpPlot"); if (!el || c === undefined || isNaN(c)) return;
   const pal = mapPalette()   /* same dim slate and light ink as the map */, mv = movementData(), R = T.p_throws[j] === "R";
   const side = hb => R ? hb : -hb;   // pitcher's view, as on Savant
-  const who = r => { const pid = T.pitcher[r], s = T.season[r], i = pRow(pid, s);
-    return { pid, s, i, name: T.name[r], last: lastName(T.name[r]), arm: i === undefined ? null : P.arm_angle[i] }; };
+  const who = r => { const pid = T.pitcher[r], s = T.season[r], lvl = T.level[r], i = pRow(pid, s, lvl);
+    return { pid, s, lvl, i, name: T.name[r], last: lastName(T.name[r]), arm: i === undefined ? null : P.arm_angle[i] }; };
   const me = who(j), cmp = who(c);
-  const rowsOf = w => TYPES.map(pt => [pt, tRow(w.pid, w.s, pt)]).filter(x => x[1] !== undefined);
+  const rowsOf = w => TYPES.map(pt => [pt, tRow(w.pid, w.s, pt, w.lvl)]).filter(x => x[1] !== undefined);
   const mine = rowsOf(me), theirs = rowsOf(cmp);
 
   // explicit key: filled = him, hollow = comp, each with season and arm angle
@@ -3297,7 +3325,7 @@ function renderCompMovement(j, c) {
     traces.push({ type: "scatter", mode: "markers", x: xs, y: zs, hoverinfo: "skip", showlegend: false,
       marker: { size: 4, color: SAVANT_PITCH[T.pitch_type[r]], opacity: 0.28 } }); });
   // a line from his average to the comp's average for each shared pitch
-  mine.forEach(([pt, r]) => { const r2 = tRow(cmp.pid, cmp.s, pt); if (r2 === undefined) return;
+  mine.forEach(([pt, r]) => { const r2 = tRow(cmp.pid, cmp.s, pt, cmp.lvl); if (r2 === undefined) return;
     traces.push({ type: "scatter", mode: "lines", x: [side(T.hb[r]), side(T.hb[r2])], y: [T.ivb[r], T.ivb[r2]], hoverinfo: "skip", showlegend: false,
       line: { color: SAVANT_PITCH[pt], width: 2.5 } }); });
   const label = (w, r) => `<b>${esc(w.name)} ${w.s}</b><br>${PTN[T.pitch_type[r]]}: ${fmt(T.ivb[r], 1)} in ride, ${fmt(T.hb[r], 1)} in arm-side<br>${fmt(T.velo[r], 1)} mph · ${fmt(T.usage[r], 0)}% usage`;
@@ -3352,12 +3380,12 @@ const GROUP_TYPES = { fb: ["FF", "SI", "FC"], br: ["SL", "ST", "CU"], os: ["CH",
 // usage-weighted run value / 100 of one pitch group for a pitcher-season (null if he throws none of it)
 function groupRV(i, g) {
   let s = 0, w = 0;
-  GROUP_TYPES[g].forEach(pt => { const r = tRow(P.pitcher[i], P.season[i], pt); if (r !== undefined && isNum(T.rv100[r])) { s += T.rv100[r] * T.usage[r]; w += T.usage[r]; } });
+  GROUP_TYPES[g].forEach(pt => { const r = tRow(P.pitcher[i], P.season[i], pt, P.level[i]); if (r !== undefined && isNum(T.rv100[r])) { s += T.rv100[r] * T.usage[r]; w += T.usage[r]; } });
   return w > 0 ? s / w : null;
 }
 const groupRVCache = {};
 const groupRVPool = g => groupRVCache[g] ||= ALL_P.map(i => groupRV(i, g)).filter(isNum).sort((a, b) => a - b);
-const fbRow = i => tRow(P.pitcher[i], P.season[i], P.primary_fb[i]);
+const fbRow = i => tRow(P.pitcher[i], P.season[i], P.primary_fb[i], P.level[i]);
 // one Savant percentile bar: label | bar with circle | value
 function pbarRow(label, valueTxt, p, title) {
   const bar = !isNum(p) ? `<span></span>` : (() => { const w = Math.max(0, Math.min(100, p)).toFixed(0);
@@ -3402,10 +3430,10 @@ function arsenalStrip(view, j, ars) {
 }
 
 function typeCard(view, j) {
-  const t = T.pitch_type[j], pool = typeRows[t], V = VMAP.t, i = pRow(T.pitcher[j], T.season[j]);
+  const t = T.pitch_type[j], pool = typeRows[t], V = VMAP.t, i = pRow(T.pitcher[j], T.season[j], T.level[j]);
   const pName = "t" + t, R = T.p_throws[j] === "R";
   const arm = i === undefined ? null : P.arm_angle[i];
-  const ars = TYPES.map(x => [x, tRow(T.pitcher[j], T.season[j], x)]).filter(x => x[1] !== undefined).sort((a, b) => T.usage[b[1]] - T.usage[a[1]]);
+  const ars = TYPES.map(x => [x, tRow(T.pitcher[j], T.season[j], x, T.level[j])]).filter(x => x[1] !== undefined).sort((a, b) => T.usage[b[1]] - T.usage[a[1]]);
   const go = x => view === "all" ? "all" : x;
   const items = measureItems(VARS.t.filter(v => !v.cat && v.key.startsWith("t:")), j, pName, pool);
 
@@ -3426,7 +3454,7 @@ function typeCard(view, j) {
   if (hero.length < HERO_MIN) hero = ranked.slice(0, HERO_MIN);
   // compact: at most HERO_MAX rows, two columns, so it fits the band beside "Color pitchers by"
   // every percentile on the card ranks his pitch among every pitch of its type on the atlas: all seasons, both hands
-  const poolNote = `all ${pool.length.toLocaleString()} ${PTN[t].toLowerCase()}s on the atlas, ${seasonSpan()}, both hands`;
+  const poolNote = `all ${pool.length.toLocaleString()} ${LEVELS.length > 1 ? "MLB " : ""}${PTN[t].toLowerCase()}s on the atlas, ${seasonSpan()}, both hands`;
   h += `<section class="sv-hero"><div class="herohead"><h3>Defining Traits</h3>
     <span class="heropool">Percentiles among ${poolNote} · <button type="button" class="to-gloss">Glossary</button></span></div>
     <div class="herogrid">${hero.slice(0, HERO_MAX).map(it => heroRow(it, poolNote)).join("")}</div></section>`;
@@ -3438,7 +3466,7 @@ function typeCard(view, j) {
     const pp = (key, lowGood) => pctOf(poolSorted("P", ALL_P, { key, get: k => P[key][k] }), P[key][i], lowGood);
     const rvTxt = x => isNum(x) ? (x > 0 ? "+" : "") + x.toFixed(2) : "—";
     const totRV = (() => { let s2 = 0, w2 = 0; ars.forEach(([, r]) => { if (isNum(T.rv100[r])) { s2 += T.rv100[r] * T.usage[r]; w2 += T.usage[r]; } }); return w2 ? s2 / w2 : null; })();
-    const totPool = groupRVCache.all ||= ALL_P.map(k => { let s2 = 0, w2 = 0; TYPES.forEach(pt => { const r = tRow(P.pitcher[k], P.season[k], pt); if (r !== undefined && isNum(T.rv100[r])) { s2 += T.rv100[r] * T.usage[r]; w2 += T.usage[r]; } }); return w2 ? s2 / w2 : null; }).filter(isNum).sort((a, b) => a - b);
+    const totPool = groupRVCache.all ||= ALL_P.map(k => { let s2 = 0, w2 = 0; TYPES.forEach(pt => { const r = tRow(P.pitcher[k], P.season[k], pt, P.level[k]); if (r !== undefined && isNum(T.rv100[r])) { s2 += T.rv100[r] * T.usage[r]; w2 += T.usage[r]; } }); return w2 ? s2 / w2 : null; }).filter(isNum).sort((a, b) => a - b);
     h += pbarRow("Pitching run value", rvTxt(totRV), pctOf(totPool, totRV))
       + [["fb", "Fastball run value"], ["br", "Breaking run value"], ["os", "Offspeed run value"]].map(([g, l]) => { const x = groupRV(i, g); return pbarRow(l, rvTxt(x), pctOf(groupRVPool(g), x)); }).join("");
     h += `<h4>Pitching</h4>`
@@ -3546,7 +3574,7 @@ function preview(r) {
   const b = $("#ctaOpen"); if (b && !$("#selCta").hidden) b.focus({ preventScroll: true });
 }
 function mostUsedRow(r) {
-  const rows = TYPES.map(t => tRow(T.pitcher[r], T.season[r], t)).filter(x => x !== undefined && T.n[x] >= state.minN);
+  const rows = TYPES.map(t => tRow(T.pitcher[r], T.season[r], t, T.level[r])).filter(x => x !== undefined && T.n[x] >= state.minN);
   return rows.sort((a, b) => (T.usage[b] || 0) - (T.usage[a] || 0))[0] ?? r;
 }
 function openCard() {
@@ -3570,7 +3598,7 @@ function renderCompBox() {
   const t = T.pitch_type[r], comps = compsOf(state.view, r);
   $("#cbTitle").textContent = `Closest ${PTN[t].toLowerCase()} comps`;
   const mine = state.view === "all"
-    ? TYPES.map(x => tRow(T.pitcher[r], T.season[r], x)).filter(x => x !== undefined && (x === r || T.n[x] >= state.minN)) : [];
+    ? TYPES.map(x => tRow(T.pitcher[r], T.season[r], x, T.level[r])).filter(x => x !== undefined && (x === r || T.n[x] >= state.minN)) : [];
   $("#cbChips").hidden = mine.length < 2;
   $("#cbChips").innerHTML = mine.length < 2 ? "" : mine.map(x => `<button type="button" data-cb="${x}" aria-pressed="${x === r}">${PTN[T.pitch_type[x]]}</button>`).join("");
   const tol = T.comp_tol[r], tolTxt = isNum(tol) && isFinite(tol) ? `within ±${tol}° of his arm angle` : "any arm angle";
@@ -3584,7 +3612,7 @@ function renderCompBox() {
 function syncCta() {
   const r = state.sel, on = !!state.preview && r !== null && r !== undefined, box = $("#selCta");
   box.hidden = !on; if (!on) return;
-  const n = TYPES.filter(t => { const x = tRow(T.pitcher[r], T.season[r], t); return x !== undefined && T.n[x] >= state.minN; }).length;
+  const n = TYPES.filter(t => { const x = tRow(T.pitcher[r], T.season[r], t, T.level[r]); return x !== undefined && T.n[x] >= state.minN; }).length;
   $("#ctaName").textContent = T.name[r];
   $("#ctaSub").textContent = `${T.season[r]} · ${teamStr(r)} · ${n} pitch${n === 1 ? "" : "es"}`;
   const sim = $("#ctaSim");
@@ -3594,11 +3622,11 @@ function syncCta() {
 
 function mapSelection(from, to, r) {
   if (r === null || r === undefined) return null;
-  const pid = T.pitcher[r], season = T.season[r];
+  const pid = T.pitcher[r], season = T.season[r], lvl = T.level[r];
   const pt = to === "all" ? T.pitch_type[r] : to;
-  let j = tRow(pid, season, pt);
+  let j = tRow(pid, season, pt, lvl);
   if (j === undefined) {  // same pitcher, closest other season with this pitch
-    const cands = viewRows(to).filter(x => T.pitcher[x] === pid && (to !== "all" || T.pitch_type[x] === pt));
+    const cands = viewRows(to).filter(x => T.pitcher[x] === pid && T.level[x] === lvl && (to !== "all" || T.pitch_type[x] === pt));
     cands.sort((a, b) => Math.abs(T.season[a] - season) - Math.abs(T.season[b] - season));
     j = cands[0];
   }
@@ -3629,13 +3657,31 @@ function onZoom(e) {
   state.zoomK = k; render();
 }
 
+function setLevel(level, keepSel) {
+  if (!LEVELS.includes(level) || level === state.level) return;
+  state.level = level;
+  if (!keepSel) { state.sel = null; state.preview = false; state.showComps = false; }
+  syncLevel(); writeHash(state.view);
+  render(); renderDetail();
+}
+function syncLevel() {
+  const seg = $("#lvlSeg"); if (!seg) return;
+  seg.hidden = LEVELS.length < 2;
+  seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === state.level)));
+}
+const writeHash = view => { const h = (state.level === LEVELS[0] ? "" : state.level + "/") + view; try { history.replaceState(null, "", "#" + h); } catch (e) { location.hash = h; } };
+// "#FF" or "#aaa/FF": the view, with the level in front when it is not the first one
+function parseHash() {
+  const h = location.hash.slice(1), m = h.match(/^([a-z]+)\/(.*)$/);
+  return m && LEVELS.includes(m[1]) ? { level: m[1], view: m[2] } : { level: LEVELS[0], view: h };
+}
 function setView(view, sel) {
   const prev = state.view;
   if (sel !== undefined && sel !== null && (sel !== state.sel || prev !== view)) remember(prev, state.sel, sel);
   if (prev !== view) state.zoomK = 1;   // each map opens fully zoomed out
   state.sel = sel !== undefined ? sel : mapSelection(prev, view, state.sel);
   state.view = view;
-  try { history.replaceState(null, "", "#" + view); } catch (e) { location.hash = view; }
+  writeHash(view);
   buildUniverse(); buildVarSelects(); buildSliders();
   render(); renderDetail();
 }
@@ -4098,6 +4144,8 @@ function buildStatic() {
   $("#throwsSeg").querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
     state.throws = b.dataset.v; syncThrows(); render();
   }));
+  $("#lvlSeg").querySelectorAll("button").forEach(b => b.addEventListener("click", () => setLevel(b.dataset.v)));
+  syncLevel();
 
   $("#universeSelect").innerHTML = `<option value="all">All pitches</option>` + TYPES.map(t => `<option value="${t}">${PTN[t]}</option>`).join("");
   $("#universeSelect").addEventListener("change", e => setView(e.target.value));
@@ -4262,7 +4310,8 @@ function buildStatic() {
   // with his hand and latest season; arrows move, Enter or a click picks, Escape closes.
   const fold = s => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   const latest = {};   // name -> newest pitcher-season row
-  for (let i = 0; i < P.name.length; i++) if (latest[P.name[i]] === undefined || P.season[i] > P.season[latest[P.name[i]]]) latest[P.name[i]] = i;
+  for (let i = 0; i < P.name.length; i++) { const k = latest[P.name[i]];
+    if (k === undefined || P.season[i] > P.season[k] || (P.season[i] === P.season[k] && P.level[i] === "mlb" && P.level[k] !== "mlb")) latest[P.name[i]] = i; }
   const names = Object.keys(latest).sort((a, b) => a.localeCompare(b)), folded = names.map(fold);
   const sInp = $("#search"), sList = $("#sugg");
   let sCur = -1;
@@ -4275,7 +4324,7 @@ function buildStatic() {
     hits.sort((a, b) => (folded[a].startsWith(q) ? 0 : 1) - (folded[b].startsWith(q) ? 0 : 1));   // name-start matches first
     sList.innerHTML = hits.length ? hits.map((k, m) => {
       const n = names[k], at = folded[k].indexOf(q), i = latest[n];
-      const sub = `${P.p_throws ? P.p_throws[i] + "HP · " : ""}${P.season[i]}`;
+      const sub = `${P.p_throws ? P.p_throws[i] + "HP · " : ""}${P.season[i]}${P.level[i] === "mlb" ? "" : " " + (LVL_NAME[P.level[i]] || P.level[i])}`;
       return `<li id="sugg-${m}" role="option" data-n="${esc(n)}" aria-selected="false">${esc(n.slice(0, at))}<mark>${esc(n.slice(at, at + q.length))}</mark>${esc(n.slice(at + q.length))}<span class="sg-sub">${esc(sub)}</span></li>`;
     }).join("") : `<li class="none">No pitcher named “${esc(sInp.value.trim())}”</li>`;
     sList.hidden = false; sInp.setAttribute("aria-expanded", "true"); sCur = -1;
@@ -4299,7 +4348,10 @@ function buildStatic() {
     const view = state.view, tab = T;
     let cands = viewRows(view).filter(r => fold(tab.name[r]) === n);
     if (!cands.length) cands = viewRows(view).filter(r => fold(tab.name[r]).includes(n));
-    if (view === "all") { const fb = cands.filter(r => { const i = pRow(T.pitcher[r], T.season[r]); return i !== undefined && P.primary_fb[i] === T.pitch_type[r]; }); if (fb.length) cands = fb; }
+    // the level on screen first; a name only found at the other level switches the maps there
+    const here = cands.filter(r => T.level[r] === state.level);
+    if (here.length) cands = here; else if (cands.length) setLevel(T.level[cands[0]], true);
+    if (view === "all") { const fb = cands.filter(r => { const i = pRow(T.pitcher[r], T.season[r], T.level[r]); return i !== undefined && P.primary_fb[i] === T.pitch_type[r]; }); if (fb.length) cands = fb; }
     if (!cands.length) {
       $("#searchMsg").textContent = `No ${view === "all" ? "pitch" : PTN[view].toLowerCase()} named “${q}” on this map.` + (view === "all" ? "" : " Try All pitches.");
       return;
@@ -4311,7 +4363,8 @@ function buildStatic() {
   });
 
   const yy = String(D.fa_season + 1).slice(2);
-  $("#source").textContent = `Data: Statcast via Baseball Savant · rosters, heights and ${D.fa_season}–${yy} free agents from the MLB Stats API · map layout: UMAP of 32 measures per pitch`;
+  $("#source").textContent = `Data: Statcast via Baseball Savant · rosters, heights and ${D.fa_season}–${yy} free agents from the MLB Stats API · map layout: UMAP of 32 measures per pitch`
+    + (LEVELS.includes("aaa") ? ` · Triple-A pitches (Savant's minor-league search) are placed beside their 15 nearest MLB pitches and measured against MLB baselines, comps and percentiles` : "");
 
   // Keep the map sized when the drawer, team row or caption change height
   new ResizeObserver(() => { if (plotReady) Plotly.Plots.resize(plotEl); }).observe(document.querySelector(".map"));
@@ -4348,7 +4401,7 @@ function buildStatic() {
     if (g.scrollIntoView) g.scrollIntoView({ block: "start", behavior: reduced() ? "auto" : "smooth" });
   });
 
-  window.addEventListener("hashchange", () => { const v = location.hash.slice(1); if (VIEWS[v] && v !== state.view) setView(v); });
+  window.addEventListener("hashchange", () => { const { level, view: v } = parseHash(); if (level !== state.level) setLevel(level); if (VIEWS[v] && v !== state.view) setView(v); });
 }
 
 // ------------------------------------------------------ live free agents
@@ -4391,7 +4444,8 @@ async function refreshFreeAgents() {
   buildStatic();
   // Open on the map alone: the card and comps columns appear once a pitcher is clicked
   state.sel = null;
-  const h = location.hash.slice(1);
+  const { level, view: h } = parseHash();
+  state.level = level; syncLevel();
   setView(VIEWS[h] ? h : "all", null);
   refreshFreeAgents();
 })();

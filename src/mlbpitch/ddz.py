@@ -60,11 +60,11 @@ def _mirror_lhp(df):
     return out
 
 
-def _with_scaled_extension(df, season: int = paths.SEASON):
+def _with_scaled_extension(df, season: int = paths.SEASON, level: str = paths.LEVEL):
     """Attach height-scaled extension, joining pitcher height from bio."""
     from . import people
 
-    bio = people.load_bio(season).set_index("pitcher_id")["height_ft"]
+    bio = people.load_bio(season, level).set_index("pitcher_id")["height_ft"]
     out = df.copy()
     out["height_ft"] = out["pitcher"].map(bio)
     out["scaled_extension"] = out["release_extension"] / out["height_ft"]
@@ -79,7 +79,11 @@ def _ols(X, y):
 
 
 def fit_ddz_baseline(season: int = paths.SEASON):
-    """Fit per-pitch-type DDZ models; persist coefficients and residual SDs."""
+    """Fit per-pitch-type DDZ models; persist coefficients and residual SDs.
+
+    MLB only, by design (same reasoning as the angle baseline): a Triple-A
+    delta is measured against what a big-league arm with that slot would do.
+    """
     import pandas as pd
 
     from . import store
@@ -132,15 +136,16 @@ def load_ddz_baseline(season: int = paths.SEASON):
     return pd.read_parquet(path)
 
 
-def add_ddz_delta(df, season: int = paths.SEASON):
+def add_ddz_delta(df, season: int = paths.SEASON, level: str = paths.LEVEL):
     """Append `ddz_delta_{ax,az}` and `ddz_delta_{ax,az}_velo` (ft/sec^2).
 
     Positive az delta = more ride than the pitcher's arm angle and scaled
     extension predict. Requires pitcher, pitch_type, p_throws, arm_angle,
-    release_extension, release_speed, ax, az.
+    release_extension, release_speed, ax, az. `level` picks whose heights to
+    join; the coefficients are always the MLB fit.
     """
     base = load_ddz_baseline(season).set_index("pitch_type")
-    m = _mirror_lhp(_with_scaled_extension(df, season))
+    m = _mirror_lhp(_with_scaled_extension(df, season, level))
     coef = m[["pitch_type"]].join(base, on="pitch_type")
 
     out = df.copy()

@@ -47,9 +47,20 @@ class TransientHTTPError(RuntimeError):
     """Retryable server-side condition (429/5xx)."""
 
 
-def day_params(date: str, season: int = paths.SEASON, game_type: str = "R") -> dict:
-    """The exact parameter set verified against the live endpoint."""
+def day_params(
+    date: str, season: int = paths.SEASON, game_type: str = "R", level: str = paths.LEVEL
+) -> dict:
+    """The exact parameter set verified against the live endpoint.
+
+    `minors=true` switches the same endpoint to the minor-league feed, which
+    returns the identical column set (verified 2026-07-22: 119 columns, every
+    tracking field populated at the MLB rate). The feed is not split by level
+    -- Triple-A plus whichever lower-level parks have Hawk-Eye -- so the level
+    is applied afterwards by game_pk (see store.build_month).
+    """
+    minors = {"minors": "true"} if level != "mlb" else {}
     return {
+        **minors,
         "all": "true",
         "hfGT": f"{game_type}|",
         "hfSea": f"{season}|",
@@ -88,12 +99,13 @@ def fetch_day(
     session: requests.Session | None = None,
     season: int = paths.SEASON,
     game_type: str = "R",
+    level: str = paths.LEVEL,
 ) -> bytes:
     """Raw CSV bytes for one game-date. Raises if Savant truncated the result."""
     own = session is None
     session = session or requests.Session()
     try:
-        content = _get(session, day_params(date, season, game_type))
+        content = _get(session, day_params(date, season, game_type, level))
     finally:
         if own:
             session.close()
@@ -108,13 +120,17 @@ def fetch_day(
     return content
 
 
-def write_raw(date: str, content: bytes, season: int = paths.SEASON) -> "Path":
+def write_raw(
+    date: str, content: bytes, season: int = paths.SEASON, level: str = paths.LEVEL
+) -> "Path":
     """Persist the raw CSV gzipped, atomically (temp file + rename).
 
     The raw cache is what makes the parquet store rebuildable -- dtype or
-    schema changes never require re-scraping Savant.
+    schema changes never require re-scraping Savant. For a minor-league level
+    the file is the *whole* minors response for that date (every level Savant
+    tracks), so a lower level can later be built from the same cache.
     """
-    dest = paths.raw_path(date, season)
+    dest = paths.raw_path(date, season, level)
     dest.parent.mkdir(parents=True, exist_ok=True)
     tmp = dest.with_suffix(dest.suffix + f".tmp{os.getpid()}")
     with gzip.open(tmp, "wb", compresslevel=6) as fh:
@@ -123,13 +139,14 @@ def write_raw(date: str, content: bytes, season: int = paths.SEASON) -> "Path":
     return dest
 
 
-def read_raw(date: str, season: int = paths.SEASON) -> bytes:
-    with gzip.open(paths.raw_path(date, season), "rb") as fh:
+def read_raw(date: str, season: int = paths.SEASON, level: str = paths.LEVEL) -> bytes:
+    with gzip.open(paths.raw_path(date, season, level), "rb") as fh:
         return fh.read()
 
 
 def fetch_pitcher_season(
-    pitcher_id: int, season: int = paths.SEASON, game_type: str = "R"
+    pitcher_id: int, season: int = paths.SEASON, game_type: str = "R",
+    level: str = paths.LEVEL,
 ) -> "pd.DataFrame":
     """Ad-hoc escape hatch: one pitcher's full season in a single request.
 
@@ -139,7 +156,7 @@ def fetch_pitcher_season(
     """
     from .schema import read_savant_csv
 
-    params = day_params("", season, game_type)
+    params = day_params("", season, game_type, level)
     params.pop("game_date_gt")
     params.pop("game_date_lt")
     params["pitchers_lookup[]"] = pitcher_id

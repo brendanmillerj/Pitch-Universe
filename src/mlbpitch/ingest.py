@@ -3,6 +3,11 @@
     python -m mlbpitch.ingest backfill
     python -m mlbpitch.ingest refresh          # daily; re-fetches a trailing window
     python -m mlbpitch.ingest verify
+    python -m mlbpitch.ingest --level aaa backfill   # Triple-A, same pipeline
+
+Levels share every stage except the baselines: the angle and DDZ fits are
+MLB-only and are applied unchanged to other levels, so a minor-league
+"above average" always means "against big-league norms".
 """
 from __future__ import annotations
 
@@ -40,28 +45,33 @@ MANIFEST_COLUMNS = [
 ]
 
 
-def load_manifest(season: int = paths.SEASON):
+def load_manifest(season: int = paths.SEASON, level: str = paths.LEVEL):
     import pandas as pd
 
-    path = paths.manifest_path(season)
+    path = paths.manifest_path(season, level)
     if not path.exists():
         return pd.DataFrame(columns=MANIFEST_COLUMNS)
     return pd.read_parquet(path)
 
 
-def save_manifest(df, season: int = paths.SEASON):
-    paths.ensure_dirs()
+def save_manifest(df, season: int = paths.SEASON, level: str = paths.LEVEL):
+    paths.ensure_dirs(level)
     df = df.sort_values("game_date").reset_index(drop=True)
-    df.to_parquet(paths.manifest_path(season), index=False)
+    df.to_parquet(paths.manifest_path(season, level), index=False)
     return df
 
 
 def _summarize(content: bytes, date: str, expected: set[int]) -> dict:
-    """Cheap per-date stats without materializing all 113 columns."""
+    """Cheap per-date stats without materializing all 113 columns.
+
+    `n_pitches` counts every row in the response (for a minors fetch that
+    includes other levels' parks) because it feeds the truncation canary;
+    `n_games_seen` counts only games on this level's schedule.
+    """
     import pandas as pd
 
     seen = pd.read_csv(io.BytesIO(content), usecols=["game_pk"])["game_pk"]
-    seen_set = set(seen.astype(int).unique())
+    seen_set = set(seen.astype(int).unique()) & expected if expected else set(seen.astype(int).unique())
     missing = expected - seen_set
     return {
         "game_date": date,
@@ -78,14 +88,17 @@ def _summarize(content: bytes, date: str, expected: set[int]) -> dict:
 # Fetch
 # --------------------------------------------------------------------------
 
-def fetch_dates(dates: list[str], season: int = paths.SEASON, verbose: bool = True) -> list[dict]:
+def fetch_dates(
+    dates: list[str], season: int = paths.SEASON, verbose: bool = True,
+    level: str = paths.LEVEL,
+) -> list[dict]:
     """Fetch, cache, and summarize a list of game-dates concurrently."""
-    expected_map = schedule.expected_games_by_date(season)
+    expected_map = schedule.expected_games_by_date(season, level=level)
     results: list[dict] = []
 
     def one(date: str) -> dict:
-        content = savant.fetch_day(date, session=_session(), season=season)
-        savant.write_raw(date, content, season)
+        content = savant.fetch_day(date, session=_session(), season=season, level=level)
+        savant.write_raw(date, content, season, level)
         return _summarize(content, date, expected_map.get(date, set()))
 
     with cf.ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
@@ -110,13 +123,28 @@ def fetch_dates(dates: list[str], season: int = paths.SEASON, verbose: bool = Tr
     return results
 
 
-def _merge_manifest(rows: list[dict], season: int):
+def _merge_manifest(rows: list[dict], season: int, level: str = paths.LEVEL):
     import pandas as pd
 
-    old = load_manifest(season)
+    old = load_manifest(season, level)
     new = pd.DataFrame(rows, columns=MANIFEST_COLUMNS)
     keep = old[~old["game_date"].isin(new["game_date"])] if len(old) else old
-    return save_manifest(pd.concat([keep, new], ignore_index=True), season)
+    return save_manifest(pd.concat([keep, new], ignore_index=True), season, level)
+
+
+def _fit_baselines(season: int, level: str) -> None:
+    """Pitcher dim + bio for any level; angle/DDZ baselines for MLB only."""
+    dim = store.build_pitcher_dim(season, level)
+    print(f"\npitcher_dim: {len(dim)} pitchers")
+    bio = people.build_bio(season, level)
+    if level != "mlb":
+        print(f"player bio: {len(bio)} pitchers | baselines: MLB fit reused "
+              f"(level {level} is measured against big-league norms)")
+        return
+    base = store.fit_angle_baseline(season)
+    print(f"angle baseline: {len(base)} pitch types fitted")
+    dz = ddz.fit_ddz_baseline(season)
+    print(f"player bio: {len(bio)} pitchers | DDZ baseline: {len(dz)} pitch types")
 
 
 # --------------------------------------------------------------------------
@@ -124,35 +152,29 @@ def _merge_manifest(rows: list[dict], season: int):
 # --------------------------------------------------------------------------
 
 def cmd_backfill(args):
-    season = args.season
-    paths.ensure_dirs()
-    schedule.save_schedule(season)
+    season, level = args.season, args.level
+    paths.ensure_dirs(level)
+    schedule.save_schedule(season, level=level)
 
-    want = schedule.playable_dates(season)
-    have = set(store.cached_dates(season))
+    want = schedule.playable_dates(season, level=level)
+    have = set(store.cached_dates(season, level))
     todo = [d for d in want if d not in have] if not args.force else want
 
-    print(f"season {season}: {len(want)} completed game-dates, "
+    print(f"season {season} {level}: {len(want)} completed game-dates, "
           f"{len(have)} already cached, {len(todo)} to fetch")
     if not todo:
         print("nothing to fetch")
     else:
-        rows = fetch_dates(todo, season)
-        _merge_manifest(rows, season)
+        rows = fetch_dates(todo, season, level=level)
+        _merge_manifest(rows, season, level)
 
     print("\nbuilding parquet partitions...")
-    for stat in store.build_months(store.cached_dates(season), season):
+    for stat in store.build_months(store.cached_dates(season, level), season, level):
         if stat["written"]:
             print(f"  month={stat['month']}  {stat['rows']:>7,} rows  "
                   f"{stat['dates']:>3} dates  {stat['bytes']/1e6:>6.1f} MB")
 
-    dim = store.build_pitcher_dim(season)
-    print(f"\npitcher_dim: {len(dim)} pitchers")
-    base = store.fit_angle_baseline(season)
-    print(f"angle baseline: {len(base)} pitch types fitted")
-    bio = people.build_bio(season)
-    dz = ddz.fit_ddz_baseline(season)
-    print(f"player bio: {len(bio)} pitchers | DDZ baseline: {len(dz)} pitch types")
+    _fit_baselines(season, level)
     return 0
 
 
@@ -160,11 +182,11 @@ def cmd_refresh(args):
     """New dates plus a trailing window, because Statcast revises recent games."""
     import pandas as pd
 
-    season = args.season
-    schedule.save_schedule(season)
+    season, level = args.season, args.level
+    schedule.save_schedule(season, level=level)
 
-    want = schedule.playable_dates(season)
-    have = set(store.cached_dates(season))
+    want = schedule.playable_dates(season, level=level)
+    have = set(store.cached_dates(season, level))
     new = [d for d in want if d not in have]
     trailing = [d for d in want if d in have][-args.window:]
     todo = sorted(set(new) | set(trailing))
@@ -175,39 +197,31 @@ def cmd_refresh(args):
         print("up to date")
         return 0
 
-    before = load_manifest(season).set_index("game_date")["csv_sha256"].to_dict()
-    rows = fetch_dates(todo, season)
-    _merge_manifest(rows, season)
+    before = load_manifest(season, level).set_index("game_date")["csv_sha256"].to_dict()
+    rows = fetch_dates(todo, season, level=level)
+    _merge_manifest(rows, season, level)
 
     changed = [r["game_date"] for r in rows if before.get(r["game_date"]) != r["csv_sha256"]]
     print(f"\n{len(changed)} dates changed content: {changed or 'none'}")
 
     if changed:
-        for stat in store.build_months(changed, season):
+        for stat in store.build_months(changed, season, level):
             if stat["written"]:
                 print(f"  rebuilt month={stat['month']}  {stat['rows']:>7,} rows")
-        store.build_pitcher_dim(season)
-        store.fit_angle_baseline(season)  # baselines shift as the season accrues
-        people.build_bio(season)          # incremental: only new pitchers
-        ddz.fit_ddz_baseline(season)
+        _fit_baselines(season, level)  # MLB baselines shift as the season accrues
     return 0
 
 
 def cmd_build(args):
     """Rebuild parquet from the raw cache without touching the network."""
-    season = args.season
-    dates = store.cached_dates(season)
-    print(f"rebuilding all months from {len(dates)} cached dates")
-    for stat in store.build_months(dates, season):
+    season, level = args.season, args.level
+    dates = store.cached_dates(season, level)
+    print(f"rebuilding all months from {len(dates)} cached dates ({level})")
+    for stat in store.build_months(dates, season, level):
         if stat["written"]:
             print(f"  month={stat['month']}  {stat['rows']:>7,} rows  "
                   f"{stat['bytes']/1e6:>6.1f} MB")
-    store.build_pitcher_dim(season)
-    base = store.fit_angle_baseline(season)
-    print(f"angle baseline: {len(base)} pitch types fitted")
-    bio = people.build_bio(season)
-    dz = ddz.fit_ddz_baseline(season)
-    print(f"player bio: {len(bio)} pitchers | DDZ baseline: {len(dz)} pitch types")
+    _fit_baselines(season, level)
     return 0
 
 
@@ -216,13 +230,17 @@ def cmd_verify(args):
     import pandas as pd
     from .schema import DEPRECATED_COLUMNS, MAX_ROWS_PER_DAY
 
-    season = args.season
+    season, level = args.season, args.level
+    mlb = level == "mlb"
     ok = True
 
-    man = load_manifest(season)
-    expected = schedule.expected_games_by_date(season)
+    def q(sql):
+        return store.query(sql, season, level)
 
-    print(f"=== verify season {season} ===")
+    man = load_manifest(season, level)
+    expected = schedule.expected_games_by_date(season, level=level)
+
+    print(f"=== verify season {season} {level} ===")
     print(f"manifest dates: {len(man)}   schedule completed dates: {len(expected)}")
 
     # 1. every completed date present
@@ -236,10 +254,9 @@ def cmd_verify(args):
 
     # 2. per-date game completeness, checked against what is actually stored
     #    rather than the status frozen into the manifest at fetch time
-    stored = store.query(
+    stored = q(
         "SELECT strftime(game_date, '%Y-%m-%d') AS d, "
-        "list(DISTINCT game_pk) AS pks FROM pitches GROUP BY d",
-        season,
+        "list(DISTINCT game_pk) AS pks FROM pitches GROUP BY d"
     )
     stored_map = {r.d: set(int(x) for x in r.pks) for r in stored.itertuples()}
 
@@ -280,7 +297,7 @@ def cmd_verify(args):
         print(f"PASS  no date near the {MAX_ROWS_PER_DAY:,} cap (busiest: {peak:,})")
 
     # 4. null rates on the headline features
-    feat = store.query(
+    feat = q(
         """
         SELECT count(*) AS n,
                avg(CASE WHEN arm_angle      IS NULL THEN 0 ELSE 1 END) AS arm_angle,
@@ -289,10 +306,9 @@ def cmd_verify(args):
                avg(CASE WHEN release_extension IS NULL THEN 0 ELSE 1 END) AS release_extension,
                avg(CASE WHEN pfx_x          IS NULL THEN 0 ELSE 1 END) AS pfx_x
         FROM pitches
-        """,
-        season,
+        """
     ).iloc[0]
-    cols = store.query("SELECT * FROM pitches LIMIT 0", season).columns
+    cols = q("SELECT * FROM pitches LIMIT 0").columns
 
     print(f"\nstored pitches: {int(feat['n']):,}")
     for name in ["arm_angle", "spin_axis", "release_speed", "release_extension", "pfx_x"]:
@@ -304,11 +320,10 @@ def cmd_verify(args):
 
     # 5. approach angles: physical sanity, handedness symmetry, de-confounding
     print("\napproach angles (vaa/haa):")
-    ang = store.query(
+    ang = q(
         "SELECT pitch_name, p_throws, avg(vaa) AS vaa, avg(haa) AS haa, "
         "count(*) AS n, min(vaa) AS vmin, max(vaa) AS vmax "
-        "FROM pitches WHERE vaa IS NOT NULL GROUP BY pitch_name, p_throws",
-        season,
+        "FROM pitches WHERE vaa IS NOT NULL GROUP BY pitch_name, p_throws"
     )
     tot = ang.groupby("pitch_name").apply(
         lambda g: (g["vaa"] * g["n"]).sum() / g["n"].sum(), include_groups=False
@@ -330,12 +345,11 @@ def cmd_verify(args):
     # Range is checked on competitive pitches only. A 30 mph position-player
     # eephus legitimately descends at -33 deg, so a blanket bound would flag
     # correct physics; the wide bound below is the absolute sanity floor.
-    rng = store.query(
+    rng = q(
         "SELECT min(vaa) AS lo, max(vaa) AS hi, "
         "count(*) FILTER (WHERE vaa < -20 OR vaa > 2) AS n_out, "
         "arg_max(plate_z, greatest(vaa - 2, -20 - vaa)) AS worst_z FROM pitches "
-        "WHERE vaa IS NOT NULL AND release_speed >= 60",
-        season,
+        "WHERE vaa IS NOT NULL AND release_speed >= 60"
     ).iloc[0]
     # "Unknown" (UN) is Statcast's tracking-failure bucket: 2025 has a 21.7 mph
     # UN at plate_z -57.6 ft (VAA -69). Classified pitches carry the check.
@@ -356,7 +370,12 @@ def cmd_verify(args):
               f"plate_z {rng.worst_z:.1f} ft)")
     else:
         print(f"  PASS  vaa range for >=60mph pitches [{rng.lo:.1f}, {rng.hi:.1f}]")
-    if lo_all < -45 or hi_all > 5:
+    if (lo_all < -45 or hi_all > 5) and not mlb:
+        # minor-league tracking lets a few more frame errors through (2024 AAA: one pitch at
+        # VAA -59); a handful in 670k pitches cannot move a 40-pitch mean, so warn, don't fail
+        print(f"  WARN  vaa range overall [{lo_all:.1f}, {hi_all:.1f}] has tracking outliers "
+              f"(tolerated off MLB)")
+    elif lo_all < -45 or hi_all > 5:
         ok = False
         print(f"  FAIL  vaa range overall [{lo_all:.1f}, {hi_all:.1f}] is unphysical")
     else:
@@ -387,11 +406,12 @@ def cmd_verify(args):
         print(f"  PASS  HAA mirror-symmetric across handedness over {len(sym)} "
               f"well-sampled types (worst |L+R|/(|L|+|R|) = {worst:.2f} on {worst_type})")
 
-    # The adjustment must actually remove the location signal it exists to remove.
-    raw = store.query(
+    # The adjustment must actually remove the location signal it exists to
+    # remove. Off MLB the baseline is the big-league fit applied as-is, so a
+    # residual correlation is a property of the level, not a bug: report it.
+    raw = q(
         "SELECT pitch_type, p_throws, vaa, haa, vra, hra, plate_x, plate_z, release_pos_x "
-        "FROM pitches WHERE vaa IS NOT NULL AND pitch_type IS NOT NULL",
-        season,
+        "FROM pitches WHERE vaa IS NOT NULL AND pitch_type IS NOT NULL"
     )
     adj = store.add_angles_adjusted(raw, season)
     mirrored = store._mirror_lhp(adj)
@@ -402,7 +422,9 @@ def cmd_verify(args):
     ]:
         col = f"{angle}_above_avg"
         after = abs(mirrored[col].corr(mirrored[confounder]))
-        if not (after <= 0.05):
+        if not mlb:
+            print(f"  INFO  {col} vs {confounder}: |r| = {after:.3f} with the MLB baseline")
+        elif not (after <= 0.05):
             ok = False
             print(f"  FAIL  {col} vs {confounder}: |r| = {after:.3f}, "
                   "adjustment did not de-confound")
@@ -411,10 +433,9 @@ def cmd_verify(args):
 
     # Release angles must be flatter than approach angles: gravity only ever
     # steepens a pitch in flight, so VRA > VAA for every pitch type.
-    va = store.query(
+    va = q(
         "SELECT pitch_name, avg(vra) AS vra, avg(vaa) AS vaa, count(*) AS n "
-        "FROM pitches WHERE vra IS NOT NULL GROUP BY pitch_name HAVING count(*) > 1000",
-        season,
+        "FROM pitches WHERE vra IS NOT NULL GROUP BY pitch_name HAVING count(*) > 1000"
     )
     bad = va[va["vra"] <= va["vaa"]]
     if len(bad):
@@ -428,13 +449,13 @@ def cmd_verify(args):
     # 6. dynamic dead zone
     print("\ndynamic dead zone:")
     try:
-        bio = people.load_bio(season)
+        bio = people.load_bio(season, level)
         dz = ddz.load_ddz_baseline(season)
     except FileNotFoundError as exc:
         ok = False
         print(f"  FAIL  {exc}")
     else:
-        n_dim = len(pd.read_parquet(paths.pitcher_dim_path(season)))
+        n_dim = len(pd.read_parquet(paths.pitcher_dim_path(season, level)))
         n_ht = int(bio["height_ft"].notna().sum())
         if n_ht < n_dim:
             ok = False
@@ -456,18 +477,22 @@ def cmd_verify(args):
             print("  PASS  higher arm slot -> more ride for FF/SI "
                   f"({', '.join(f'{r.pitch_type} {r.az_arm_angle:+.3f}' for r in ff.itertuples())})")
 
-        # Deltas are residuals, so the league mean must sit at zero.
-        sample = store.query(
+        # Deltas are residuals, so the MLB mean must sit at zero. Another
+        # level's mean against the MLB fit is a finding (how that level's
+        # fastballs ride relative to big-league arms), not a check.
+        sample = q(
             "SELECT pitcher, pitch_type, p_throws, arm_angle, release_extension, "
             "release_speed, ax, az FROM pitches "
-            "WHERE ax IS NOT NULL AND arm_angle IS NOT NULL AND pitch_type='FF'",
-            season,
+            "WHERE ax IS NOT NULL AND arm_angle IS NOT NULL AND pitch_type='FF'"
         )
-        dd = ddz.add_ddz_delta(sample, season)
+        dd = ddz.add_ddz_delta(sample, season, level)
         for col in ["ddz_delta_ax", "ddz_delta_az",
                     "ddz_delta_ax_velo", "ddz_delta_az_velo"]:
             mu = dd[col].mean()
-            if abs(mu) > 0.05:
+            if not mlb:
+                print(f"  INFO  {col} {level} mean {mu:+.3f} vs MLB norms "
+                      f"(sd {dd[col].std():.2f} ft/s^2)")
+            elif abs(mu) > 0.05:
                 ok = False
                 print(f"  FAIL  {col} league mean {mu:+.3f}, expected ~0 for a residual")
             else:
@@ -486,12 +511,12 @@ def cmd_verify(args):
 
 def cmd_pitcher(args):
     """Round-trip check: local store vs a live single-pitcher Savant fetch."""
-    season = args.season
-    local = store.pitcher(args.pitcher_id, season)
-    print(f"local store: {len(local):,} pitches")
+    season, level = args.season, args.level
+    local = store.pitcher(args.pitcher_id, season, level=level)
+    print(f"local store ({level}): {len(local):,} pitches")
 
     if args.live:
-        remote = savant.fetch_pitcher_season(args.pitcher_id, season)
+        remote = savant.fetch_pitcher_season(args.pitcher_id, season, level=level)
         print(f"live savant: {len(remote):,} pitches")
         match = len(local) == len(remote)
         print(f"{'PASS' if match else 'FAIL'}  row counts "
@@ -508,7 +533,7 @@ def cmd_pitcher(args):
         except FileNotFoundError:
             pass
         try:
-            local = ddz.add_ddz_delta(local, season)
+            local = ddz.add_ddz_delta(local, season, level)
             adj |= {"ddz_h": ("ddz_delta_ax", "mean"),
                     "ddz_v": ("ddz_delta_az", "mean"),
                     "ddz_h_velo": ("ddz_delta_ax_velo", "mean"),
@@ -535,6 +560,8 @@ def cmd_pitcher(args):
 def main(argv=None):
     p = argparse.ArgumentParser(prog="mlbpitch.ingest")
     p.add_argument("--season", type=int, default=paths.SEASON)
+    p.add_argument("--level", choices=paths.LEVELS, default=paths.LEVEL,
+                   help="mlb (default) or aaa; minor-league levels reuse the MLB baselines")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     b = sub.add_parser("backfill", help="fetch all completed dates not yet cached")

@@ -55,37 +55,51 @@ def fetch_bio(pitcher_ids):
     return pd.DataFrame(rows).drop_duplicates("pitcher_id").reset_index(drop=True)
 
 
-def build_bio(season: int = paths.SEASON):
+def build_bio(season: int = paths.SEASON, level: str = paths.LEVEL):
     """Persist bio for every pitcher in pitcher_dim, fetching only what's new.
 
     Incremental so that `ingest build` stays a network-free operation after the
     first run -- only genuinely new pitchers trigger a request. Height does not
-    change, so cached rows never need refreshing.
+    change, so cached rows never need refreshing. A minor-league level first
+    reuses rows already held in another level's bio for the same season
+    (call-ups appear in both) before asking statsapi for the rest.
     """
     import pandas as pd
 
-    dim = pd.read_parquet(paths.pitcher_dim_path(season))
+    dim = pd.read_parquet(paths.pitcher_dim_path(season, level))
     want = {int(i) for i in dim["pitcher_id"]}
 
-    path = paths.player_bio_path(season)
+    path = paths.player_bio_path(season, level)
     have = pd.read_parquet(path) if path.exists() else None
     known = set(have["pitcher_id"].astype(int)) if have is not None else set()
 
     missing = sorted(want - known)
     if missing:
-        fresh = fetch_bio(missing)
-        have = fresh if have is None else pd.concat([have, fresh], ignore_index=True)
+        borrowed = []
+        for other in paths.LEVELS:
+            other_path = paths.player_bio_path(season, other)
+            if other == level or not other_path.exists():
+                continue
+            ob = pd.read_parquet(other_path)
+            borrowed.append(ob[ob["pitcher_id"].astype(int).isin(missing)])
+        if borrowed:
+            borrowed = pd.concat(borrowed, ignore_index=True).drop_duplicates("pitcher_id")
+            have = borrowed if have is None else pd.concat([have, borrowed], ignore_index=True)
+            missing = sorted(set(missing) - set(borrowed["pitcher_id"].astype(int)))
+        if missing:
+            fresh = fetch_bio(missing)
+            have = fresh if have is None else pd.concat([have, fresh], ignore_index=True)
         have = have.drop_duplicates("pitcher_id").reset_index(drop=True)
-        paths.ensure_dirs()
+        paths.ensure_dirs(level)
         have.to_parquet(path, index=False)
 
     return have
 
 
-def load_bio(season: int = paths.SEASON):
+def load_bio(season: int = paths.SEASON, level: str = paths.LEVEL):
     import pandas as pd
 
-    path = paths.player_bio_path(season)
+    path = paths.player_bio_path(season, level)
     if not path.exists():
         raise FileNotFoundError(
             f"no player bio for {season}; run `ingest build` or "

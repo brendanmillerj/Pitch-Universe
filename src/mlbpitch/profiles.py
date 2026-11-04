@@ -18,6 +18,11 @@ successful pitchers" becomes circular.
 Derived features use each season's own baselines (`add_angles_adjusted`,
 `add_ddz_delta`), so they are measured against that season's league -- which
 also absorbs league-wide tracking recalibration between seasons.
+
+Levels: `level="aaa"` builds the same tables from the Triple-A store. The
+baselines stay the MLB ones (a Triple-A "above average" is against big-league
+norms); the empirical-Bayes shrinkage prior is that level's own population,
+since it exists to tame small-sample noise, not to compare levels.
 """
 from __future__ import annotations
 
@@ -59,7 +64,7 @@ OUTCOME_COLUMNS = ["rv100", "whiff_pct", "csw_pct", "xwoba_contact"]
 KEYS = ["season", "half", "pitcher"]
 
 
-def half_split_date(season: int) -> str:
+def half_split_date(season: int, level: str = paths.LEVEL) -> str:
     """First game-date of the second half: the date ending the longest summer gap.
 
     The schedule oracle holds regular-season games only, so the All-Star break
@@ -68,13 +73,13 @@ def half_split_date(season: int) -> str:
     import pandas as pd
 
     dates = pd.to_datetime(
-        pd.read_parquet(paths.schedule_path(season)).game_date.drop_duplicates()
+        pd.read_parquet(paths.schedule_path(season, level)).game_date.drop_duplicates()
     ).sort_values()
     summer = dates[dates.dt.month.isin([6, 7, 8])].reset_index(drop=True)
     return summer[summer.diff().idxmax()].strftime("%Y-%m-%d")
 
 
-def load_season(season: int, by_half: bool = True):
+def load_season(season: int, by_half: bool = True, level: str = paths.LEVEL):
     """Pitch-level frame for one season, mirrored, with derived columns attached.
 
     by_half=False labels every pitch half=0, so the same KEYS give pitcher-season rows.
@@ -83,7 +88,7 @@ def load_season(season: int, by_half: bool = True):
 
     df = store.query(
         f"SELECT {', '.join(COLUMNS)} FROM pitches WHERE pitch_type IS NOT NULL",
-        season,
+        season, level,
     )
     df["pitch_type"] = df.pitch_type.astype(str)
     df = df[df.pitch_type.isin(PITCH_TYPES + list(TYPE_MAP))].copy()
@@ -91,9 +96,9 @@ def load_season(season: int, by_half: bool = True):
     # Baselines are per raw pitch_type (KC has its own), so apply them before
     # folding grip variants. Both functions mirror internally -- raw frame in.
     df = store.add_angles_adjusted(df, season)
-    df = ddz.add_ddz_delta(df, season)
+    df = ddz.add_ddz_delta(df, season, level)
     df["pitch_type"] = df.pitch_type.replace(TYPE_MAP)
-    df = ddz._with_scaled_extension(df, season)
+    df = ddz._with_scaled_extension(df, season, level)
     # Height is missing for a handful of pitchers; 6.2 ft is the league median.
     df["scaled_extension"] = df.scaled_extension.fillna(df.release_extension / 6.2)
 
@@ -122,7 +127,7 @@ def load_season(season: int, by_half: bool = True):
 
     df["season"] = season
     if by_half:
-        split = half_split_date(season)
+        split = half_split_date(season, level)
         df["half"] = np.where(df.game_date.astype(str) < split, 1, 2)
     else:
         df["half"] = 0
@@ -154,7 +159,8 @@ def _shrink(prof, means, raw_var, cols):
     return out
 
 
-def build_type_profiles(seasons=SEASONS, min_pitches=MIN_PITCHES, by_half=True):
+def build_type_profiles(seasons=SEASONS, min_pitches=MIN_PITCHES, by_half=True,
+                        level=paths.LEVEL):
     """One row per pitcher x half x pitch_type (rows below min_pitches dropped).
 
     Also returns untruncated usage (pitcher x half, wide, every type) -- the
@@ -166,7 +172,7 @@ def build_type_profiles(seasons=SEASONS, min_pitches=MIN_PITCHES, by_half=True):
 
     frames, usage_all = [], []
     for season in seasons:
-        df = load_season(season, by_half)
+        df = load_season(season, by_half, level)
         g = df.groupby(KEYS + ["pitch_type"], observed=True)
         mean_cols = [c for block in MEAN_FEATURES.values() for c in block]
 
@@ -292,9 +298,9 @@ def build_pitcher_profiles(types, usage_all=None):
     return out.reset_index()
 
 
-def profiles_path(kind: str, seasons=SEASONS, by_half=True):
+def profiles_path(kind: str, seasons=SEASONS, by_half=True, level=paths.LEVEL):
     tag = "" if by_half else "season_"
-    return paths.META / f"profiles_{kind}_{tag}{min(seasons)}_{max(seasons)}.parquet"
+    return paths.meta_dir(level) / f"profiles_{kind}_{tag}{min(seasons)}_{max(seasons)}.parquet"
 
 
 def main(seasons=SEASONS):

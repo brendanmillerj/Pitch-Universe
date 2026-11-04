@@ -8,6 +8,13 @@ of one pitch (2024-2026). No whole-arsenal pitcher map, by design.
   comps              10 nearest DISTINCT other pitchers in the PCA space each map
                      is drawn from (not the 2D map), any season
 
+Levels. The maps, comps, percentiles and baselines are all MLB. Triple-A
+pitchers (level "aaa", from the Triple-A store) are *placed* on the fixed MLB
+maps -- each pitch lands among its nearest big-league pitches of the same type
+in the PCA space the map was drawn from -- and their comps are MLB pitchers, so
+every number on a Triple-A card reads as "against big-league norms". The MLB
+layout is never refitted because of them.
+
 Outcomes shown beside comps come from Savant's custom leaderboard (official
 xERA, ERA, IP, K%, BB%, xwOBA, whiff%), cached in data/meta/savant_leaders_<season>.parquet.
 
@@ -17,8 +24,9 @@ contract length -- no dollar values). Refetched on every run so signings show up
 falls back to data/meta/free_agents_<season>.parquet if the request fails.
 
 Outputs:
-  data/meta/profiles_{type,pitcher}_season_2024_2026.parquet
-  data/meta/atlas_type_2024_2026.parquet             coords + comps, for Python use
+  data/meta/profiles_{type,pitcher}_season_2024_2026.parquet       (data/aaa/meta/... for Triple-A)
+  data/meta/atlas_type_2024_2026.parquet             coords + comps, both levels, for Python use
+  data/meta/trajectory_2024_2026.parquet             per-pitch trajectory means, for the flight animation
   analysis/pitch_atlas.html                          self-contained page (data inlined)
 
 Usage:
@@ -42,15 +50,25 @@ from profile_embed import TYPE_BLOCKS, block_scale, embed, type_space, zscore
 
 SEASONS = profiles.SEASONS
 RANGE = f"{min(SEASONS)}_{max(SEASONS)}"
+LEVELS = ("mlb", "aaa")   # MLB first: it is the reference every other level is measured against
 K_COMPS = 10
 NBHD = 30          # neighbourhood stored per pitch: first K_COMPS are the displayed comps, the rest feed
                    # the "what goes with lower xERA among his lookalikes" analysis on the page
+NBHD_LEVEL = {"mlb": NBHD, "aaa": K_COMPS}   # that analysis needs his own xERA, which Triple-A has none of
+K_PLACE = 15       # MLB neighbours a Triple-A pitch is placed among (the UMAP's own n_neighbors)
 TEMPLATE = paths.ROOT / "scripts" / "atlas_template.html"
 PITCHER_TYPES = paths.ROOT / "scripts" / "pitcher_types.json"   # "Find a type of pitcher" rules (editable)
 OUT_HTML = paths.ROOT / "analysis" / "pitch_atlas.html"
 ATLAS = paths.META / f"atlas_type_{RANGE}.parquet"
 MOVEMENT = paths.META / f"movement_sample_{RANGE}.parquet"
+TEAMS_URL = "https://statsapi.mlb.com/api/v1/teams?sportId={sport}&season={season}"
 MOVE_PER_ROW = 50          # pitches sampled per pitcher x season x pitch type for the movement chart
+TRAJ = paths.META / f"trajectory_{RANGE}.parquet"
+# Statcast's 9-parameter trajectory fit (quoted at y = 50 ft), raw Statcast frame: +x catcher's right,
+# +y toward the pitcher, +z up. Drives the card's flight animation.
+TRAJ_COLS = ["release_pos_x", "release_pos_y", "release_pos_z", "vx0", "vy0", "vz0", "ax", "ay", "az"]
+TRAJ_SCALE = 100           # int16 hundredths: 0.01 ft / 0.01 ft/s / 0.01 ft/s^2, well under the fit's own noise
+TRAJ_NA = -32768
 LEADERS_URL = (
     "https://baseballsavant.mlb.com/leaderboard/custom?year={season}&type=pitcher"
     "&filter=&min=1&selections=p_formatted_ip,pa,k_percent,bb_percent,p_era,xera,"
@@ -70,15 +88,21 @@ def log(msg):
 
 
 # --------------------------------------------------------------------- inputs
-def season_profiles(rebuild):
-    p_type = profiles.profiles_path("type", SEASONS, by_half=False)
-    p_pitch = profiles.profiles_path("pitcher", SEASONS, by_half=False)
+def level_seasons(level):
+    """Seasons with a parquet store at this level (a level can trail the MLB backfill)."""
+    import glob
+    return tuple(s for s in SEASONS if glob.glob(store.pitches_glob(s, level)))
+
+
+def season_profiles(rebuild, level="mlb"):
+    p_type = profiles.profiles_path("type", SEASONS, by_half=False, level=level)
+    p_pitch = profiles.profiles_path("pitcher", SEASONS, by_half=False, level=level)
     if rebuild or not (p_type.exists() and p_pitch.exists()):
-        types, usage_all = profiles.build_type_profiles(SEASONS, by_half=False)
+        types, usage_all = profiles.build_type_profiles(level_seasons(level), by_half=False, level=level)
         pitchers = profiles.build_pitcher_profiles(types, usage_all)
         types.to_parquet(p_type, index=False)
         pitchers.to_parquet(p_pitch, index=False)
-        log(f"profiles: {len(types):,} type rows, {len(pitchers):,} pitcher rows")
+        log(f"profiles {level}: {len(types):,} type rows, {len(pitchers):,} pitcher rows")
     return pd.read_parquet(p_type), pd.read_parquet(p_pitch)
 
 
@@ -145,15 +169,16 @@ def free_agents(season=max(SEASONS)):
     return fa
 
 
-def movement_sample(rebuild):
+def movement_sample(rebuild, level="mlb"):
     """Up to MOVE_PER_ROW pitches per pitcher x season x pitch type: raw (catcher's view, not mirrored)
     horizontal and induced vertical break in inches, for the Savant-style movement chart."""
-    if MOVEMENT.exists() and not rebuild:
-        return pd.read_parquet(MOVEMENT)
+    path = paths.meta_dir(level) / MOVEMENT.name
+    if path.exists() and not rebuild:
+        return pd.read_parquet(path)
     frames = []
-    for season in SEASONS:
+    for season in level_seasons(level):
         df = store.query("SELECT pitcher, pitch_type, pfx_x, pfx_z FROM pitches "
-                         "WHERE pitch_type IS NOT NULL AND pfx_x IS NOT NULL AND pfx_z IS NOT NULL", season)
+                         "WHERE pitch_type IS NOT NULL AND pfx_x IS NOT NULL AND pfx_z IS NOT NULL", season, level)
         df["pitch_type"] = df.pitch_type.astype(str).replace(profiles.TYPE_MAP)
         df = df[df.pitch_type.isin(profiles.PITCH_TYPES)]
         df = df.sample(frac=1, random_state=0).groupby(["pitcher", "pitch_type"]).head(MOVE_PER_ROW)
@@ -162,17 +187,17 @@ def movement_sample(rebuild):
         df["mz"] = (24 * df.pfx_z).round().clip(-127, 127).astype("int8")
         frames.append(df[["pitcher", "season", "pitch_type", "mx", "mz"]])
     out = pd.concat(frames, ignore_index=True)
-    out.to_parquet(MOVEMENT, index=False)
-    log(f"movement sample: {len(out):,} pitches")
+    out.to_parquet(path, index=False)
+    log(f"movement sample {level}: {len(out):,} pitches")
     return out
 
 
 def movement_blob(types, mv):
     """Per type row (in export order): count, then all x then all z as int8, base64."""
-    g = {k: v for k, v in mv.groupby(["pitcher", "season", "pitch_type"])}
+    g = {k: v for k, v in mv.groupby(["level", "pitcher", "season", "pitch_type"])}
     counts, xs, zs = [], [], []
-    for r in types[["pitcher", "season", "pitch_type"]].itertuples(index=False):
-        part = g.get((r.pitcher, r.season, r.pitch_type))
+    for r in types[["level", "pitcher", "season", "pitch_type"]].itertuples(index=False):
+        part = g.get((r.level, r.pitcher, r.season, r.pitch_type))
         n = 0 if part is None else len(part)
         counts.append(n)
         if n:
@@ -181,7 +206,60 @@ def movement_blob(types, mv):
     return {"counts": counts, "b64": base64.b64encode(np.concatenate([x, z]).tobytes()).decode()}
 
 
-def pitcher_teams():
+def trajectory_means(rebuild, level="mlb"):
+    """Raw (unshrunk) per pitcher x season x pitch type means of the trajectory parameters, plus league means
+    per season x hand x type (pitcher = -1) and each season's mean strike zone (sz_top/sz_bot, every row).
+
+    The trajectory is linear in its parameters, so the path built from the mean parameters is the mean path.
+    """
+    path = paths.meta_dir(level) / TRAJ.name
+    if path.exists() and not rebuild:
+        return pd.read_parquet(path)
+    frames = []
+    for season in level_seasons(level):
+        cols = ", ".join(TRAJ_COLS)
+        df = store.query(f"SELECT pitcher, p_throws, pitch_type, sz_top, sz_bot, {cols} FROM pitches "
+                         "WHERE pitch_type IS NOT NULL AND vy0 IS NOT NULL AND release_pos_y IS NOT NULL", season, level)
+        df["pitch_type"] = df.pitch_type.astype(str).replace(profiles.TYPE_MAP)
+        df = df[df.pitch_type.isin(profiles.PITCH_TYPES)]
+        per = df.groupby(["pitcher", "p_throws", "pitch_type"], observed=True)[TRAJ_COLS].mean()
+        per["n"] = df.groupby(["pitcher", "p_throws", "pitch_type"], observed=True).size()
+        lg = df.groupby(["p_throws", "pitch_type"], observed=True)[TRAJ_COLS].mean()
+        lg["n"] = df.groupby(["p_throws", "pitch_type"], observed=True).size()
+        lg["pitcher"] = -1
+        out = pd.concat([per.reset_index(), lg.reset_index()], ignore_index=True)
+        out["season"] = season
+        out["sz_top"], out["sz_bot"] = df.sz_top.mean(), df.sz_bot.mean()
+        frames.append(out)
+    out = pd.concat(frames, ignore_index=True)
+    out.to_parquet(path, index=False)
+    log(f"trajectories {level}: {len(out):,} pitcher/league x season x type rows")
+    return out
+
+
+def trajectory_blob(types, tj):
+    """Per type row (in export order): the 9 trajectory parameters as int16 hundredths, base64 (TRAJ_NA where
+    missing); league rows keyed "season|hand|type"; strike zone per season."""
+    # keyed by level as well: a call-up's Triple-A row must not borrow his MLB flight. League rows are MLB's,
+    # the reference every level's flight is compared with.
+    # a switch-pitcher has a row per hand: keep the hand he threw that pitch with more
+    own = (tj[tj.pitcher >= 0].sort_values("n")
+           .drop_duplicates(["level", "pitcher", "season", "pitch_type"], keep="last")
+           .set_index(["level", "pitcher", "season", "pitch_type"])[TRAJ_COLS])
+    idx = pd.MultiIndex.from_frame(types[["level", "pitcher", "season", "pitch_type"]])
+    m = own.reindex(idx).to_numpy(dtype="float64")
+    q = np.where(np.isfinite(m), np.round(m * TRAJ_SCALE), TRAJ_NA)
+    assert (np.abs(q[np.isfinite(m)]) < 32768).all(), "trajectory value out of int16 range"
+    lg = tj[(tj.pitcher < 0) & (tj.level == "mlb")]
+    league = {f"{r.season}|{r.p_throws}|{r.pitch_type}": [round(float(getattr(r, c)), 3) for c in TRAJ_COLS] + [int(r.n)]
+              for r in lg.itertuples()}
+    zone = {str(s): [round(float(g.sz_top.iloc[0]), 2), round(float(g.sz_bot.iloc[0]), 2)]
+            for s, g in tj[tj.level == "mlb"].groupby("season")}   # the zone drawn is MLB's
+    return {"cols": TRAJ_COLS, "scale": TRAJ_SCALE, "na": TRAJ_NA, "league": league, "zone": zone,
+            "b64": base64.b64encode(q.astype("<i2").tobytes()).decode()}
+
+
+def pitcher_teams(level="mlb"):
     """Team(s) per pitcher-season, in order of first appearance ("NYY,CHC" if traded),
     plus team_main = the team he threw the most pitches for (used for colour).
 
@@ -189,10 +267,10 @@ def pitcher_teams():
     folded into ATH so the franchise filters as one team.
     """
     frames = []
-    for season in SEASONS:
+    for season in level_seasons(level):
         df = store.query(
             "SELECT pitcher, CASE WHEN inning_topbot = 'Top' THEN home_team ELSE away_team END AS team, "
-            "min(game_date) AS first, count(*) AS n FROM pitches GROUP BY 1, 2", season)
+            "min(game_date) AS first, count(*) AS n FROM pitches GROUP BY 1, 2", season, level)
         df["season"] = season
         frames.append(df)
     df = pd.concat(frames, ignore_index=True)
@@ -201,10 +279,123 @@ def pitcher_teams():
     g = df.sort_values("first").groupby(["pitcher", "season"])
     out = g.team.agg(",".join).rename("teams").to_frame()
     out["team_main"] = df.sort_values("n").groupby(["pitcher", "season"]).team.last()
-    return out.reset_index()
+    return out.reset_index().assign(level=level)
+
+
+def minor_teams(level="aaa"):
+    """Triple-A team directory: Savant code -> [club name, parent MLB code], from the MLB Stats API.
+
+    Affiliations move now and then, so every season in the atlas is fetched and the latest wins.
+    Cached per season under the level's meta dir; the page colours a Triple-A pitcher by the parent club.
+    Savant's codes match statsapi abbreviations at both levels (checked 2026-11-03).
+    """
+    frames = []
+    for season in level_seasons(level):
+        path = paths.meta_dir(level) / f"teams_{season}.parquet"
+        if path.exists():
+            frames.append(pd.read_parquet(path)); continue
+        req = urllib.request.Request(TEAMS_URL.format(sport=1, season=season), headers={"User-Agent": "Mozilla/5.0"})
+        parent = {t["id"]: t["abbreviation"] for t in json.load(urllib.request.urlopen(req, timeout=60))["teams"]}
+        req = urllib.request.Request(TEAMS_URL.format(sport=paths.SPORT_ID[level], season=season),
+                                     headers={"User-Agent": "Mozilla/5.0"})
+        rows = [{"code": t["abbreviation"], "name": t["name"], "parent": parent.get(t.get("parentOrgId")), "season": season}
+                for t in json.load(urllib.request.urlopen(req, timeout=60))["teams"]]
+        df = pd.DataFrame(rows)
+        df.to_parquet(path, index=False)
+        log(f"{level} teams {season}: {len(df)} clubs")
+        frames.append(df)
+    if not frames:
+        return {}
+    df = pd.concat(frames).sort_values("season").drop_duplicates("code", keep="last")
+    return {r.code: [r.name, r.parent] for r in df.itertuples()}
 
 
 # ----------------------------------------------------------------- embedding
+def _fill(F, med, by_type):
+    if by_type is None:
+        return F.fillna(med)
+    fill = med.reindex(np.asarray(by_type))
+    fill.index = F.index
+    return F.fillna(fill)
+
+
+def scaler_fit(F, by_type=None):
+    """The feature scaling of one map, fitted on MLB rows so another level can be put in the same space.
+
+    Reproduces block_scale(zscore(F.fillna(median))) exactly for the rows it was fitted on. `by_type`
+    (those rows' pitch types) makes the fill median per type, as the all-pitches map does.
+    """
+    F = F.astype("float64")
+    med = F.median() if by_type is None else F.groupby(np.asarray(by_type)).median()
+    Ff = _fill(F, med, by_type)
+    mu, sd = Ff.mean(), Ff.std(ddof=0).replace(0, 1)
+    Z = (Ff - mu) / sd
+    fac = {}
+    for name, cols in TYPE_BLOCKS.items():
+        tot = np.nansum(np.nanvar(Z[cols].to_numpy(dtype="float64"), axis=0))
+        fac[name] = np.sqrt(tot if tot > 0 else 1)
+    return {"med": med, "mu": mu, "sd": sd, "fac": fac}
+
+
+def scaler_apply(sc, F, by_type=None):
+    Z = (_fill(F.astype("float64"), sc["med"], by_type) - sc["mu"]) / sc["sd"]
+    return np.nan_to_num(np.hstack([Z[cols].to_numpy(dtype="float64") / sc["fac"][n] for n, cols in TYPE_BLOCKS.items()]))
+
+
+def place_level(types_mlb, space_mlb, types_new):
+    """Put another level's pitches on the fixed MLB maps.
+
+    Each pitch lands at the inverse-distance-weighted mean position of its K_PLACE nearest MLB pitches
+    of the same type in the PCA space that map was drawn from (global scaling for the all-pitches map,
+    within-type scaling for each type's map), and takes their weighted-majority cluster. Nothing MLB moves.
+    """
+    from sklearn.decomposition import PCA
+    from sklearn.neighbors import NearestNeighbors
+
+    types_mlb, space_mlb = types_mlb.reset_index(drop=True), space_mlb.reset_index(drop=True)
+    types_new = types_new.reset_index(drop=True)
+    assert (types_mlb.pitcher.to_numpy() == space_mlb.pitcher.to_numpy()).all()
+    G_COLS, T_COLS = ["gx", "gy", "gx3", "gy3", "gz3"], ["tx", "ty", "tx3", "ty3", "tz3"]
+    out = types_new[profiles.KEYS + ["pitch_type"]].copy()
+    for c in G_COLS + T_COLS:
+        out[c] = np.nan
+    out["tcluster"] = -1
+
+    def land(P_fit, P_new, rows_fit, rows_new, cols, cluster):
+        d, i = NearestNeighbors(n_neighbors=min(K_PLACE, len(rows_fit))).fit(P_fit).kneighbors(P_new)
+        w = 1 / (d + 1e-6)
+        w /= w.sum(axis=1, keepdims=True)
+        for c in cols:
+            if c in space_mlb:
+                out.loc[rows_new, c] = (w * space_mlb[c].to_numpy(dtype="float64")[rows_fit][i]).sum(axis=1)
+        if cluster:
+            cl = space_mlb.tcluster.to_numpy()[rows_fit][i]
+            out.loc[rows_new, "tcluster"] = [int(np.bincount(r[r >= 0], weights=ww[r >= 0]).argmax()) if (r >= 0).any() else -1
+                                             for r, ww in zip(cl, w)]
+
+    Fm, Fn = types_mlb[TYPE_FEATURES], types_new[TYPE_FEATURES]
+    gm, gn = types_mlb.groupby("pitch_type").indices, types_new.groupby("pitch_type").indices
+    # all-pitches map: one global scaling, same-type neighbours
+    sc = scaler_fit(Fm, types_mlb.pitch_type)
+    Xm = scaler_apply(sc, Fm, types_mlb.pitch_type)
+    pca = PCA(n_components=min(30, Xm.shape[1]), random_state=0).fit(Xm)
+    Pm, Pn = pca.transform(Xm), pca.transform(scaler_apply(sc, Fn, types_new.pitch_type))
+    for pt, rn in gn.items():
+        if pt in gm:
+            land(Pm[gm[pt]], Pn[rn], gm[pt], rn, G_COLS, False)
+    # each type's map: that type's own scaling and PCA
+    for pt, rn in gn.items():
+        if pt not in gm:
+            continue
+        rm = gm[pt]
+        sc = scaler_fit(Fm.iloc[rm])
+        Xm = scaler_apply(sc, Fm.iloc[rm])
+        pca = PCA(n_components=min(30, Xm.shape[1]), random_state=0).fit(Xm)
+        land(pca.transform(Xm), pca.transform(scaler_apply(sc, Fn.iloc[rn])), rm, rn, T_COLS, True)
+    log(f"placed {len(out):,} pitches on the MLB maps among their {K_PLACE} nearest big-league pitches")
+    return out
+
+
 def comps_for(P, pid, rows=None):
     """k nearest distinct other pitchers; indices returned in the caller's frame."""
     rows = np.arange(len(P)) if rows is None else rows
@@ -222,7 +413,11 @@ def type_comps(types):
     """Comps per pitch: same pitch type, SAME HAND, arm angle within ARM_TOLS[0] degrees (the window
     widens step by step only when fewer than K_COMPS distinct other pitchers qualify), ranked by
     distance in that type's PCA space (the same space the per-type maps are drawn from).
-    Returns comp rows, fit percentile, and the arm-angle window actually used per row."""
+    Returns comp rows, fit percentile, and the arm-angle window actually used per row.
+
+    `types` may hold several levels (column `level`). The space is fitted on, and the candidates are,
+    MLB rows only; every row is a query. A Triple-A pitch's comps are therefore the big-league
+    pitchers it most resembles, and a call-up never comps to himself at the other level."""
     from scipy.spatial.distance import cdist
     from sklearn.decomposition import PCA
 
@@ -234,26 +429,37 @@ def type_comps(types):
     pid = types.pitcher.to_numpy()
     arm = types.arm_angle.to_numpy(dtype="float64")
     hand = types.p_throws.to_numpy()
+    lvl = types.level.to_numpy() if "level" in types else np.full(n, "mlb")
     for pt, rows in types.groupby("pitch_type").indices.items():
-        F = types.loc[rows, TYPE_FEATURES].astype("float64")
-        X = block_scale(zscore(F.fillna(F.median())), TYPE_BLOCKS)
-        Pc = PCA(n_components=min(30, X.shape[1]), random_state=0).fit_transform(X)
+        is_m = lvl[rows] == "mlb"
+        mrows = rows[is_m]
+        if not len(mrows):
+            continue
+        sc = scaler_fit(types.loc[mrows, TYPE_FEATURES])
+        pca = PCA(n_components=min(30, len(TYPE_FEATURES)), random_state=0)
+        Pc = np.zeros((len(rows), pca.n_components))
+        Pc[is_m] = pca.fit_transform(scaler_apply(sc, types.loc[mrows, TYPE_FEATURES]))
+        if (~is_m).any():
+            Pc[~is_m] = pca.transform(scaler_apply(sc, types.loc[rows[~is_m], TYPE_FEATURES]))
         for h in np.unique(hand[rows]):
-            local = np.flatnonzero(hand[rows] == h)
-            g = rows[local]
-            if len(g) < 2:
+            local = np.flatnonzero(hand[rows] == h)                 # queries: every level
+            cand = np.flatnonzero((hand[rows] == h) & is_m)         # candidates: MLB only
+            g, gc = rows[local], rows[cand]
+            if len(gc) < 2:
                 continue
-            D = cdist(Pc[local], Pc[local])
+            D = cdist(Pc[local], Pc[cand])
             for a in range(len(g)):
+                nbhd = NBHD_LEVEL.get(lvl[g[a]], NBHD)
                 order = np.argsort(D[a])
-                darm = np.abs(arm[g] - arm[g[a]])
+                darm = np.abs(arm[gc] - arm[g[a]])
+                not_self = gc[order] != g[a]
                 for tol in ARM_TOLS:
-                    ok = order[(order != a) & (np.isinf(tol) | (darm[order] <= tol))]
+                    ok = order[not_self & (np.isinf(tol) | (darm[order] <= tol))]
                     seen, picks = {pid[g[a]]}, []
                     for b in ok:
-                        if pid[g[b]] in seen:
+                        if pid[gc[b]] in seen:
                             continue
-                        seen.add(pid[g[b]]); picks.append(b)
+                        seen.add(pid[gc[b]]); picks.append(b)
                         if len(picks) == K_COMPS:
                             break
                     if len(picks) == K_COMPS or np.isinf(tol):
@@ -261,21 +467,22 @@ def type_comps(types):
                 # extend to the NBHD neighbourhood without touching the first K_COMPS: same window first,
                 # widening further only if needed; appended in distance order within each window
                 for tol2 in [t2 for t2 in ARM_TOLS if t2 >= tol]:
-                    if len(picks) >= NBHD:
+                    if len(picks) >= nbhd:
                         break
-                    ok = order[(order != a) & (np.isinf(tol2) | (darm[order] <= tol2))]
+                    ok = order[not_self & (np.isinf(tol2) | (darm[order] <= tol2))]
                     for b in ok:
-                        if pid[g[b]] in seen:
+                        if pid[gc[b]] in seen:
                             continue
-                        seen.add(pid[g[b]]); picks.append(b)
-                        if len(picks) == NBHD:
+                        seen.add(pid[gc[b]]); picks.append(b)
+                        if len(picks) == nbhd:
                             break
-                rows_out[g[a], :len(picks)] = g[picks]
+                rows_out[g[a], :len(picks)] = gc[picks]
                 dist_out[g[a], :len(picks)] = D[a, picks]
                 tol_out[g[a]] = tol
-    first = np.sort(dist_out[:, 0][~np.isnan(dist_out[:, 0])])
+    # fit percentile against the MLB distribution of nearest-comp distances
+    first = np.sort(dist_out[lvl == "mlb", 0][~np.isnan(dist_out[lvl == "mlb", 0])])
     pct = np.searchsorted(first, np.nan_to_num(dist_out, nan=np.inf)) / len(first)
-    widened = np.mean(tol_out > ARM_TOLS[0])
+    widened = np.nanmean(tol_out > ARM_TOLS[0])
     log(f"comps: same hand, arm angle within {ARM_TOLS[0]} deg ({100 * widened:.1f}% of pitches needed a wider window)")
     return rows_out, np.where(np.isnan(dist_out), np.nan, pct), tol_out
 
@@ -381,13 +588,20 @@ def uniqueness(types):
 
     Same feature space the comps use (block-scaled, z within type); distance to the type's
     median vector, then z-scored within type. "Unique unicorns" on the page are > 2.
+    The typical pitch, the scaling and the SD are MLB's; other levels are measured against them.
     """
     out = pd.Series(np.nan, index=types.index)
+    lvl = types.level if "level" in types else pd.Series("mlb", index=types.index)
     for pt, rows in types.groupby("pitch_type").groups.items():
-        F = types.loc[rows, TYPE_FEATURES].astype("float64")
-        X = block_scale(zscore(F.fillna(F.median())), TYPE_BLOCKS)
-        d = np.linalg.norm(X - np.median(X, axis=0), axis=1)
-        out.loc[rows] = (d - d.mean()) / d.std()
+        mrows = rows[lvl.loc[rows].to_numpy() == "mlb"]
+        if not len(mrows):
+            continue
+        sc = scaler_fit(types.loc[mrows, TYPE_FEATURES])
+        Xm = scaler_apply(sc, types.loc[mrows, TYPE_FEATURES])
+        centre = np.median(Xm, axis=0)
+        dm = np.linalg.norm(Xm - centre, axis=1)
+        d = np.linalg.norm(scaler_apply(sc, types.loc[rows, TYPE_FEATURES]) - centre, axis=1)
+        out.loc[rows] = (d - dm.mean()) / dm.std()
     return out
 
 
@@ -434,34 +648,44 @@ def comps_columnar(rows, pct):
             for rr, qq in zip(rows, pct)]
 
 
-def export(types, pitchers, t_space, lead, fa, spin, mv):
-    key = profiles.KEYS
-    pitchers = pitchers.merge(lead, on=["pitcher", "season"], how="left").merge(
-        pitcher_teams(), on=["pitcher", "season"], how="left")
+def export(types, pitchers, t_space, lead, fa, spin, mv, tj, teams, levels, teams_aaa):
+    """`types`, `pitchers`, `t_space`, `mv`, `tj` and `teams` carry a `level` column; Savant outcomes and
+    spin are MLB-only and join on level too, so a call-up's Triple-A row never borrows his big-league xERA."""
+    key = profiles.KEYS + ["level"]
+    lead, spin = lead.assign(level="mlb"), spin.assign(level="mlb")
+    pitchers = pitchers.merge(lead, on=["pitcher", "season", "level"], how="left").merge(
+        teams, on=["pitcher", "season", "level"], how="left")
     types = types.merge(t_space, on=key + ["pitch_type"], how="inner").merge(
-        spin, on=["pitcher", "season", "pitch_type"], how="left")
+        spin, on=["pitcher", "season", "pitch_type", "level"], how="left")
     # comp_rows index t_space rows; the merge kept its order (inner on unique keys)
     assert len(types) == len(t_space)
     assert (types.pitcher.to_numpy() == t_space.pitcher.to_numpy()).all()
+    assert (types.level.to_numpy() == t_space.level.to_numpy()).all()
 
-    t_out = types[["pitcher", "season", "pitch_type", "p_throws", "n", "gx", "gy", "tx", "ty",
+    t_out = types[["pitcher", "season", "level", "pitch_type", "p_throws", "n", "gx", "gy", "tx", "ty",
                    "tcluster", "comp_tol", "gx3", "gy3", "gz3", "tx3", "ty3", "tz3"]].copy()
     t_out = pd.concat([t_out, type_display(types)], axis=1)
-    p_out = pitchers[["pitcher", "season", "p_throws", "n", "primary_fb", "teams", "team_main"]].copy()
+    p_out = pitchers[["pitcher", "season", "level", "p_throws", "n", "primary_fb", "teams", "team_main"]].copy()
     p_out = pd.concat([p_out, pitcher_display(pitchers)], axis=1)
     p_out["name"] = pitchers.player_name.map(first_last)
     t_out["name"] = types.player_name.map(first_last)
-    log(f"Savant outcomes matched for {pitchers.xera.notna().mean():.1%} of pitcher-seasons; "
+    mlb_p, mlb_t = pitchers.level == "mlb", types.level == "mlb"
+    log(f"Savant outcomes matched for {pitchers[mlb_p].xera.notna().mean():.1%} of MLB pitcher-seasons; "
         f"team for {pitchers.teams.notna().mean():.1%}; "
         f"{fa.pitcher.isin(pitchers.pitcher).sum()} free agents appear in the atlas; "
-        f"spin efficiency for {types.spin_eff.notna().mean():.1%} of pitch rows")
+        f"spin efficiency for {types[mlb_t].spin_eff.notna().mean():.1%} of MLB pitch rows; "
+        + "; ".join(f"{l}: {int((pitchers.level == l).sum()):,} pitcher-seasons, {int((types.level == l).sum()):,} pitches"
+                    for l in levels))
 
     data = {
         "seasons": list(SEASONS),
+        "levels": list(levels),
+        "teams_aaa": {c: v for c, v in teams_aaa.items() if c in set(",".join(teams.teams).split(","))},
         "pitchers": columnar(p_out),
         "types": columnar(t_out),
         "tcomps": comps_columnar(types.comp_rows, types.comp_pct),
         "movement": movement_blob(types, mv),
+        "flight": trajectory_blob(types, tj),
         "archetypes": json.loads(PITCHER_TYPES.read_text()) if PITCHER_TYPES.exists() else [],
         "fa_season": max(SEASONS),
         "fa": {str(r.pitcher): [None if pd.isna(v) else v for v in
@@ -482,10 +706,12 @@ def main():
     ap.add_argument("--html-only", action="store_true")
     a = ap.parse_args()
 
-    types, pitchers = season_profiles(a.rebuild_profiles)
+    types, pitchers = season_profiles(a.rebuild_profiles, "mlb")
     lead = pd.concat([leaders(s, a.refetch_leaders) for s in SEASONS], ignore_index=True)
     if a.html_only and ATLAS.exists():
         t_space = pd.read_parquet(ATLAS)
+        if "level" in t_space:   # other levels are re-placed below; only the MLB layout is cached
+            t_space = t_space[t_space.level == "mlb"].drop(columns="level").reset_index(drop=True)
     else:
         t_space = build_type_space(types)
     # 3D layouts: computed once and cached in the atlas table
@@ -493,13 +719,32 @@ def main():
         u3 = umap_3d(types)
         for c in u3.columns:
             t_space[c] = u3[c].to_numpy()
+
+    # other levels ride on the MLB maps: placed among their nearest big-league pitches, never refitted
+    levels = ["mlb"] + [l for l in LEVELS if l != "mlb" and level_seasons(l)]
+    types, pitchers, t_space = [df.reset_index(drop=True).assign(level="mlb") for df in (types, pitchers, t_space)]
+    parts = {"types": [types], "pitchers": [pitchers], "space": [t_space], "mv": [movement_sample(a.rebuild_profiles)],
+             "tj": [trajectory_means(a.rebuild_profiles)], "teams": [pitcher_teams()]}
+    teams_aaa = {}
+    for level in levels[1:]:
+        t_l, p_l = season_profiles(a.rebuild_profiles, level)
+        parts["types"].append(t_l.assign(level=level)); parts["pitchers"].append(p_l.assign(level=level))
+        parts["space"].append(place_level(types, t_space, t_l).assign(level=level))
+        parts["mv"].append(movement_sample(a.rebuild_profiles, level))
+        parts["tj"].append(trajectory_means(a.rebuild_profiles, level))
+        parts["teams"].append(pitcher_teams(level))
+        if level == "aaa":
+            teams_aaa = minor_teams(level)
+    types, pitchers, t_space, teams = [pd.concat(parts[k], ignore_index=True) for k in ("types", "pitchers", "space", "teams")]
+    mv = pd.concat([m.assign(level=l) for m, l in zip(parts["mv"], levels)], ignore_index=True)
+    tj = pd.concat([t.assign(level=l) for t, l in zip(parts["tj"], levels)], ignore_index=True)
+
     # comps are cheap and rule-driven (same hand, similar arm angle): always recompute
-    cr, cp, ctol = type_comps(types.reset_index(drop=True))
+    cr, cp, ctol = type_comps(types)
     t_space["comp_rows"], t_space["comp_pct"], t_space["comp_tol"] = list(cr), list(cp), ctol
     t_space.to_parquet(ATLAS, index=False)
     spin = pd.concat([active_spin(s, a.refetch_leaders) for s in SEASONS], ignore_index=True)
-    mv = movement_sample(a.rebuild_profiles)
-    export(types.reset_index(drop=True), pitchers.reset_index(drop=True), t_space, lead, free_agents(), spin, mv)
+    export(types, pitchers, t_space, lead, free_agents(), spin, mv, tj, teams, levels, teams_aaa)
 
 
 if __name__ == "__main__":
