@@ -356,8 +356,17 @@ button, input, select { font: inherit; color: inherit; }
   border: 1.5px solid var(--map-muted); background: none; color: var(--map-ink2); cursor: pointer; }
 .simtype .tm { font-weight: 500; color: var(--map-ink2); }
 .simtype:hover { background: var(--map-hover); }
-.simtype[aria-pressed="true"] { border-color: var(--map-ink); color: var(--map-ink); }
-.simtype[aria-pressed="false"] .psw { opacity: 0.3; }
+/* toggles: ON is a filled light chip with a check, OFF a dim outline with a hollow swatch */
+.simtype[aria-pressed="true"] { background: var(--map-ink); border-color: var(--map-ink); color: var(--map-panel); }
+.simtype[aria-pressed="true"]::before { content: "✓"; font-weight: 800; margin-right: -2px; }
+.simtype[aria-pressed="true"]:hover { background: #ffffff; border-color: #ffffff; }
+.simtype[aria-pressed="true"] .tm { color: var(--map-panel); opacity: 0.7; }
+.simtype[aria-pressed="false"] { color: var(--map-ink2); border-color: var(--map-muted); }
+.simtype[aria-pressed="false"] .psw { background: transparent !important; border: 2px solid; box-sizing: border-box; box-shadow: none; }
+.simtype[aria-pressed="false"] .psw.dash { border-style: dashed; }
+.simtype[aria-pressed="false"] .psw.ring { border-color: #ffffff; }
+.simhint { font-weight: 400; font-size: 13px; color: var(--map-muted); }
+.simtype[aria-pressed="false"] .psw.fade { opacity: 1; }
 .simtype.added { border-style: dashed; }
 .simtype .x { margin-left: 2px; font-weight: 400; color: var(--map-ink2); }
 /* the canvas with the camera switch and Replay laid over its top right corner */
@@ -3966,19 +3975,19 @@ function renderSim() {
   };
   const chip = it => {
     const c = SAVANT_PITCH[it.t], lbl = esc(labLabel(j, it));
-    if (it.kind === "own") return `<button type="button" class="simtype" data-simon="${it.id}" aria-pressed="${it.on}"><i class="psw" style="background:${c}"></i>${lbl} <span class="tm">${fmt(T.velo[it.r], 1)}</span></button>`;
+    if (it.kind === "own") return `<button type="button" class="simtype" data-simon="${it.id}" aria-pressed="${it.on}"><i class="psw" style="background:${c};border-color:${c}"></i>${lbl} <span class="tm">${fmt(T.velo[it.r], 1)}</span></button>`;
     if (it.kind === "ghost") return `<span class="simpair"><button type="button" class="simtype added" data-simon="${it.id}" aria-pressed="${it.on}" title="${esc(`${T.name[it.r]}’s ${T.season[it.r]} ${PTN[it.t].toLowerCase()}, a lookalike, flying as a dashed ghost`)}"><i class="psw dash" style="background:none;border-color:${c}"></i>${lbl}</button><button type="button" class="simx" data-simrm="${it.id}" aria-label="Remove ${lbl}" title="Remove">×</button></span>`;
     const tip = it.kind === "lack" ? `Built from ${T.name[it.r]}’s ${T.season[it.r]} ${PTN[it.t].toLowerCase()}, thrown from his release point` : `${T.name[it.r]}’s ${T.season[it.r]} ${PTN[it.t].toLowerCase()}`;
-    return `<span class="simpair"><button type="button" class="simtype added" data-simon="${it.id}" aria-pressed="${it.on}" title="${esc(tip)}${it.edited ? " (edited)" : ""}"><i class="psw fade" style="background:${c}"></i>${lbl} <span class="tm">${it.d.mph.toFixed(1)}</span></button><button type="button" class="simx" data-simrm="${it.id}" aria-label="Remove ${lbl}" title="Remove">×</button></span>`;
+    return `<span class="simpair"><button type="button" class="simtype added" data-simon="${it.id}" aria-pressed="${it.on}" title="${esc(tip)}${it.edited ? " (edited)" : ""}"><i class="psw fade" style="background:${c};border-color:${c}"></i>${lbl} <span class="tm">${it.d.mph.toFixed(1)}</span></button><button type="button" class="simx" data-simrm="${it.id}" aria-label="Remove ${lbl}" title="Remove">×</button></span>`;
   };
   const tColor = st ? SAVANT_PITCH[st.t] : null;
   const controls = S.stage
     ? `<button type="button" class="simtype" id="labDonor" aria-pressed="${S.showDonor}"><i class="psw ring" style="background:#ffffff"></i>${esc(dn)}’s ${ty}</button>
        <button type="button" class="simtype labadd" id="labAdd" title="Put this pitch, as edited, in Pitches to simulate">Add</button>`
-    : `<button type="button" class="simtype labedit" id="labEdit" aria-pressed="${S.edit}"${own.length ? "" : " disabled"}><i class="psw fade" style="background:${tColor || "var(--map-ink2)"}"></i>Edit pitch</button>`;
+    : `<button type="button" class="simtype labedit" id="labEdit" aria-pressed="${S.edit}"${own.length ? "" : " disabled"}><i class="psw fade" style="background:${tColor || "var(--map-ink2)"};border-color:${tColor || "var(--map-ink2)"}"></i>Edit pitch</button>`;
   const avgBtn = `<button type="button" class="simtype" id="labAvg" aria-pressed="${S.showAvg}"><i class="psw dash" style="background:none;border-color:${tColor || "var(--map-ink2)"}"></i>MLB average</button>`;
   const editWhich = !S.stage && S.edit && own.length > 1
-    ? `<div class="simrow"><span class="flbl">Edit</span><div class="simtypes">${own.map(it => `<button type="button" class="simtype" data-labedit="${it.id}" aria-pressed="${S.editId === it.id}"><i class="psw" style="background:${SAVANT_PITCH[it.t]}"></i>${PTN[it.t]}</button>`).join("")}</div></div>` : "";
+    ? `<div class="simrow"><span class="flbl">Edit</span><div class="simtypes">${own.map(it => `<button type="button" class="simtype" data-labedit="${it.id}" aria-pressed="${S.editId === it.id}"><i class="psw" style="background:${SAVANT_PITCH[it.t]};border-color:${SAVANT_PITCH[it.t]}"></i>${PTN[it.t]}</button>`).join("")}</div></div>` : "";
   const note = S.stage
     ? st.kind === "lack"
       ? `<p class="labnote">No ${ty} of his own: this one is ${esc(T.name[st.r])}’s (${T.season[st.r]}, the closest same-hand pitcher by arm angle and release point), thrown from his release point. It flies in see-through ${ty} colour; edit it below, then Add it to the pitches to simulate.</p>`
@@ -3989,11 +3998,11 @@ function renderSim() {
   box.innerHTML = `<div class="sim-head"><div><h2 class="sim-name" id="simTitle">${esc(T.name[j])} · Pitch lab</h2>
       <p class="simsub">${s}${lvl === "mlb" ? "" : " · Triple-A"} · ${esc(teamStr(j))}</p></div>
       <button type="button" class="sim-x" id="simClose" aria-label="Close the pitch lab" title="Close (Esc)">×</button></div>
-    <div class="simrow"><span class="flbl">Pitches to simulate</span><div class="simtypes">${S.items.filter(it => it.kind !== "ghost").map(chip).join("") || `<span class="labnote">No tracked flight paths for his pitches; add one below.</span>`}</div></div>
-    ${S.items.some(it => it.kind === "ghost") ? (() => { const g = S.items.find(it => it.kind === "ghost"); return `<div class="simrow"><span class="flbl">Compare with ${esc(T.name[g.r])} ’${String(T.season[g.r]).slice(2)}${T.level[g.r] === "mlb" ? "" : " AAA"} (ghost)</span><div class="simtypes">${S.items.filter(it => it.kind === "ghost").map(chip).join("")}</div></div>`; })() : ""}
+    <div class="simrow"><span class="flbl">Pitches to simulate${(() => { const m = S.items.filter(it => it.kind !== "ghost"); return m.length ? ` <span class="simhint">${m.filter(it => it.on).length} of ${m.length} in the air · click to show or hide</span>` : ""; })()}</span><div class="simtypes">${S.items.filter(it => it.kind !== "ghost").map(chip).join("") || `<span class="labnote">No tracked flight paths for his pitches; add one below.</span>`}</div></div>
+    ${S.items.some(it => it.kind === "ghost") ? (() => { const g = S.items.find(it => it.kind === "ghost"); return `<div class="simrow"><span class="flbl">Compare with ${esc(T.name[g.r])} ’${String(T.season[g.r]).slice(2)}${T.level[g.r] === "mlb" ? "" : " AAA"} (ghost) <span class="simhint">${S.items.filter(it => it.kind === "ghost" && it.on).length} of ${S.items.filter(it => it.kind === "ghost").length} in the air</span></span><div class="simtypes">${S.items.filter(it => it.kind === "ghost").map(chip).join("")}</div></div>`; })() : ""}
     <div class="simrow"><label class="flbl" for="simAddQ">Add pitch to simulate</label><div class="simvs"><input type="search" id="simAddQ" class="simaddq" autocomplete="off" spellcheck="false"
       placeholder="Pitcher name or pitch, e.g. Skubal changeup" aria-controls="simAddList"><ul class="simvslist" id="simAddList" hidden></ul></div></div>
-    ${lack.length ? `<div class="simrow"><span class="flbl">Add pitch he lacks</span><div class="simtypes">${lack.map(t => `<button type="button" class="simtype added" data-labt="${t}" aria-pressed="${!!(S.stage && S.stage.kind === "lack" && S.stage.t === t)}" title="Build a ${PTN[t].toLowerCase()} from his closest lookalike by arm angle and release point, thrown from his release point"><i class="psw" style="background:${SAVANT_PITCH[t]}"></i>${PTN[t]}</button>`).join("")}</div></div>` : ""}
+    ${lack.length ? `<div class="simrow"><span class="flbl">Add pitch he lacks</span><div class="simtypes">${lack.map(t => `<button type="button" class="simtype added" data-labt="${t}" aria-pressed="${!!(S.stage && S.stage.kind === "lack" && S.stage.t === t)}" title="Build a ${PTN[t].toLowerCase()} from his closest lookalike by arm angle and release point, thrown from his release point"><i class="psw" style="background:${SAVANT_PITCH[t]};border-color:${SAVANT_PITCH[t]}"></i>${PTN[t]}</button>`).join("")}</div></div>` : ""}
     ${S.stage || S.items.some(it => it.kind !== "own") ? `<div class="simrow"><span class="flbl" id="normLbl">Normalize release point</span><div class="mseg simnorm" role="group" aria-labelledby="normLbl">${NORM_OPTS.map(([v, l]) => `<button type="button" data-norm="${v}" aria-pressed="${(state.simNorm || "off") === v}" title="${v === "off" ? "Every pitch from its own release point" : `Every pitch that is not his from his release ${v === "v" ? "height" : v === "h" ? "side" : "height and side"}`}">${l}</button>`).join("")}</div></div>` : ""}
     <div class="lab">
       <div class="labsliders">
