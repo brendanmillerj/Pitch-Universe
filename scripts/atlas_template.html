@@ -174,45 +174,56 @@ button, input, select { font: inherit; color: inherit; }
 .sv-tr b { font-weight: 700; }
 .sv-tr .tm { color: var(--map-ink2); }
 .sv-tr-note { margin: 4px 0 0; color: var(--map-ink2); }
-/* pitch simulation (right half, laid out like the player card: name in the head row, controls level with
-   "Color pitchers by", the flight large across the top of the card, lookalikes below) */
-.simsub { font: 600 15px var(--font-ui); color: var(--ink2); }
-.simctl { display: flex; flex-direction: column; gap: 8px; }
+/* pitch simulation: an overlay on the map, dark like every on-map panel, the largest of them. Nothing else on
+   the page moves; × or Escape puts it away. Phones: it fills the screen. */
+.simbox { position: absolute; z-index: 9; top: var(--mi); left: 50%; transform: translateX(-50%); width: min(960px, calc(100% - 2 * var(--mx)));
+  max-height: calc(100% - 2 * var(--mi)); overflow-y: auto; overscroll-behavior: contain; padding: 14px 18px 18px;
+  display: flex; flex-direction: column; gap: 10px; border-radius: var(--r-lg); background: var(--map-panel); color: var(--map-ink);
+  border: 1.5px solid var(--map-muted); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55); }
+.simbox[hidden] { display: none; }
+.sim-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.sim-name { margin: 0; font: 600 30px/1.05 var(--font-serif); color: var(--map-ink); }
+.simsub { margin: 4px 0 0; font: 500 14px var(--font-ui); color: var(--map-ink2); }
+.sim-x { flex: none; width: 44px; height: 44px; border: 1.5px solid var(--map-muted); border-radius: var(--r); background: var(--map-chrome); color: var(--map-ink); font: 400 28px/1 var(--font-ui); cursor: pointer; }
+.sim-x:hover { background: var(--map-hover); }
 .simrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
-.simrow .flbl { font: 700 15px var(--font-ui); color: var(--ink); }
+.simrow .flbl { font: 700 15px var(--font-ui); color: var(--map-ink); }
 .simtypes { display: flex; flex-wrap: wrap; gap: 6px; }
 .simtype { display: inline-flex; align-items: center; gap: 8px; font: 700 15px var(--font-ui); padding: 7px 12px; border-radius: 999px;
-  border: 2px solid var(--line); background: var(--field); color: var(--ink2); cursor: pointer; }
-.simtype .tm { font-weight: 500; color: var(--ink2); }
-.simtype[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); }
+  border: 1.5px solid var(--map-muted); background: none; color: var(--map-ink2); cursor: pointer; }
+.simtype .tm { font-weight: 500; color: var(--map-ink2); }
+.simtype:hover { background: var(--map-hover); }
+.simtype[aria-pressed="true"] { border-color: var(--map-ink); color: var(--map-ink); }
 .simtype[aria-pressed="false"] .psw { opacity: 0.3; }
 .simtype.added { border-style: dashed; }
-.simtype .x { margin-left: 2px; font-weight: 400; color: var(--ink2); }
-.simadd { font: 700 14px var(--font-ui); padding: 6px 12px; border-radius: 999px; border: 2px solid var(--ink); background: var(--field); color: var(--ink); cursor: pointer; white-space: nowrap; }
-.simadd:hover:not(:disabled) { background: var(--ink); color: var(--field); }
-.simadd:disabled { border-color: var(--line); color: var(--muted); cursor: default; }
-.simtab td .tm { display: block; font-size: 13px; color: var(--ink2); font-weight: 400; }
-.simmoderow { margin-top: 10px; }
-.simcam, .simmode { border-color: var(--ink); box-shadow: none; }
-.simcam button, .simmode button { background: var(--field); color: var(--ink2); }
-.simcam button[aria-pressed="true"], .simmode button[aria-pressed="true"] { background: var(--ink); color: var(--field); }
-.simcard { display: flex; flex-direction: column; gap: 10px; }
-.simcv { display: block; width: 100%; border-radius: var(--r-lg); background: var(--map); }
-.simkey { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; font: 500 15px var(--font-ui); color: var(--ink); }
+.simtype .x { margin-left: 2px; font-weight: 400; color: var(--map-ink2); }
+.sim-ctl .simcam { margin-left: auto; }
+.sim-replay { font: 700 15px/1 var(--font-ui); padding: 10px 14px; border-radius: var(--r); border: 1.5px solid var(--map-muted); background: var(--map-chrome); color: var(--map-ink); cursor: pointer; }
+.sim-replay:hover { background: var(--map-hover); }
+.simcv { display: block; width: 100%; border-radius: var(--r); background: var(--map); border: 1px solid var(--map-line); }
+.simkey { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; font: 500 15px var(--font-ui); color: var(--map-ink); }
 .simkey .psw.dash { border: 2px dashed; box-sizing: border-box; }
 .simkey .psw.fade { opacity: 0.4; }
-.simkey .psw.ring { box-shadow: 0 0 0 2px #ffffff, 0 0 0 3px var(--ink); }
+.simkey .psw.ring { box-shadow: 0 0 0 2px #ffffff, 0 0 0 3px var(--map-panel); }
+.simlook { padding-top: 8px; border-top: 1px solid var(--map-hair); }
+.simlook h3 { margin: 0 0 8px; font: 700 20px var(--font-ui); color: var(--map-ink); }
 .simlook .simrow { margin: 0 0 8px; }
-.simtab { width: 100%; border-collapse: collapse; font: 500 15px var(--font-ui); }
-.simtab th { text-align: left; font: 700 13px var(--font-ui); color: var(--ink2); padding: 4px 8px; border-bottom: 1.5px solid var(--rule); }
-.simtab td { padding: 7px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.sim-help { margin: 0 0 8px; font: 400 14px/1.4 var(--font-ui); color: var(--map-ink2); }
+.simtab { width: 100%; border-collapse: collapse; font: 500 15px var(--font-ui); color: var(--map-ink); }
+.simtab th { text-align: left; font: 700 13px var(--font-ui); color: var(--map-ink2); padding: 4px 6px; border-bottom: 1.5px solid var(--map-muted); }
+.simtab td { padding: 7px 6px; border-bottom: 1px solid var(--map-hair); white-space: nowrap; }
 .simtab td:nth-child(2) { white-space: normal; }
+.simtab td .tm { display: block; font-size: 13px; color: var(--map-ink2); font-weight: 400; }
 .simtab .num { text-align: right; font-variant-numeric: tabular-nums; }
-.simtab tr.click { cursor: pointer; } .simtab tr.click:hover { background: var(--wash); }
 .simtab tr.on td { font-weight: 700; }
-.simtab .tm { color: var(--ink2); font-weight: 400; font-size: 13px; }
+.simtab .badge { background: var(--map-ink); color: var(--map-panel); }
+.simadd { font: 700 14px var(--font-ui); padding: 6px 12px; border-radius: 999px; border: 1.5px solid var(--map-ink); background: none; color: var(--map-ink); cursor: pointer; white-space: nowrap; }
+.simadd:hover:not(:disabled) { background: var(--map-ink); color: var(--map-panel); }
+.simadd:disabled { border-color: var(--map-muted); color: var(--map-muted); cursor: default; }
 .simbest { font: 800 11px var(--font-ui); letter-spacing: 0.04em; color: #1f242b; background: linear-gradient(180deg, #ffd75e, #e6b422); padding: 2px 6px; border-radius: 4px; }
 .simtab .lv { font: 800 11px var(--font-ui); color: #1f242b; background: #ffd75e; padding: 1px 5px; border-radius: 4px; }
+.simmoderow { margin-top: 10px; }
+@media (max-width: 719px) { .simbox { position: fixed; inset: 0; transform: none; width: auto; max-height: none; border-radius: 0; z-index: 70; } .sim-name { font-size: 24px; } }
 /* the name bar holds three actions: let it wrap rather than run off a narrow map */
 .selcta { flex-wrap: wrap; justify-content: center; }
 /* SAVE Group: gold and pulsing until pressed, wherever it appears (pitcher list, comps box on the map, card) */
@@ -1270,6 +1281,7 @@ tr.self td { font-weight: 600; background: none; }
       <ul id="svList"></ul>
       <p class="sv-undo" id="svUndo" hidden></p>
     </aside>
+    <section class="simbox" id="simBox" role="dialog" aria-labelledby="simTitle" hidden></section>
     <div class="selcta" id="selCta" role="region" aria-label="Selected pitcher" hidden>
       <div class="cta-name"><b id="ctaName"></b><span id="ctaSub"></span></div>
       <button type="button" class="ctabtn" id="ctaOpen">See full player info <span class="arr" aria-hidden="true">→</span></button>
@@ -1679,7 +1691,7 @@ let plotReady = false;
 
 function render() {
   const view = state.view, kind = varKind(view), pal = mapPalette();
-  const cardOpen = state.sel !== null && state.sel !== undefined && (!state.preview || !!state.simOpen);   // the simulation card takes the right half too
+  const cardOpen = state.sel !== null && state.sel !== undefined && !state.preview;
   if (cardOpen !== !!state.cardOpen) {
     if (cardOpen) { state.mbPrev = !!state.mbHidden; state.mbHidden = true; } else state.mbHidden = !!state.mbPrev;
     // the card takes over the screen: the measure filters (and their table) tuck away while it's open,
@@ -2819,9 +2831,8 @@ const focusCard = () => { const t = $("#dHead").querySelector(".cname") || $("#d
 function renderDetail() {
   const el = $("#detail"), view = state.view, r = state.sel;
   let cp = $("#comps");   // replaced by the in-card container when similar pitchers are open
-  const app = $("#app"), had = app.classList.contains("has-sel"), simOn = r !== null && r !== undefined && !!state.simOpen;
-  const has = (r !== null && r !== undefined && !state.preview) || simOn;
-  const wantComps = has && !simOn && !!state.showComps, hadComps = app.classList.contains("show-comps");
+  const app = $("#app"), had = app.classList.contains("has-sel"), has = r !== null && r !== undefined && !state.preview;
+  const wantComps = has && !!state.showComps, hadComps = app.classList.contains("show-comps");
   if (had !== has || hadComps !== wantComps) {
     app.classList.toggle("has-sel", has);
     app.classList.toggle("show-comps", wantComps);
@@ -2830,12 +2841,11 @@ function renderDetail() {
   }
   $("#dHead").innerHTML = ""; $("#dTraits").innerHTML = "";
   if (!has) {
-    stopFlight();
+    if (!state.simOpen) stopFlight();   // the simulation overlay keeps its own flight running
     el.innerHTML = `<div class="card"><p class="empty" tabindex="-1">Click any dot to open its card: every measure with its league percentile, his season line and his arsenal.</p></div>`;
     cp.innerHTML = `<div class="card"><p class="empty">The ten pitchers whose version of the pitch looks most like the one you click appear here, numbered to match the map.</p></div>`;
     return;
   }
-  if (simOn) { $("#comps").innerHTML = ""; renderSim(); return; }   // renderSim fills #dHead and #dTraits itself
   el.innerHTML = typeCard(view, r) + (wantComps ? `<section class="compsin" id="compsIn" aria-label="Similar pitchers"></section>` : "");
   // the name sits level with "Pitch Universe" and Defining Traits level with "Color pitchers by"
   const bar = el.querySelector(".sv-bar"), hero = el.querySelector(".sv-hero"), dh = $("#dHead");
@@ -3213,8 +3223,9 @@ function stopFlight() { if (FLS && FLS.raf) cancelAnimationFrame(FLS.raf); FLS =
 // the card's flight panel for type row j: his arsenal (every type with a trajectory) plus the league's mean
 // version of this pitch, same hand and season, as a dashed ghost
 function renderFlight(j) {
-  stopFlight();
   const sec = document.getElementById("flight"), cv = document.getElementById("flightCv");
+  if (state.simOpen) { if (sec) sec.hidden = true; return; }   // the simulation overlay owns the flight while it is open
+  stopFlight();
   if (!sec || !cv) return;
   const pid = T.pitcher[j], s = T.season[j], lvl = T.level[j];
   const ars = TYPES.map(x => [x, tRow(pid, s, x, lvl)]).filter(x => x[1] !== undefined).sort((a, b) => T.usage[b[1]] - T.usage[a[1]]);
@@ -3348,7 +3359,7 @@ function simLookalikes(j, t) {
 }
 function renderSim() {
   stopFlight();
-  const el = $("#detail"), j = state.sel; if (j === null || j === undefined) return;
+  const box = $("#simBox"), j = state.sel; if (j === null || j === undefined) { box.hidden = true; return; }
   const S = simState(j), pid = T.pitcher[j], s = T.season[j], lvl = T.level[j];
   const mine = TYPES.map(t => [t, tRow(pid, s, t, lvl)]).filter(([, r]) => r !== undefined && trajOf(r));
   S.added = S.added.filter(r => trajOf(r));
@@ -3359,30 +3370,26 @@ function renderSim() {
   // against it, so a pitch from the same slot and the same spot is easy to pick
   const mineRow = tRow(pid, s, S.compType, lvl), myRelH = mineRow === undefined ? null : T.rel_height[mineRow], myRelS = mineRow === undefined ? null : T.rel_side[mineRow];
   const delta = (v, mine, dec) => isNum(v) && isNum(mine) ? `<div class="tm">${v - mine >= 0 ? "+" : ""}${(v - mine).toFixed(dec)}</div>` : "";
-  // head row: name level with "Pitch Universe", as on the player card
-  $("#dHead").innerHTML = `<div class="sv-bar"><h2 class="cname">${esc(T.name[j])}</h2>
-    <div class="sv-barr"><span class="simsub">Pitch simulation · ${s}${lvl === "mlb" ? "" : " · Triple-A"} · ${esc(teamStr(j))}${isNum(myArm) ? ` · arm angle ${deg(myArm)}` : ""}${isNum(myRelH) ? ` · releases ${ft(myRelH)} high, ${ft(Math.abs(myRelS))} ${myRelS >= 0 ? "arm side" : "across"}` : ""}</span>
-      <button type="button" class="bigbtn" id="simCard">See full player info</button>
-      <button type="button" class="bigbtn" id="simClose">Close</button></div></div>`;
-  // controls row, level with "Color pitchers by": what is in the air, the camera, replay
   const his = mine.map(([t, r]) => `<button type="button" class="simtype" data-simtype="${t}" aria-pressed="${S.types.has(t)}" title="${S.types.has(t) ? "Take" : "Put"} his ${PTN[t].toLowerCase()} ${S.types.has(t) ? "out of" : "in"} the animation"><i class="psw" style="background:${SAVANT_PITCH[t]}"></i>${PTN[t]} <span class="tm">${fmt(T.velo[r], 1)}</span></button>`);
   const extra = S.added.map(r => `<button type="button" class="simtype added" data-simdrop="${r}" aria-pressed="true" title="Take this pitch out of the animation"><i class="psw" style="background:${SAVANT_PITCH[T.pitch_type[r]]}"></i>${esc(lastName(T.name[r]))} ${PTN[T.pitch_type[r]].toLowerCase()} <span class="tm">${fmt(T.velo[r], 1)}</span><span class="x" aria-hidden="true">×</span></button>`);
-  $("#dTraits").innerHTML = `<div class="sv-hero simctl">
-    <div class="simrow"><span class="flbl">In the air</span><div class="simtypes">${his.join("")}${extra.join("")}</div>
-      <div class="mseg simcam" role="group" aria-label="Camera">${["catcher", "pitcher"].map(c => `<button type="button" data-simcam="${c}" aria-pressed="${cam === c}">${c === "catcher" ? "Catcher view" : "Pitcher view"}</button>`).join("")}</div>
-      <button type="button" class="bigbtn" id="simReplay">↻ Replay</button></div></div>`;
   const addedSet = new Set(S.added);
-  el.innerHTML = `<div class="card simcard">
+  box.hidden = false;
+  box.innerHTML = `<div class="sim-head"><div><h2 class="sim-name" id="simTitle">${esc(T.name[j])}</h2>
+      <p class="simsub">Pitch simulation · ${s}${lvl === "mlb" ? "" : " · Triple-A"} · ${esc(teamStr(j))}${isNum(myArm) ? ` · arm angle ${deg(myArm)}` : ""}${isNum(myRelH) ? ` · releases ${ft(myRelH)} high, ${ft(Math.abs(myRelS))} ${myRelS >= 0 ? "arm side" : "across"}` : ""}</p></div>
+      <button type="button" class="sim-x" id="simClose" aria-label="Close the pitch simulation" title="Close (Esc)">×</button></div>
+    <div class="simrow sim-ctl"><span class="flbl">In the air</span><div class="simtypes">${his.join("")}${extra.join("")}</div>
+      <div class="mseg simcam" role="group" aria-label="Camera">${["catcher", "pitcher"].map(c => `<button type="button" data-simcam="${c}" aria-pressed="${cam === c}">${c === "catcher" ? "Catcher view" : "Pitcher view"}</button>`).join("")}</div>
+      <button type="button" class="sim-replay" id="simReplay">↻ Replay</button></div>
     <canvas id="simCv" class="simcv" role="img" aria-label="Animated flight of ${esc(T.name[j])}'s pitches"></canvas>
     <p class="flkey simkey" id="simKey"></p>
-    <section class="sec simlook"><h3>Add a pitch to the animation</h3>
+    <section class="simlook"><h3>Add a pitch to the animation</h3>
       <div class="simrow"><span class="flbl">Lookalikes for his</span><div class="simtypes">${mine.map(([t]) => `<button type="button" class="simtype" data-simcomp="${t}" aria-pressed="${S.compType === t}"><i class="psw" style="background:${SAVANT_PITCH[t]}"></i>${PTN[t]}</button>`).join("")}</div></div>
-      <p class="help">Arm angle and release point against his own ${PTN[S.compType].toLowerCase()} (${deg(myArm)}, ${ft(myRelH)} high, ${ft(myRelS)} to the arm side): the small number is the difference. Every pitch flies from its own release point.</p>
+      <p class="sim-help">Arm angle and release point against his own ${PTN[S.compType].toLowerCase()} (${deg(myArm)}, ${ft(myRelH)} high, ${ft(myRelS)} to the arm side): the small number is the difference. Every pitch flies from its own release point.</p>
       <div class="tablewrap"><table class="simtab"><thead><tr><th></th><th>Pitcher</th><th class="num">Arm angle</th><th class="num" title="Release height, feet above the ground">Rel. height</th><th class="num" title="Release side, feet toward the arm side (negative = across the body)">Rel. side</th><th class="num">MPH</th><th class="num">ERA</th><th></th></tr></thead><tbody>
       ${looks.map((o, k) => `<tr${addedSet.has(o.c) ? ' class="on"' : ""}><td><span class="badge">${k + 1}</span></td><td>${esc(T.name[o.c])}${k === best ? ` <span class="simbest">Best ERA</span>` : ""}${T.level[o.c] === "mlb" ? "" : ` <span class="lv">AAA</span>`}<div class="tm">${T.season[o.c]} · ${esc(teamStr(o.c))}</div></td><td class="num">${deg(o.arm)}${delta(o.arm, myArm, 0)}</td><td class="num">${ft(o.relh)}${delta(o.relh, myRelH, 1)}</td><td class="num">${ft(o.rels)}${delta(o.rels, myRelS, 1)}</td><td class="num">${fmt(T.velo[o.c], 1)}</td><td class="num">${fmt(o.era, 2)}</td><td class="num"><button type="button" class="simadd" data-simadd="${o.c}"${addedSet.has(o.c) ? " disabled" : ""}>${addedSet.has(o.c) ? "Added" : "+ Add"}</button></td></tr>`).join("")}
       </tbody></table></div>
       <div class="simrow simmoderow"><span class="flbl">Draw added pitches as</span><div class="mseg simmode" role="group" aria-label="How added pitches are drawn">${SIM_MODES.map(([m, l]) => `<button type="button" data-simmode="${m}" aria-pressed="${S.mode === m}">${l}</button>`).join("")}</div></div>
-    </section></div>`;
+    </section>`;
   // paths: his chosen pitches, then every added pitch
   const paths = mine.filter(([t]) => S.types.has(t)).map(([t, r]) => ({ type: t, row: r, color: SAVANT_PITCH[t], ...flightPath(trajOf(r)) }));
   S.added.forEach(r => paths.push({ type: T.pitch_type[r], row: r, alt: true, color: SAVANT_PITCH[T.pitch_type[r]], ghost: S.mode === "ghost", fade: S.mode === "fade", ring: S.mode === "solid", ...flightPath(trajOf(r)) }));
@@ -3391,20 +3398,19 @@ function renderSim() {
     : `<span><i class="psw" style="background:${p.color}"></i><b>${PTN[p.type]}</b> ${fmt(T.velo[p.row], 1)} mph</span>`).join("")
     : "Turn on a pitch to see it fly.";
   // wiring (rebuilt on every change, so plain onclick handlers)
-  $("#simClose").onclick = () => { state.simOpen = false; render(); renderDetail(); };
-  $("#simCard").onclick = openCard;
+  $("#simClose").onclick = () => closeSim();
   $("#simReplay").onclick = () => renderSim();
-  document.querySelectorAll("[data-simtype]").forEach(b => b.onclick = () => { const t = b.dataset.simtype; if (S.types.has(t)) S.types.delete(t); else S.types.add(t); renderSim(); });
-  document.querySelectorAll("[data-simdrop]").forEach(b => b.onclick = () => { S.added = S.added.filter(r => r !== +b.dataset.simdrop); renderSim(); });
-  document.querySelectorAll("[data-simadd]").forEach(b => b.onclick = () => { const r = +b.dataset.simadd; if (!S.added.includes(r)) S.added.push(r); renderSim(); });
-  document.querySelectorAll("[data-simcomp]").forEach(b => b.onclick = () => { S.compType = b.dataset.simcomp; renderSim(); });
-  document.querySelectorAll("[data-simmode]").forEach(b => b.onclick = () => { S.mode = b.dataset.simmode; renderSim(); });
-  document.querySelectorAll("[data-simcam]").forEach(b => b.onclick = () => { state.flightCam = b.dataset.simcam; renderSim(); });
+  box.querySelectorAll("[data-simtype]").forEach(b => b.onclick = () => { const t = b.dataset.simtype; if (S.types.has(t)) S.types.delete(t); else S.types.add(t); renderSim(); });
+  box.querySelectorAll("[data-simdrop]").forEach(b => b.onclick = () => { S.added = S.added.filter(r => r !== +b.dataset.simdrop); renderSim(); });
+  box.querySelectorAll("[data-simadd]").forEach(b => b.onclick = () => { const r = +b.dataset.simadd; if (!S.added.includes(r)) S.added.push(r); renderSim(); });
+  box.querySelectorAll("[data-simcomp]").forEach(b => b.onclick = () => { S.compType = b.dataset.simcomp; renderSim(); });
+  box.querySelectorAll("[data-simmode]").forEach(b => b.onclick = () => { S.mode = b.dataset.simmode; renderSim(); });
+  box.querySelectorAll("[data-simcam]").forEach(b => b.onclick = () => { state.flightCam = b.dataset.simcam; renderSim(); });
   if (!paths.length) return;
   const flight = Math.max(...paths.map(p => p.tEnd));
   const hold0 = Math.round(FL.HOLD0 * FL.FPS), nAnim = Math.max(2, Math.round(FL.FPS * flight * FL.SLOW)), hold1 = Math.round(FL.HOLD1 * FL.FPS);
   FLS = { j, paths, flight, hold0, nAnim, total: hold0 + nAnim + hold1, cam, start: null, raf: 0, zone: flightZone(j), cvId: "simCv" };
-  requestAnimationFrame(() => { if (FLS && FLS.cvId === "simCv") { flightSetup(); flightPlay(); } });   // after the grid gives the canvas its width
+  requestAnimationFrame(() => { if (FLS && FLS.cvId === "simCv") { flightSetup(); flightPlay(); } });   // once the overlay has its width
 }
 
 // --------------------------------------------------- Savant-style pitch movement
@@ -3764,10 +3770,10 @@ function followLevel(r) {
 // second click on one of his own dots opens his card.
 function dotClick(r) {
   if (r === null || r === undefined) return;
-  if (state.cardOpen && !state.simOpen) { select(r); return; }
+  if (state.cardOpen) { select(r); return; }
   const s0 = state.sel;
-  if (state.preview && s0 !== null && s0 !== undefined && T.pitcher[r] === T.pitcher[s0] && T.season[r] === T.season[s0] && T.level[r] === T.level[s0] && !state.simOpen) { openCard(); return; }
-  preview(r);
+  if (state.preview && !state.simOpen && s0 !== null && s0 !== undefined && T.pitcher[r] === T.pitcher[s0] && T.season[r] === T.season[s0] && T.level[r] === T.level[s0]) { openCard(); return; }
+  preview(r);   // with the simulation open, this swaps the pitcher in it
 }
 function select(r) {
   followLevel(r);
@@ -3775,7 +3781,7 @@ function select(r) {
   const s0 = state.sel;
   if (state.preview && r !== null && r !== undefined && s0 !== null && s0 !== undefined
       && T.pitcher[r] === T.pitcher[s0] && T.season[r] === T.season[s0]) { openCard(); return; }
-  state.preview = false; state.simOpen = false;
+  state.preview = false; closeSim(true);
   if (r !== state.sel && r !== null && r !== undefined) remember(state.view, state.sel, r);
   if (r === null || r === undefined) state.showComps = false;
   state.sel = r; render(); renderDetail();
@@ -3787,6 +3793,7 @@ function preview(r) {
   if (r !== state.sel) remember(state.view, state.sel, r);
   state.preview = true; state.showComps = false; state.sel = r;
   render(); renderDetail();
+  if (state.simOpen) { renderSim(); return; }
   const b = $("#ctaOpen"); if (b && !$("#selCta").hidden) b.focus({ preventScroll: true });
 }
 function mostUsedRow(r) {
@@ -3796,7 +3803,7 @@ function mostUsedRow(r) {
 function openCard() {
   const r = state.sel; if (r === null || r === undefined) return;
   const m = mostUsedRow(r);
-  state.preview = false; state.simOpen = false;
+  state.preview = false; closeSim(true);
   setView(T.pitch_type[m], m);
   focusCard();
 }
@@ -3841,10 +3848,18 @@ function syncCta() {
   fly.textContent = state.simOpen ? "Hide pitch simulation" : "Show pitch simulation";
   fly.setAttribute("aria-pressed", String(!!state.simOpen));
 }
+// The simulation is an overlay on the map: nothing else on the page moves, and × or Escape puts it away.
 function toggleSim() {
   if (state.sel === null || state.sel === undefined) return;
-  state.simOpen = !state.simOpen; render(); renderDetail();
-  if (state.simOpen) { const c = document.getElementById("simCard"); if (c && c.scrollIntoView && matchMedia("(max-width:1099px)").matches) c.scrollIntoView({ block: "start", behavior: reduced() ? "auto" : "smooth" }); }
+  if (state.simOpen) { closeSim(); return; }
+  state.simOpen = true; renderSim(); syncCta();
+  const x = document.getElementById("simClose"); if (x) x.focus({ preventScroll: true });
+}
+function closeSim(quiet) {
+  const was = !!state.simOpen;
+  state.simOpen = false; $("#simBox").hidden = true;
+  if (FLS && FLS.cvId === "simCv") stopFlight();
+  if (!quiet && was) { renderDetail(); syncCta(); }   // the card's own flight panel comes back
 }
 
 function mapSelection(from, to, r) {
@@ -4418,6 +4433,7 @@ function buildStatic() {
   $("#ctaOpen").addEventListener("click", openCard);
   $("#ctaSim").addEventListener("click", toggleComps);
   $("#ctaFly").addEventListener("click", toggleSim);
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && state.simOpen) { e.preventDefault(); closeSim(); $("#ctaFly").focus({ preventScroll: true }); } });
   $("#cbHide").addEventListener("click", () => { state.showComps = false; render(); $("#ctaSim").focus({ preventScroll: true }); });
   $("#cbChips").addEventListener("click", e => { const b = e.target.closest("[data-cb]"); if (b) { state.sel = +b.dataset.cb; render(); } });
   $("#cbList").addEventListener("click", e => { const b = e.target.closest("[data-cbp]"); if (b) preview(+b.dataset.cbp); });
