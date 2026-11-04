@@ -366,6 +366,12 @@ button, input, select { font: inherit; color: inherit; }
 .simtype[aria-pressed="false"] .psw.dash { border-style: dashed; }
 .simtype[aria-pressed="false"] .psw.ring { border-color: #ffffff; }
 .simhint { font-weight: 400; font-size: 13px; color: var(--map-muted); }
+.simmsg { margin-top: 6px; } .simmsg:empty { display: none; }
+.simtblwrap { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--map-hair); }
+.simtblscroll { overflow-x: auto; }
+.simtab td .psw { display: inline-block; }
+.sim-replay:disabled { opacity: 0.6; cursor: default; }
+.mt-msg { font: 500 13px var(--font-ui); color: var(--ink2); }
 .simtype[aria-pressed="false"] .psw.fade { opacity: 1; }
 .simtype.added { border-style: dashed; }
 .simtype .x { margin-left: 2px; font-weight: 400; color: var(--map-ink2); }
@@ -1195,6 +1201,7 @@ tr.self td { font-weight: 600; background: none; }
     <div class="mt-head">
       <button type="button" class="bigbtn" id="mtHide">← Back to map</button>
       <span class="mt-title" id="mtTitle"></span>
+      <button type="button" class="bigbtn" id="mtDl" hidden>Download CSV</button><span class="mt-msg" id="mtMsg" aria-live="polite"></span>
     </div>
     <p class="mt-sub" id="mtSub"></p>
     <input id="mtSearch" class="mt-search" type="search" placeholder="Find a pitcher in this table" autocomplete="off" aria-label="Find a pitcher in this table">
@@ -3148,6 +3155,24 @@ async function downloadCSV() {
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
 
+// Any generated file: the viewer's save capability when this view has one, else an ordinary browser download
+const canSave = () => !!DOWNLOADS || !(window.claude && typeof window.claude.use === "function");
+const csvQ = x => { const t = x === null || x === undefined ? "" : String(x); return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+const csvN = (x, d = 4) => isNum(x) ? String(+x.toFixed(d)) : "";
+const fileSlug = t => String(t).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+async function saveFile(name, data, mime, msgEl, okText) {
+  const say = t => { if (msgEl) msgEl.textContent = t; };
+  if (DOWNLOADS) {
+    try { await DOWNLOADS.save({ filename: name, data }); say(okText || "Saved."); }
+    catch (e) { const c = e && e.code; say(c === "declined" ? "" : c === "rate_limited" ? "A save is already waiting for an answer." : c === "too_large" ? "That file is too large to save here." : "Saving isn't available here."); }
+    return;
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(data instanceof Blob ? data : new Blob([data], { type: mime })); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  say(okText || "");
+}
+
 function wrapTitle(t, n = 22) {
   const words = t.split(" "), lines = []; let cur = "";
   words.forEach(w => { if ((cur + " " + w).trim().length > n) { lines.push(cur.trim()); cur = w; } else cur += " " + w; });
@@ -3716,14 +3741,14 @@ function flightSetup() {
 }
 function flightPlay() {
   const F = FLS; if (!F) return;
-  if (reduced()) { flightDraw(F.total - 1); return; }
+  if (reduced() && !F.rec) { flightDraw(F.total - 1); return; }
   const step = now => {
     const G = FLS; if (!G || G !== F) return;
     const cv = flCv(); if (!cv || !cv.isConnected) { stopFlight(); return; }
     if (G.start === null) G.start = now;
     const frame = Math.floor((now - G.start) / 1000 * FL.FPS);
     flightDraw(Math.min(frame, G.total - 1));
-    if (frame < G.total - 1) G.raf = requestAnimationFrame(step); else G.raf = 0;
+    if (frame < G.total - 1) G.raf = requestAnimationFrame(step); else { G.raf = 0; if (G.onEnd) G.onEnd(); }
   };
   F.raf = requestAnimationFrame(step);
 }
@@ -3780,6 +3805,19 @@ function flightDraw(frame) {
       ctx.strokeStyle = p.ring ? "#ffffff" : "#14181e"; ctx.lineWidth = p.ring ? 2 : 1; ctx.stroke(); ctx.globalAlpha = 1;
     }
   }
+  if (F.rec) drawMark(ctx, W, H, pal);
+}
+// Pitch Universe mark for saved animations: a ball on an orbit and the name, bottom left
+function drawMark(ctx, W, H, pal) {
+  const s = Math.max(13, Math.round(W / 46)), r = s * 0.62, cx = s * 0.9 + r, cy = H - s * 0.9 - r * 0.5;
+  ctx.save(); ctx.globalAlpha = 0.9; ctx.setLineDash([]);
+  ctx.strokeStyle = pal.ink; ctx.lineWidth = Math.max(1.3, s / 9);
+  ctx.beginPath(); ctx.ellipse(cx, cy, r, r * 0.42, -0.35, 0, 2 * Math.PI); ctx.stroke();
+  ctx.fillStyle = pal.ink; ctx.beginPath(); ctx.arc(cx, cy, s * 0.2, 0, 2 * Math.PI); ctx.fill();
+  ctx.fillStyle = "#d22d49"; ctx.beginPath(); ctx.arc(cx + r * 0.8, cy - r * 0.27, s * 0.15, 0, 2 * Math.PI); ctx.fill();
+  ctx.fillStyle = pal.ink; ctx.font = `600 ${s}px ${css("--font-serif") || "Georgia, serif"}`; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+  ctx.fillText("Pitch Universe", cx + r + s * 0.45, cy);
+  ctx.restore();
 }
 window.addEventListener("resize", () => { if (!FLS) return; flightSetup(); flightDraw(FLS.raf ? Math.max(0, Math.floor((performance.now() - (FLS.start || performance.now())) / 1000 * FL.FPS)) : FLS.total - 1); });
 
@@ -3939,6 +3977,7 @@ function labRun(play) {   // fly (or redraw, while a slider moves) what the cont
   const L = labPaths(j, S), cam = state.flightCam || "catcher";
   const rd = $("#labRead");
   if (rd) rd.innerHTML = L.F ? labReadout(j, L) : L.paths.length ? "" : "Nothing in the air: turn on a pitch to simulate.";
+  const tb = document.getElementById("simTbody"); if (tb) tb.innerHTML = simTableHTML(j, S);
   stopFlight();
   if (!L.paths.length) { const cv = document.getElementById("simCv"); if (cv && cv.getContext) cv.getContext("2d").clearRect(0, 0, cv.width, cv.height); return; }
   const flight = Math.max(...L.paths.map(p => p.tEnd));
@@ -3976,6 +4015,68 @@ function simFindHTML(j, q) {
   if (!rows.length) return `<li class="none">No tracked pitch matches “${esc(q)}”.</li>`;
   return rows.map(r => `<li><button type="button" data-addr="${r}"><span><i class="psw" style="background:${SAVANT_PITCH[T.pitch_type[r]]};margin-right:6px;vertical-align:-1px"></i>${esc(T.name[r])} · ${PTN[T.pitch_type[r]]}</span>
     <span class="tm">${T.season[r]}${T.level[r] === "mlb" ? "" : " · Triple-A"} · ${T.p_throws[r] === "R" ? "RHP" : "LHP"} · ${fmt(T.velo[r], 1)} mph · ${(T.n[r] || 0).toLocaleString("en-US")} pitches</span></button></li>`).join("");
+}
+// Save animation: replay the flight while the browser records the canvas (mp4 where it can, else webm), with
+// the Pitch Universe mark bottom left. Anything that redraws the lab mid-recording stops it, and nothing is saved.
+const REC_TYPES = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+function recType() {
+  if (typeof MediaRecorder !== "function" || typeof MediaRecorder.isTypeSupported !== "function") return null;
+  for (const t of REC_TYPES) { try { if (MediaRecorder.isTypeSupported(t)) return t; } catch (e) {} }
+  return null;
+}
+const canRecord = () => !!recType() && canSave() && typeof HTMLCanvasElement !== "undefined" && typeof HTMLCanvasElement.prototype.captureStream === "function";
+async function saveSimVideo() {
+  const j = state.sel, S = state.sim, type = recType(), cv = document.getElementById("simCv"), btn = $("#simRec"), msg = $("#simRecMsg");
+  if (j === null || j === undefined || !S || !type || !cv || state.simRec) return;
+  labRun(false);
+  const F0 = FLS; if (!F0 || F0.cvId !== "simCv") { msg.textContent = "Nothing in the air to record: turn on a pitch."; return; }
+  state.simRec = true; btn.disabled = true; btn.textContent = "Recording…"; msg.textContent = "";
+  const stream = cv.captureStream(FL.FPS), chunks = [];
+  let rec; try { rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 8e6 }); } catch (e) { rec = new MediaRecorder(stream); }
+  rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  const stopped = new Promise(res => { rec.onstop = res; });
+  const stop = () => { try { if (rec.state !== "inactive") rec.stop(); } catch (e) {} };
+  F0.rec = true; F0.onEnd = () => { F0.finished = true; setTimeout(stop, 200); };
+  const guard = setInterval(() => { if (FLS !== F0) { clearInterval(guard); stop(); } }, 250);   // the lab was redrawn: give up
+  rec.start(250); flightSetup(); flightPlay();
+  await stopped; clearInterval(guard); stream.getTracks().forEach(t => t.stop());
+  state.simRec = false; F0.rec = false;
+  if (FLS === F0) flightDraw(F0.total - 1);   // the last frame again, without the mark
+  const b2 = $("#simRec"), m2 = $("#simRecMsg"); if (b2) { b2.disabled = false; b2.textContent = "Save animation"; }
+  if (!F0.finished) { if (m2) m2.textContent = "Recording stopped: the lab changed before the pitches landed."; return; }
+  const blob = new Blob(chunks, { type: type.split(";")[0] });
+  if (!blob.size) { if (m2) m2.textContent = "This browser could not record the animation."; return; }
+  const g = S.items.find(it => it.kind === "ghost" && it.on), ext = type.startsWith("video/mp4") ? "mp4" : "webm";
+  const name = `pitch_universe_${fileSlug(T.name[j])}_${T.season[j]}${g ? `_vs_${fileSlug(T.name[g.r])}_${T.season[g.r]}` : ""}_${state.flightCam || "catcher"}.${ext}`;
+  await saveFile(name, blob, blob.type, m2, "Saved the animation.");
+}
+// Pitches in the air, as a table and a CSV: what flies right now, with the values it flies with
+const SIM_COLS = [["mph", "Velocity", "mph", 1], ["ivb", "Ride (IVB)", "in", 1], ["hb", "Run (arm side +)", "in", 1], ["relH", "Release height", "ft", 2],
+  ["relS", "Release side (arm side +)", "ft", 2], ["ext", "Extension", "ft", 2], ["spin", "Spin", "rpm", 0], ["vaa", "Arrival angle", "°", 1]];
+function simTableRows(j, S) {
+  const out = [], F = labFocus(S);
+  const add = (label, r, d, note) => { const f = labFly(r, d); out.push({ label, r, v: { ...d, spin: T.spin ? T.spin[r] : null, vaa: f.vaa }, note }); };
+  S.items.forEach(it => {
+    if (!it.on) return;
+    if (it.kind === "own") add(labLabel(j, it), it.r, it.ref, "His pitch");
+    else if (it.kind === "ghost") add(labLabel(j, it), it.r, labPlace(j, it.r, labReal(it.r)), normOn() ? "Lookalike (ghost), release normalized" : "Lookalike (ghost)");
+    else add(labLabel(j, it), it.r, labPlace(j, it.r, it.d), (it.kind === "lack" ? "Built from " + T.name[it.r] : "Added") + (it.edited ? ", edited" : "") + (normOn() ? ", release normalized" : ""));
+  });
+  if (F) add(F.own ? labLabel(j, F.st) + " (edited)" : "In the lab: " + labLabel(j, F.st), F.st.r, F.own ? F.st.d : labPlace(j, F.st.r, F.st.d), F.own ? "Edited" : "In the lab");
+  return out;
+}
+function simTableHTML(j, S) {
+  const rows = simTableRows(j, S);
+  if (!rows.length) return `<tr><td colspan="${SIM_COLS.length + 2}">Nothing in the air.</td></tr>`;
+  return rows.map(o => `<tr><td><i class="psw" style="background:${SAVANT_PITCH[T.pitch_type[o.r]]};margin-right:6px;vertical-align:-2px"></i>${esc(o.label)}<span class="tm">${esc(o.note)}</span></td>`
+    + `<td>${esc(T.name[o.r])}<span class="tm">${T.season[o.r]}${T.level[o.r] === "mlb" ? "" : " · Triple-A"} · ${T.p_throws[o.r] === "R" ? "RHP" : "LHP"}</span></td>`
+    + SIM_COLS.map(([k, , , d]) => `<td class="num">${isNum(o.v[k]) ? o.v[k].toFixed(d) : "–"}</td>`).join("") + `</tr>`).join("");
+}
+function simCSV(j, S) {
+  const head = ["Pitch", "Note", "Pitcher", "MLBAM ID", "Season", "Level", "Throws", "Pitch type", ...SIM_COLS.map(([, l, u]) => `${l} (${u})`)];
+  const lines = simTableRows(j, S).map(o => [o.label, o.note, T.name[o.r], T.pitcher[o.r], T.season[o.r], T.level[o.r] === "mlb" ? "MLB" : "Triple-A", T.p_throws[o.r], PTN[T.pitch_type[o.r]],
+    ...SIM_COLS.map(([k, , , d]) => csvN(o.v[k], d + 1))].map(csvQ).join(","));
+  return [head.map(csvQ).join(","), ...lines].join("\r\n") + "\r\n";
 }
 function renderSim() {
   stopFlight();
@@ -4032,13 +4133,18 @@ function renderSim() {
         ${editWhich}${note}${sliders}
         <p class="labread" id="labRead"></p></div>
       <div class="simstage labstage"><div class="simover"><div class="mseg simcam" role="group" aria-label="Camera">${["catcher", "pitcher"].map(c => `<button type="button" data-simcam="${c}" aria-pressed="${cam === c}">${c === "catcher" ? "Catcher view" : "Pitcher view"}</button>`).join("")}</div>
-        <button type="button" class="sim-replay" id="simReplay">Replay</button></div>
-        <canvas id="simCv" class="simcv" role="img" aria-label="Animated flight of the pitches to simulate"></canvas></div>
-    </div>`;
+        <button type="button" class="sim-replay" id="simReplay">Replay</button>${canRecord() ? `<button type="button" class="sim-replay" id="simRec" title="Save this animation as a video, with the Pitch Universe mark">Save animation</button>` : ""}</div>
+        <canvas id="simCv" class="simcv" role="img" aria-label="Animated flight of the pitches to simulate"></canvas>
+        <p class="labnote simmsg" id="simRecMsg" aria-live="polite"></p></div>
+    </div>
+    <section class="simtblwrap" aria-labelledby="simTblLbl"><div class="simrow"><span class="flbl" id="simTblLbl">Pitches in the air</span>${canSave() ? `<button type="button" class="sim-replay" id="simCsv">Download CSV</button>` : ""}<span class="labnote" id="simTblMsg" aria-live="polite"></span></div>
+      <div class="simtblscroll"><table class="simtab"><thead><tr><th>Pitch</th><th>Pitcher</th>${SIM_COLS.map(([, l, u]) => `<th class="num">${esc(l)} <span class="tm">(${esc(u)})</span></th>`).join("")}</tr></thead><tbody id="simTbody"></tbody></table></div></section>`;
   const tog = (id, k) => { const el = $(id); if (el) el.onclick = () => { S[k] = !S[k]; renderSim(); }; };
   tog("#labEdit", "edit"); tog("#labDonor", "showDonor"); tog("#labAvg", "showAvg");
   $("#simClose").onclick = () => closeSim();
   $("#simReplay").onclick = () => labRun(true);
+  const rb = $("#simRec"); if (rb) rb.onclick = saveSimVideo;
+  const cb2 = $("#simCsv"); if (cb2) cb2.onclick = () => saveFile(`pitch_universe_lab_${fileSlug(T.name[j])}_${T.season[j]}.csv`, simCSV(j, S), "text/csv;charset=utf-8", $("#simTblMsg"), "Saved the table.");
   const on = (sel, fn) => { const el = $(sel); if (el) el.onclick = fn; };
   on("#labReset", () => { st.d = { ...st.ref }; renderSim(); });
   on("#labDiscard", () => { S.stage = null; renderSim(); });
@@ -5027,6 +5133,7 @@ function syncTable() {
   $("#mTable").hidden = !on;
   $("#app").classList.toggle("with-table", on);
   $("#mtSearch").hidden = look; $("#mtScroll").hidden = look; $("#mtLook").hidden = !look;
+  $("#mtDl").hidden = !look || !canSave(); if (!look) $("#mtMsg").textContent = "";
   const cb = $("#cbTable"); if (cb) { cb.setAttribute("aria-pressed", String(look)); cb.textContent = look ? "Hide table" : "Compare in table"; }
   if (look) { renderLookTable(); return; }
   $("#slList").querySelectorAll(".sltbl").forEach(b => {
@@ -5043,6 +5150,18 @@ function renderLookTable() {
   $("#mtSub").textContent = `${T.season[r]} · ${teamStr(r)}. Each cell is the value, shaded by its percentile among MLB ${PTN[T.pitch_type[r]].toLowerCase()}s (red high, blue low, flipped where lower is better). Click a column to sort, a row to open him.`;
   $("#mtLook").innerHTML = comps.length ? heatTable(view, r, comps) : `<p class="mt-more">No lookalikes for this pitch.</p>`;
   wireHeatRows($("#mtLook"));
+}
+// Compare in table as a CSV: him first, then his lookalikes closest first; xERA and every pitch measure, raw values
+function lookCSV(r) {
+  const comps = compsOf(state.view, r), hv = VARS.t.filter(v => !v.cat && v.key.startsWith("t:"));
+  const cols = [...new Set(hv.map(v => v.group))].flatMap(g => hv.filter(v => v.group === g));
+  const head = ["Rank", "Pitcher", "MLBAM ID", "Season", "Team", "Level", "Throws", "Pitch type", "Fit", "xERA", ...cols.map(v => v.label + (v.unit ? ` (${v.unit})` : ""))];
+  const line = (c, k, q) => { const i = pOfT[c];
+    return [k === null ? "Him" : k + 1, T.name[c], T.pitcher[c], T.season[c], teamStr(c), T.level[c] === "mlb" ? "MLB" : "Triple-A", T.p_throws[c], PTN[T.pitch_type[c]],
+      q === undefined ? "" : fitOf(q)[1], i >= 0 ? csvN(P.xera[i], 2) : "", ...cols.map(v => csvN(v.get(c)))].map(csvQ).join(","); };
+  const lines = [line(r, null), ...comps.map(([c, q], k) => line(c, k, q))];
+  return { csv: [head.map(csvQ).join(","), ...lines].join("\r\n") + "\r\n", n: comps.length,
+    name: `pitch_universe_lookalikes_${fileSlug(T.name[r])}_${T.season[r]}_${fileSlug(PTN[T.pitch_type[r]])}.csv` };
 }
 function wireHeatRows(el) {   // rows open the pitcher, by click or Enter / Space
   el.querySelectorAll("[data-go]").forEach(tr => {
@@ -5222,11 +5341,13 @@ function buildStatic() {
     const b = e.target.closest("[data-cbp]"); if (b) preview(+b.dataset.cbp, { from: state.sel });
   });
   $("#cbSave").addEventListener("click", () => saveCompsGroup(state.sel));
+  $("#mtDl").addEventListener("click", () => { const r = state.lookTbl; if (r === null || r === undefined) return;
+    const { csv, n, name } = lookCSV(r); saveFile(name, csv, "text/csv;charset=utf-8", $("#mtMsg"), `Saved him and ${n} lookalikes.`); });
   document.addEventListener("click", e => { const b = e.target.closest("[data-svcomps]"); if (b && !b.disabled) saveCompsGroup(+b.dataset.svcomps); });
   document.addEventListener("click", e => { const b = e.target.closest("[data-pool]"); if (b) setCompPool(b.dataset.pool); });
   $("#ctaClose").addEventListener("click", () => select(null));
   if (window.claude && typeof window.claude.use === "function") {
-    window.claude.use("downloads").then(d => { DOWNLOADS = d; $("#dlBtn").hidden = !d; }, () => {});
+    window.claude.use("downloads").then(d => { DOWNLOADS = d; $("#dlBtn").hidden = !d; syncTable(); if (state.simOpen && !state.simRec) renderSim(); }, () => {});
   } else $("#dlBtn").hidden = false;
   $("#ellOn").addEventListener("click", () => { state.ellipses = !state.ellipses; render(); });
   $("#ellP").querySelectorAll("button").forEach(b => b.addEventListener("click", () => { state.ellP = +b.dataset.v; render(); }));
