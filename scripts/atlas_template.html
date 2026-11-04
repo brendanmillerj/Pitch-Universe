@@ -58,6 +58,7 @@ button, input, select { font: inherit; color: inherit; }
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto auto minmax(520px, 1fr) auto;   /* map never shrinks below 520px; the page scrolls instead */
   grid-template-areas: "head" "controls" "map" "caption";
+  --gw: clamp(320px, 24vw, 400px);   /* the groups card beside the map */
   padding: 0 var(--gr) 0 var(--gl);
   background: var(--bg);
 }
@@ -87,7 +88,7 @@ button, input, select { font: inherit; color: inherit; }
 #plot > canvas:active { cursor: grabbing; }
 #plot.dot-hover > canvas { cursor: pointer; }
 /* pitcher list: top right, just under the season/hand buttons (--fh = their measured height); it stops above
-   the saved-ellipses panel (--svh) and never runs past the map. Dark, like every other panel on the map. */
+   the map's bottom edge. Dark, like every other panel on the map. */
 .matchbox { position: absolute; z-index: 6; top: calc(2 * var(--mi) + var(--fh, 46px)); right: var(--mx); width: var(--rw);
   max-height: calc(100% - 3 * var(--mi) - var(--fh, 46px) - var(--svh, 0px));
   display: flex; flex-direction: column; background: var(--map-chrome); color: var(--map-ink); border: 1.5px solid var(--map-muted);
@@ -124,26 +125,60 @@ button, input, select { font: inherit; color: inherit; }
   background: none; color: var(--map-ink); border: 2px solid var(--map-ink); font: 700 15px var(--font-ui); text-align: center; }
 .svbtn:hover { background: var(--map-hover); }
 .svbtn[hidden] { display: none; }
-.savedbox { position: absolute; z-index: 6; right: var(--mx); bottom: var(--mi); width: var(--rw); max-height: 42%;
-  display: flex; flex-direction: column; border-radius: var(--r-lg); background: var(--map-chrome); border: 1.5px solid var(--map-muted);
-  color: var(--map-ink); box-shadow: var(--shmap); overflow: hidden; }
-.savedbox[hidden] { display: none; }
-.sv-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 12px; }
-.sv-head b { font: 700 15px var(--font-ui); }
-#svList { list-style: none; margin: 0; padding: 0 0 4px; overflow-y: auto; overscroll-behavior: contain; }
+/* Your groups: a card of its own, joined to the map (same dark family, a hairline seam, matching corners) but
+   set apart by a darker surface and a gold band that echoes SAVE Group. Beside the map on wide screens, under it
+   when a pitcher card takes the right half or on narrow screens. */
+.groupcard { grid-area: groups; min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
+  background: var(--map-panel); color: var(--map-ink); border-radius: var(--r-lg); border-top: 5px solid #e6b422; }
+.gc-head { flex: none; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; padding: 12px 16px 6px; }
+.gc-head h2 { margin: 0; font: 600 30px/1.1 var(--font-serif); color: var(--map-ink); }
+.gc-head .gc-n { font: 700 17px var(--font-ui); color: #ffd75e; }
+.groupcard #svOnly { flex: none; margin: 2px 16px 10px; }
+.groupcard #svOnly:disabled { display: none; }
+.gc-empty { margin: 4px 16px 16px; font: italic 400 17px/1.5 var(--font-serif); color: var(--map-ink2); }
+.gc-empty[hidden] { display: none; }
+.gc-empty b { font: normal 800 15px var(--font-ui); color: #1f242b; background: linear-gradient(180deg, #ffd75e, #e6b422); padding: 1px 8px; border-radius: 5px; white-space: nowrap; }
+.gc-members { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 2px; padding: 0; list-style: none; }
+.gc-members button { display: inline-flex; align-items: baseline; gap: 6px; font: 600 14px var(--font-ui); padding: 5px 10px; border-radius: 999px;
+  border: 1px solid var(--map-muted); background: none; color: var(--map-ink); cursor: pointer; }
+.gc-members button:hover { background: var(--map-hover); }
+.gc-members .tm { font-weight: 400; font-size: 13px; color: var(--map-ink2); }
+.gc-members .lv { font: 800 11px var(--font-ui); letter-spacing: 0.04em; color: #1f242b; background: #ffd75e; padding: 1px 5px; border-radius: 4px; }
+.gc-more { align-self: center; font: 400 13px var(--font-ui); color: var(--map-ink2); }
+@media (min-width: 1100px) {
+  /* beside the map: the map's right corners and the card's left corners square off across a 4px seam */
+  .app:not(.has-sel) .map { padding-right: 4px; }
+  .app:not(.has-sel) #plot { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  .app:not(.has-sel) .groupcard { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-right: 12px; }
+  /* under the map (a pitcher card holds the right half): bottom corners to top corners, same seam */
+  .app.has-sel #plot { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  .app.has-sel .groupcard { margin: 4px 12px 0 0; max-height: 38vh; border-top-left-radius: 0; border-top-right-radius: 0; }
+}
+@media (min-width: 1400px) {
+  .app.with-sliders.with-table:not(.has-sel) .map { padding-right: 12px; }
+  .app.with-sliders.with-table:not(.has-sel) #plot { border-radius: var(--r-lg) var(--r-lg) 0 0; }
+  .app.with-sliders.with-table:not(.has-sel) .groupcard { margin: 4px 12px 0 0; max-height: 38vh; border-radius: 0 0 var(--r-lg) var(--r-lg); }
+}
+@media (max-width: 1099px) {
+  #plot { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  .groupcard { margin-top: 4px; max-height: 60vh; border-top-left-radius: 0; border-top-right-radius: 0; }
+}
+#svList { list-style: none; margin: 0; padding: 0 0 8px; overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
 #svList li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 2px 8px;
   padding: 8px 12px; border-top: 1px solid var(--map-hair); }
 #svList li.off .sv-name, #svList li.off .sv-meta { opacity: 0.7; }
+#svList .gc-members li { display: block; padding: 0; border: 0; }   /* chips: not the group-row grid */
+#svList > li { padding: 12px 16px; }
 .sv-sw { width: 20px; height: 20px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 1.5px var(--map-ring);
   position: relative; cursor: pointer; overflow: hidden; }
 .sv-sw input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; padding: 0; border: 0; cursor: pointer; }
-.sv-name { min-width: 0; font: 600 14px var(--font-ui); color: var(--map-ink); background: none; border: 1px solid transparent;
+.sv-name { min-width: 0; font: 600 20px var(--font-serif); color: var(--map-ink); background: none; border: 1px solid transparent;
   border-radius: 6px; padding: 2px 4px; text-overflow: ellipsis; }
 .sv-name:hover { border-color: var(--map-muted); }
 .sv-name:focus { border-color: var(--map-ink); background: rgba(0, 0, 0, 0.25); outline: none; }
 .sv-del { font: 400 24px/1 var(--font-ui); color: var(--map-ink); background: none; border: 0; border-radius: 6px; min-width: 32px; min-height: 32px; cursor: pointer; }
 .sv-del:hover { background: var(--map-hover); }
-.sv-meta { grid-column: 2 / -1; font: 400 13px var(--font-ui); color: var(--map-ink2); padding-left: 4px; }
+.sv-meta { grid-column: 2 / -1; font: 400 14px var(--font-ui); color: var(--map-ink2); padding-left: 4px; }
 .sv-gowrap { grid-column: 2 / -1; padding-left: 4px; }
 .sv-gowrap:empty { display: none; }
 .sv-go { border: 0; background: none; padding: 2px 0; cursor: pointer; font: 700 14px var(--font-ui); color: #ffd75e; text-decoration: underline; text-underline-offset: 3px; }
@@ -151,7 +186,7 @@ button, input, select { font: inherit; color: inherit; }
 .mb-acts { display: inline-flex; gap: 12px; }
 .sv-why { grid-column: 2 / -1; justify-self: start; border: 0; background: none; padding: 2px 4px; cursor: pointer;
   font: 600 13px var(--font-ui); color: var(--map-ink); text-decoration: underline; text-underline-offset: 3px; }
-.sv-traits { grid-column: 1 / -1; padding: 2px 4px 4px; font: 400 14px/1.45 var(--font-ui); color: var(--map-ink); }
+.sv-traits { grid-column: 1 / -1; padding: 2px 4px 4px; font: 400 15px/1.45 var(--font-ui); color: var(--map-ink); }
 .sv-traits[hidden] { display: none; }
 .sv-tr-head { margin: 0 0 2px; font-weight: 700; }
 .sv-tr { margin: 0; padding: 0; list-style: none; }
@@ -180,14 +215,13 @@ button, input, select { font: inherit; color: inherit; }
 .sv-undo { padding: 8px 12px; font: 500 13px var(--font-ui); color: var(--map-ink2); border-top: 1px solid var(--map-hair); }
 .sv-undo .link { color: var(--map-ink); font-weight: 700; }
 .sv-undo[hidden] { display: none; }
-.savedbox.folded #svList, .savedbox.folded .sv-undo, .savedbox.folded #svOnly { display: none; }
 #svOnly[aria-pressed="true"] { background: var(--ink); color: var(--field); box-shadow: inset 0 0 0 2px var(--field); }
 /* small secondary buttons (Hide / Show, per-row toggles): one style, a page and a map version */
-.howhide, #mbHide, #svFold, .sv-tog { flex: none; font: 600 14px var(--font-ui); min-height: 32px; padding: 0 10px; border-radius: 6px; cursor: pointer;
+.howhide, #mbHide, .sv-tog { flex: none; font: 600 14px var(--font-ui); min-height: 32px; padding: 0 10px; border-radius: 6px; cursor: pointer;
   background: none; border: 1.5px solid var(--rule); color: var(--ink2); text-decoration: none; }
 .howhide:hover { color: var(--ink); border-color: var(--ink); }
-#mbHide, #svFold, .sv-tog { color: var(--map-ink); border-color: var(--map-muted); }
-#mbHide:hover, #svFold:hover, .sv-tog:hover { background: var(--map-hover); }
+#mbHide, .sv-tog { color: var(--map-ink); border-color: var(--map-muted); }
+#mbHide:hover, .sv-tog:hover { background: var(--map-hover); }
 /* "See full player info": after a search the map shows him first; this opens his card. Bottom centre, light on
    the slate so it is the most obvious thing on the map; the button pulses a few times when it appears. */
 .selcta { position: absolute; z-index: 7; left: calc(50% - 6px); bottom: calc(var(--mi) + 4px); transform: translateX(-50%);
@@ -577,21 +611,22 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
    Defining Traits sit level with "Color pitchers by" but can run taller; they span into the map's first row,
    so the map starts right under the controls instead of under the traits. */
 @media (min-width: 1100px) {
-  .app.has-sel { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto auto minmax(420px, 1fr) auto;
-    grid-template-areas: "head dhead" "controls dtraits" "map dtraits" "map detail" "caption detail"; }
+  .app { grid-template-columns: minmax(0, 1fr) var(--gw); grid-template-areas: "head head" "controls controls" "map groups" "caption caption"; }
+  .app.has-sel { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto auto minmax(420px, 1fr) auto auto;
+    grid-template-areas: "head dhead" "controls dtraits" "map dtraits" "map detail" "groups detail" "caption detail"; }
   .app.with-sliders.has-sel { grid-template-columns: 280px minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas: "sl head dhead" "sl controls dtraits" "sl map dtraits" "sl map detail" "sl caption detail"; }
+    grid-template-areas: "sl head dhead" "sl controls dtraits" "sl map dtraits" "sl map detail" "sl groups detail" "sl caption detail"; }
 }
 .app.has-sel .head { margin-right: 0; padding-right: 16px; }
 .app.has-sel .right { padding: 8px 8px 16px 10px; }
 .app.has-sel #comps { display: none !important; }
-.app.with-sliders { grid-template-columns: 280px minmax(0, 1fr);
-  grid-template-areas: "sl head" "sl controls" "sl map" "sl caption"; }
+.app.with-sliders { grid-template-columns: 280px minmax(0, 1fr) var(--gw);
+  grid-template-areas: "sl head head" "sl controls controls" "sl map groups" "sl caption caption"; }
 /* the sortable pitcher table: beside the map on wide screens, under it otherwise; folded away while a card is open */
-.app.with-sliders.with-table:not(.has-sel) { grid-template-areas: "sl head" "sl controls" "sl map" "sl tbl" "sl caption"; }
+.app.with-sliders.with-table:not(.has-sel) { grid-template-areas: "sl head head" "sl controls controls" "sl map groups" "sl tbl tbl" "sl caption caption"; }
 @media (min-width: 1400px) {
   .app.with-sliders.with-table:not(.has-sel) { grid-template-columns: 280px minmax(360px, 540px) minmax(0, 1fr);
-    grid-template-areas: "sl head head" "sl controls controls" "sl tbl map" "sl tbl caption"; }
+    grid-template-areas: "sl head head" "sl controls controls" "sl tbl map" "sl tbl groups" "sl tbl caption"; }
   .app.with-table:not(.has-sel) .mtable { position: relative; margin: 0 16px 0 0; }
   .app.with-table:not(.has-sel) .mt-in { position: absolute; inset: 0; display: flex; flex-direction: column; }
   .app.with-table:not(.has-sel) .mt-scroll { flex: 1; max-height: none; }
@@ -600,7 +635,7 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
    drawer floats over the page (as on tablets) and the map and card keep half the width each */
 @media (min-width: 1100px) and (max-width: 1599px) {
   .app.with-sliders.has-sel { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas: "head dhead" "controls dtraits" "map dtraits" "map detail" "caption detail"; }
+    grid-template-areas: "head dhead" "controls dtraits" "map dtraits" "map detail" "groups detail" "caption detail"; }
   .app.with-sliders.has-sel .sliders { position: fixed; z-index: 60; top: 0; bottom: 0; left: 0; width: min(340px, 88vw); margin: 0;
     padding: 16px 18px 24px 16px; box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.18); }
   .app.with-sliders.has-sel .sl-head { top: -16px; padding-top: 12px; margin: -16px -18px 0 -16px; }
@@ -774,7 +809,6 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
   box-shadow: var(--sh2); opacity: 0; transition: opacity 160ms; }
 .zoomtip.show { opacity: 1; }
 .zoomtip[hidden] { display: none; }
-.map:has(#savedBox:not([hidden])) .maphint { bottom: calc(var(--svh, 0px) + 2px); }
 @container map (max-width: 1150px) { .maphint { display: none; } }
 @media (max-width: 719px) { .howto { flex-direction: column; align-items: flex-start; } }
 .legendkey { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; font: 500 13px var(--font-ui); color: var(--ink2); margin: 0; }
@@ -850,8 +884,8 @@ tr.self td { font-weight: 600; background: none; }
 /* ------------------------------------------------------------------ tablet */
 @media (max-width: 1099px) {
   .app { height: auto; min-height: 0; grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto auto auto auto auto auto;
-    grid-template-areas: "head" "controls" "map" "caption" "dhead" "dtraits" "detail" "comps"; }
+    grid-template-rows: auto auto auto auto auto auto auto auto auto;
+    grid-template-areas: "head" "controls" "map" "groups" "caption" "dhead" "dtraits" "detail" "comps"; }
   .controls, .map, .caption { padding-right: 0; }
   .map { height: 70vh; min-height: 440px; }
   .right { border-left: 0; border-top: 1px solid var(--rule); padding: 16px 0 40px; overflow: visible; }
@@ -886,8 +920,8 @@ tr.self td { font-weight: 600; background: none; }
 }
 /* sliders on tablets and phones: a drawer over the page instead of a fourth column */
 @media (max-width: 1099px) {
-  .app.with-sliders, .app.with-sliders.has-sel { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "controls" "map" "caption" "dhead" "dtraits" "detail" "comps"; }
-  .app.with-sliders.with-table { grid-template-areas: "head" "controls" "map" "tbl" "caption" "dhead" "dtraits" "detail" "comps"; }
+  .app.with-sliders, .app.with-sliders.has-sel { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "controls" "map" "groups" "caption" "dhead" "dtraits" "detail" "comps"; }
+  .app.with-sliders.with-table { grid-template-areas: "head" "controls" "map" "groups" "tbl" "caption" "dhead" "dtraits" "detail" "comps"; }
   .mtable { margin: 12px 0 0; }
   .sliders { position: fixed; z-index: 60; top: 0; bottom: 0; left: 0; width: min(340px, 88vw); margin: 0;
     padding: calc(16px + env(safe-area-inset-top, 0px)) 18px calc(24px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
@@ -1030,9 +1064,9 @@ tr.self td { font-weight: 600; background: none; }
   .map { height: auto; min-height: 0; --svh: 0px !important; --svw: 0px !important; }
   #plot { flex: none; height: 56vh; min-height: 340px; }
   .mapctl { position: static; order: -2; flex-direction: row; flex-wrap: wrap; align-items: center; margin: 0 0 8px; }
-  .mapkey, .matchbox, .mbshow, .savedbox { position: static; width: auto; max-width: none; margin-top: 8px; }
-  .matchbox, .savedbox { max-height: 40vh; }
-  .mapkey { order: 1; } .mbshow { order: 2; align-self: flex-start; } .matchbox { order: 2; } .savedbox { order: 3; }
+  .mapkey, .matchbox, .mbshow { position: static; width: auto; max-width: none; margin-top: 8px; }
+  .matchbox { max-height: 40vh; }
+  .mapkey { order: 1; } .mbshow { order: 2; align-self: flex-start; } .matchbox { order: 2; }
   .mapfilt { position: static; max-width: none; justify-content: flex-start; margin-bottom: 8px; order: -1; }
   .mseg button { font-size: 15px; padding: 8px 10px; }
   .mapkey { padding: 8px 10px 10px; } .mk-title { font-size: 17px; } .mk-dual, .mk-ticks { width: 240px; }
@@ -1208,12 +1242,6 @@ tr.self td { font-weight: 600; background: none; }
       <button type="button" class="savebtn" id="cbSave" title="Save him and these comps as a named group, circled on every map, with what they share">SAVE Group</button>
       <ol id="cbList"></ol>
     </aside>
-    <aside class="savedbox" id="savedBox" aria-label="Groups" hidden>
-      <div class="sv-head"><b id="svTitle">Groups</b><button type="button" class="link" id="svFold" aria-expanded="true">Hide</button></div>
-      <button type="button" class="dlbtn keepbtn" id="svOnly" aria-pressed="false" title="Keep only the pitchers in your groups on the map; the pitcher list and the measure filters then work on them alone">Show only my groups</button>
-      <ul id="svList"></ul>
-      <p class="sv-undo" id="svUndo" hidden></p>
-    </aside>
     <div class="selcta" id="selCta" role="region" aria-label="Selected pitcher" hidden>
       <div class="cta-name"><b id="ctaName"></b><span id="ctaSub"></span></div>
       <button type="button" class="ctabtn" id="ctaOpen">See full player info <span class="arr" aria-hidden="true">→</span></button>
@@ -1221,6 +1249,13 @@ tr.self td { font-weight: 600; background: none; }
       <button type="button" class="ctaclose" id="ctaClose" aria-label="Clear the selection" title="Clear">×</button>
     </div>
   </main>
+  <aside class="groupcard" id="savedBox" aria-labelledby="svTitle">
+    <div class="gc-head"><h2 id="svTitle">Your groups</h2><span class="gc-n" id="svCount"></span></div>
+    <button type="button" class="dlbtn keepbtn" id="svOnly" aria-pressed="false" title="Keep only the pitchers in your groups on the map; the pitcher list and the measure filters then work on them alone">Show only my groups</button>
+    <p class="gc-empty" id="svEmpty">Nothing saved yet. <b>SAVE Group</b> on a pitcher list or on a pitcher's similar pitchers keeps them here, circled on every map, with what they share.</p>
+    <ul id="svList"></ul>
+    <p class="sv-undo" id="svUndo" hidden></p>
+  </aside>
 
   <div class="caption">
     <section class="howto" id="howto" aria-label="How to read the map">
@@ -1983,7 +2018,7 @@ try {
       // comps: set when the group was saved from a pitcher's similar-pitchers list (him + his comps)
       comps: e.comps && typeof e.comps === "object" ? { key: String(e.comps.key || ""), of: String(e.comps.of || ""), pt: String(e.comps.pt || ""), tol: typeof e.comps.tol === "number" ? e.comps.tol : null } : null }));
 } catch (e) {}
-const svOpen = new Set();   // ids whose "What they share" readout is open
+const svOpen = new Set(saved.map(e => e.id));   // ids whose "What they share" readout is open (all, to start)
 let GK = null;   // pitcher|season keys of every shown group; rebuilt after any change to the groups
 const persistSaved = () => { GK = null; try { localStorage.setItem(SAVED_STORE, JSON.stringify(saved)); } catch (e) {} };
 const groupsOn = () => saved.some(e => e.on);
@@ -2040,9 +2075,8 @@ function saveGroup(rows, base, comps) {
   const used = new Set(saved.map(e => e.color.toLowerCase()));
   const color = SAVED_COLORS.find(c => !used.has(c)) || SAVED_COLORS[saved.length % SAVED_COLORS.length];
   const e = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, color, on: true, keys, comps: comps || null };
-  saved.push(e); if (comps) svOpen.add(e.id);   // a comps ellipse opens with its readout showing
+  saved.push(e); svOpen.add(e.id);   // a new group opens with "What they share" showing
   persistSaved(); svDeleted = null;
-  $("#savedBox").classList.remove("folded");
   renderSaved(); render();
   return e;
 }
@@ -2122,29 +2156,46 @@ function savedElsewhere(e) {
   return other ? `<button type="button" class="sv-go" data-golvl="${other}">See them on the ${other === "mlb" ? "MLB" : "AAA"} map →</button>` : "";
 }
 // Structure only on save / delete / undo / fold; render() refreshes the per-map notes in place.
+// a group's pitchers, in saved order (him first for a comps group): one row each, his primary fastball's dot
+const GMEM = new Map();
+function groupMembers(e) {
+  if (GMEM.has(e.id)) return GMEM.get(e.id);
+  const out = [];
+  e.keys.forEach(k => {
+    const [pid, s, l] = k.split("|"), lvls = l ? [l] : LEVELS;
+    for (const lvl of lvls) {
+      const i = pRow(+pid, +s, lvl); if (i === undefined) continue;
+      const r = tRow(+pid, +s, P.primary_fb[i], lvl) ?? TYPES.map(t => tRow(+pid, +s, t, lvl)).find(x => x !== undefined);
+      if (r !== undefined) out.push(r);
+    }
+  });
+  GMEM.set(e.id, out); return out;
+}
+const GC_SHOW = 30;   // member chips shown per group; the rest are counted
+function membersHTML(e) {
+  const rows = groupMembers(e);
+  return `<ul class="gc-members">${rows.slice(0, GC_SHOW).map(r => `<li><button type="button" data-member="${r}" title="Show ${esc(T.name[r])} on the map">${esc(T.name[r])}`
+    + ` <span class="tm">${shortSeason(T.season[r])}</span>${T.level[r] === "mlb" ? "" : ` <span class="lv">AAA</span>`}</button></li>`).join("")}`
+    + (rows.length > GC_SHOW ? `<li class="gc-more">and ${(rows.length - GC_SHOW).toLocaleString()} more</li>` : "") + `</ul>`;
+}
 function renderSaved() {
-  const box = $("#savedBox"), mapEl = document.querySelector(".map");
-  box.hidden = !saved.length && !svDeleted;
-  $("#svTitle").textContent = `Groups (${saved.length})`;
+  const box = $("#savedBox");
+  box.hidden = false;
+  $("#svCount").textContent = saved.length ? String(saved.length) : "";
+  $("#svEmpty").hidden = saved.length > 0 || !!svDeleted;
   syncOnlyGroups();
-  const folded = box.classList.contains("folded");
-  $("#svFold").textContent = folded ? "Show" : "Hide"; $("#svFold").setAttribute("aria-expanded", String(!folded));
   $("#svList").innerHTML = saved.map(e => `<li data-id="${esc(e.id)}" class="${e.on ? "" : "off"}">`
     + `<label class="sv-sw" style="--c:${e.color}" title="Change color"><input type="color" value="${e.color}" data-color aria-label="Color for ${esc(e.name)}"></label>`
     + `<input class="sv-name" type="text" value="${esc(e.name)}" maxlength="60" data-name aria-label="Name" title="Click to rename">`
     + `<button type="button" class="sv-tog" data-tog aria-pressed="${e.on}">${e.on ? "Hide" : "Show"}</button>`
     + `<button type="button" class="sv-del" data-del aria-label="Delete ${esc(e.name)}" title="Delete">×</button>`
     + `<span class="sv-meta">${esc(savedMeta(e, state.view))}</span><span class="sv-gowrap">${savedElsewhere(e)}</span>`
+    + membersHTML(e)
     + `<button type="button" class="sv-why" data-why aria-expanded="${svOpen.has(e.id)}">${svOpen.has(e.id) ? "Hide what they share" : "What they share"}</button>`
     + `<div class="sv-traits" data-traits${svOpen.has(e.id) ? "" : " hidden"}>${svOpen.has(e.id) ? sharedTraitsHTML(e, state.view) : ""}</div></li>`).join("");
   const u = $("#svUndo");
   u.hidden = !svDeleted;
   if (svDeleted) u.innerHTML = `Deleted “${esc(svDeleted.e.name)}”. <button type="button" class="link" data-undo>Undo</button>`;
-  // keep the pitcher list and the color key clear of the panel
-  requestAnimationFrame(() => {
-    mapEl.style.setProperty("--svh", box.hidden ? "0px" : (box.offsetHeight + 12) + "px");
-    mapEl.style.setProperty("--svw", box.hidden ? "0px" : (box.offsetWidth + 12) + "px");
-  });
 }
 function refreshSavedMeta() {
   $("#svList").querySelectorAll("li[data-id]").forEach(li => {
@@ -2157,10 +2208,15 @@ function refreshSavedMeta() {
 function wireSaved() {
   $("#svBtn").addEventListener("click", saveCurrentGroup);
   $("#svOnly").addEventListener("click", () => { state.onlyGroups = !state.onlyGroups; syncOnlyGroups(); render(); });
-  $("#svFold").addEventListener("click", () => { $("#savedBox").classList.toggle("folded"); renderSaved(); });
   const list = $("#svList"), of = el => saved.find(e => e.id === (el.closest("li[data-id]") || {}).dataset?.id);
   list.addEventListener("click", ev => {
     const e = of(ev.target); if (!e) return;
+    const mem = ev.target.closest("[data-member]");
+    if (mem) {   // show that pitcher: on this pitch type's map if he throws it, else on All pitches
+      const r = +mem.dataset.member, v = state.view, alt = v === "all" ? r : tRow(T.pitcher[r], T.season[r], v, T.level[r]);
+      if (alt === undefined) { setView("all"); preview(r); } else preview(alt);
+      return;
+    }
     const go = ev.target.closest("[data-golvl]");
     if (go) { if (!e.on) { e.on = true; persistSaved(); renderSaved(); } setLevel(go.dataset.golvl); refreshSavedMeta(); return; }
     if (ev.target.closest("[data-tog]")) { e.on = !e.on; persistSaved(); renderSaved(); render(); }
