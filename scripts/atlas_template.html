@@ -1129,9 +1129,9 @@ tr.self td { font-weight: 600; background: none; }
 </style>
 
 <div class="app" id="app">
-  <aside class="sliders" id="sliders" aria-label="Filter by measures" hidden>
+  <aside class="sliders" id="sliders" aria-label="Filter by measures &amp; show tables" hidden>
     <div class="sl-head">
-      <span class="sl-title">Filter by measures</span>
+      <span class="sl-title">Filter by measures &amp; show tables</span>
       <button type="button" class="slx" id="slClose" aria-label="Close the filter panel" title="Close"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 5 L19 19 M19 5 L5 19" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none"/></svg></button>
     </div>
     <div class="tg" id="slMode" role="group" aria-label="Slider scale">
@@ -1200,8 +1200,8 @@ tr.self td { font-weight: 600; background: none; }
     <div class="plotwrap" id="plotWrap">
       <div class="maptool" id="mapTool">
         <div class="tline">
-      <div class="measseg" role="group" aria-label="Filter by measures">
-        <button type="button" class="measbtn" id="slOpen" aria-expanded="false" aria-controls="sliders"><span class="measarr" aria-hidden="true">‹</span><span id="slOpenTxt">Filter by measures</span></button>
+      <div class="measseg" role="group" aria-label="Filter by measures &amp; show tables">
+        <button type="button" class="measbtn" id="slOpen" aria-expanded="false" aria-controls="sliders"><span class="measarr" aria-hidden="true">‹</span><span id="slOpenTxt">Filter by measures &amp; show tables</span></button>
         <button type="button" class="resetbtn" id="resetAll" disabled title="Reset filters: measures, pitcher type, free agents, the color-key range, season and hand">Reset</button>
       </div>
       <div class="grp grp-color">
@@ -1392,6 +1392,7 @@ const PLURAL = { FF: "four-seam fastballs", SI: "sinkers", FC: "cutters", SL: "s
 const SING = { FF: "four-seam fastball", SI: "sinker", FC: "cutter", SL: "slider", ST: "sweeper", CU: "curveball", CH: "changeup", FS: "splitter" };
 const MIN_IP = [0, 20, 50, 100, 150];
 let tIP = [];   // innings per type row (its pitcher-season); filled by indexData
+let pOfT = new Int32Array(0);   // pitcher-season row of each type row (-1 = none); filled by indexData
 const NOT_IN_LIST = new Set(["cat:pitch_type", "cat:team", "cat:fa"]);   // pitch type leads the list; team is the map button
 
 // ------------------------------------------------------------------ indexes
@@ -1411,15 +1412,21 @@ const typeRowsAll = Object.fromEntries(TYPES.map(t => [t, []]));
 // that: + means pitchers whose stuff looks like his got better results than he did.
 const LOOK_MIN_IP = 20, LOOK_MIN_COMPS = 5;
 function lookalike(stat) {
-  const out = new Array(NP).fill(null), sum = new Float64Array(NP), wt = new Float64Array(NP);
-  (D.tcomps || []).forEach((all, j) => { const comps = all.slice(0, 10);   // lookalike xERA uses the 10 shown comps
-    const xs = comps.map(([c]) => pRow(T.pitcher[c], T.season[c], T.level[c]))
-      .filter(i => i !== undefined && isNum(P.ip[i]) && P.ip[i] >= LOOK_MIN_IP && isNum(P[stat][i])).map(i => P[stat][i]).sort((a, b) => a - b);
-    const i = pRow(T.pitcher[j], T.season[j], T.level[j]), w = T.usage[j] || 0;
-    if (xs.length < LOOK_MIN_COMPS || i === undefined || w <= 0) return;
-    const m = xs.length % 2 ? xs[xs.length >> 1] : (xs[xs.length / 2 - 1] + xs[xs.length / 2]) / 2;
-    sum[i] += w * m; wt[i] += w;
-  });
+  const out = new Array(NP).fill(null), sum = new Float64Array(NP), wt = new Float64Array(NP), col = P[stat], ip = P.ip, xs = new Float64Array(10);
+  const tc = D.tcomps || [];
+  for (let j = 0; j < tc.length; j++) {
+    const all = tc[j], i = pOfT[j], w = T.usage[j] || 0;   // pOfT: each row's pitcher-season, looked up once in indexData
+    if (!all || i < 0 || w <= 0) continue;
+    let n = 0;
+    for (let k = 0; k < all.length && k < 10; k++) {   // lookalike xERA uses the 10 shown comps
+      const q = pOfT[all[k][0]];
+      if (q >= 0 && isNum(ip[q]) && ip[q] >= LOOK_MIN_IP && isNum(col[q])) {   // insertion sort as they come
+        let m = n++; while (m > 0 && xs[m - 1] > col[q]) { xs[m] = xs[m - 1]; m--; } xs[m] = col[q];
+      }
+    }
+    if (n < LOOK_MIN_COMPS) continue;
+    sum[i] += w * (n % 2 ? xs[n >> 1] : (xs[n / 2 - 1] + xs[n / 2]) / 2); wt[i] += w;
+  }
   for (let i = 0; i < NP; i++) if (wt[i] > 0) out[i] = sum[i] / wt[i];
   return out;
 }
@@ -1473,16 +1480,18 @@ function indexData() {
   tKey.clear(); pKey.clear();
   for (let j = 0; j < NT; j++) tKey.set(T.pitcher[j] + "|" + T.season[j] + "|" + T.pitch_type[j] + "|" + T.level[j], j);
   for (let i = 0; i < NP; i++) pKey.set(P.pitcher[i] + "|" + P.season[i] + "|" + P.level[i], i);
-  tIP = T.pitcher.map((pid, j) => { const i = pRow(pid, T.season[j], T.level[j]); return i === undefined || !isNum(P.ip[i]) ? 0 : P.ip[i]; });
+  pOfT = new Int32Array(NT);
+  for (let j = 0; j < NT; j++) { const i = pRow(T.pitcher[j], T.season[j], T.level[j]); pOfT[j] = i === undefined ? -1 : i; }
+  tIP = Array.from(pOfT, i => i < 0 || !isNum(P.ip[i]) ? 0 : P.ip[i]);
   P.look_xera = lookalike("xera");
   P.look_era = lookalike("era");
   P.look_gap = P.look_xera.map((v, i) => isNum(v) && isNum(P.xera[i]) ? P.xera[i] - v : null);
   P.look_era_gap = P.look_era.map((v, i) => isNum(v) && isNum(P.era[i]) ? P.era[i] - v : null);
   pooledGaps();
   // Team list per type row (via its pitcher-season); traded pitchers belong to each team
-  tTeams = T.pitcher.map((pid, j) => { const i = pRow(pid, T.season[j], T.level[j]); return i === undefined || !P.teams[i] ? [] : P.teams[i].split(","); });
+  tTeams = Array.from(pOfT, i => i < 0 || !P.teams[i] ? [] : P.teams[i].split(","));
   tOrgs = tTeams.map(a => a.map(orgOf));
-  tMain = T.pitcher.map((pid, j) => { const i = pRow(pid, T.season[j], T.level[j]); return i === undefined ? null : orgOf(P.team_main[i]); });
+  tMain = Array.from(pOfT, i => i < 0 ? null : orgOf(P.team_main[i]));
   TYPES.forEach(t => { typeRows[t].length = 0; typeRowsAll[t].length = 0; });
   for (let j = 0; j < NT; j++) { typeRowsAll[T.pitch_type[j]].push(j); if (T.level[j] === "mlb") typeRows[T.pitch_type[j]].push(j); }
   ALL_ROWS = Array.from({ length: NT }, (_, j) => j);
@@ -1628,7 +1637,7 @@ function buildTypeVars(all) {
   TF.forEach(f => v.push(mk("t:" + f[0], f[1], f[2], f[3], f[4], f[5], j => T[f[0]][j])));
   PITCHER_RESULTS.filter(r => r[0] !== "n" && r[0] !== "rv100").forEach(([k, l, u, d, dv]) =>
     v.push(mk("P:" + k, "Pitcher " + (k === "luck" ? l : l.charAt(0).toLowerCase() + l.slice(1)), u, d, "Whole pitcher", dv,
-      j => { const i = pRow(T.pitcher[j], T.season[j], T.level[j]); return i === undefined ? null : P[k][i]; })));
+      j => { const i = pOfT[j]; return i === undefined || i < 0 ? null : P[k][i]; })));
   return v;
 }
 const VARS = { all: buildTypeVars(true), t: buildTypeVars(false) };
@@ -1810,6 +1819,9 @@ function fmt(v, dec, unit) {
 const ord = n => { const k = Math.round(n), s = ["th", "st", "nd", "rd"], m = k % 100; return k + (s[(m - 20) % 10] || s[m] || s[0]); };
 
 // ------------------------------------------------------------------- plot
+const GL_MIN = 300;   // a 2D dot layer this big draws with WebGL
+let GL_OK = null;
+const glOK = () => { if (GL_OK === null) { try { const c = document.createElement("canvas"); GL_OK = !!(c.getContext("webgl") || c.getContext("experimental-webgl")); } catch (e) { GL_OK = false; } } return GL_OK; };
 const SEL_DIM = 0.65;   // with a pitcher selected, every other mark is drawn at 65% strength
 const plotEl = $("#plot");
 let plotReady = false;
@@ -2076,6 +2088,8 @@ function render() {
     render3D(outTraces, view, pal, outLayout, (state.ellipses ? ellipseGroups(view, cg, on, match, pal) : []).concat(savedGroups(view)));
   } else {
   if (G3) dispose3D();
+  // the big dot layers draw with WebGL (one canvas, not thousands of SVG nodes); overlays stay SVG, on top
+  if (glOK()) outTraces = outTraces.map(t => t.type === "scatter" && t.mode === "markers" && Array.isArray(t.customdata) && t.customdata.length >= GL_MIN ? { ...t, type: "scattergl" } : t);
   Plotly.react(plotEl, outTraces, outLayout, config).then(() => {
     if (!plotReady) {
       plotEl.on("plotly_click", e => { const p = e.points && e.points[0]; if (p && p.customdata !== undefined) dotClick(p.customdata); });
@@ -2119,7 +2133,7 @@ function render() {
   const countText = !match && !keyIn ? `${rows.length.toLocaleString()} ${unitW}` : `${nOn.toLocaleString()} of ${rows.length.toLocaleString()} ${unitW}`;
   // only touch the live region when the text changes, so screen readers don't repeat it on every drag
   $("#slCount").textContent = countText;
-  $("#slOpenTxt").textContent = nR ? `${nR} filter${nR > 1 ? "s" : ""} on` : "Filter by measures";
+  $("#slOpenTxt").textContent = nR ? `${nR} filter${nR > 1 ? "s" : ""} on` : "Filter by measures & show tables";
   $("#resetAll").disabled = !anyFilter();
   $("#slClear").hidden = !nR;
   $("#slReset").disabled = !nR;
