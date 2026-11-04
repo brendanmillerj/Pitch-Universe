@@ -1866,7 +1866,6 @@ function fmt(v, dec, unit) {
 const ord = n => { const k = Math.round(n), s = ["th", "st", "nd", "rd"], m = k % 100; return k + (s[(m - 20) % 10] || s[m] || s[0]); };
 
 // ------------------------------------------------------------------- plot
-const GL_MIN = 300;   // a 2D dot layer this big draws with WebGL
 let GL_OK = null;
 const glOK = () => { if (GL_OK === null) { try { const c = document.createElement("canvas"); GL_OK = !!(c.getContext("webgl") || c.getContext("experimental-webgl")); } catch (e) { GL_OK = false; } } return GL_OK; };
 const SEL_DIM = 0.65;
@@ -2143,8 +2142,31 @@ function render() {
     render3D(outTraces, view, pal, outLayout, (state.ellipses ? ellipseGroups(view, cg, on, match, pal) : []).concat(savedGroups(view)));
   } else {
   if (G3) dispose3D();
-  // the big dot layers draw with WebGL (one canvas, not thousands of SVG nodes); overlays stay SVG, on top
-  if (glOK()) outTraces = outTraces.map(t => t.type === "scatter" && t.mode === "markers" && Array.isArray(t.customdata) && t.customdata.length >= GL_MIN ? { ...t, type: "scattergl" } : t);
+  // WebGL draws the map on one canvas instead of thousands of SVG nodes. Plotly puts that canvas ABOVE every SVG
+  // trace, so all 2D traces go to WebGL together (keeping their order: dots, groups, spokes, rings, his pitches);
+  // text-only labels (pitch types, group names) become annotations, which sit above the canvas, on a dark backdrop.
+  if (glOK()) {
+    const anns = [], back = /^#[0-9a-f]{6}$/i.test(pal.bg) ? rgba(pal.bg, 0.8) : "rgba(20,24,30,0.8)";
+    const at = (v, k) => Array.isArray(v) ? v[k] : v;
+    outTraces = outTraces.filter(t => {
+      if (t.type !== "scatter" || t.mode !== "text") return true;
+      const f = t.textfont || {};
+      t.x.forEach((x, k) => {
+        const [v, h] = String(at(t.textposition, k) || "middle center").split(" ");
+        anns.push({ x, y: t.y[k], xref: "x", yref: "y", text: String(at(t.text, k)), showarrow: false,
+          xanchor: h === "left" ? "right" : h === "right" ? "left" : "center", yanchor: v === "top" ? "bottom" : v === "bottom" ? "top" : "middle",
+          font: { family: f.family || UI_FONT, size: f.size || 13, color: at(f.color, k) || pal.ink }, bgcolor: back, borderpad: 3 });
+      });
+      return false;
+    }).map(t => {
+      if (t.type !== "scatter") return t;
+      const g = { ...t, type: "scattergl" };
+      if (t.text !== undefined) g.text = Array.isArray(t.text) ? t.text.map(x => String(x).replace(/<[^>]+>/g, "")) : String(t.text).replace(/<[^>]+>/g, "");   // WebGL text is plain
+      if (t.textfont) { g.textfont = { ...t.textfont }; delete g.textfont.shadow; }
+      return g;
+    });
+    outLayout = { ...outLayout, annotations: [...anns, ...(outLayout.annotations || [])] };
+  }
   Plotly.react(plotEl, outTraces, outLayout, config).then(() => {
     if (!plotReady) {
       plotEl.on("plotly_click", e => { const p = e.points && e.points[0]; if (p && p.customdata !== undefined) dotClick(p.customdata); });
