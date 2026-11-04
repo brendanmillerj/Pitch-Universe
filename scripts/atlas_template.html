@@ -81,6 +81,9 @@ button, input, select { font: inherit; color: inherit; }
   background: var(--panel); border-bottom: 1px solid var(--line);
   margin: 0 calc(-1 * var(--gr)) 0 calc(-1 * var(--gl)); padding-left: var(--gl); padding-right: var(--gr); }
 .hdrow { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 20px; min-width: 0; }
+.restart { margin-left: auto; align-self: flex-end; flex: none; min-height: var(--ctl); padding: 0 14px; border-radius: var(--r); border: 1.5px solid var(--ink);
+  background: var(--field); color: var(--ink); font: 600 14px var(--font-ui); cursor: pointer; white-space: nowrap; }
+.restart:hover { background: var(--wash); }
 .brand { display: flex; flex-direction: column; gap: 2px; }
 .head h1 { font: 600 40px/1.02 var(--font-serif); font-optical-sizing: auto; letter-spacing: -0.01em; margin: 0; color: var(--ink); white-space: nowrap; }
 .controls { grid-area: controls; min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 6px 0; }
@@ -1119,6 +1122,7 @@ tr.self td { font-weight: 600; background: none; }
           <p class="help" id="ptypeDef"></p>
         </div>
       </div>
+      <button type="button" class="restart" id="startOver" title="Back to how the page opens: All pitches, MLB, no one selected, no filters, colored by pitch type. Your saved groups stay.">↺ Start over</button>
     </div>
   </header>
 
@@ -4916,6 +4920,27 @@ function buildStatic() {
     state.groupsHi = false; syncGroupsHi();
     if (state.slidersOpen) buildSliders();
     render(); renderDetail();
+  });
+  // Start over: everything back to how the page opens; saved groups are kept, unsaved picks are dropped
+  $("#startOver").addEventListener("click", () => {
+    closeSim(true);
+    state.sel = null; state.preview = false; state.showComps = false; state.sim = null;
+    state.ranges = {}; state.archetype = ""; $("#ptype").value = ""; syncArchetype();
+    state.fa = "all"; syncFA(); state.keyRange = null;
+    state.seasons = new Set(D.seasons); state.throws = "all"; syncSeasons(); syncThrows();
+    state.groupsHi = false; syncGroupsHi();
+    state.color = { all: "cat:pitch_type", t: "cat:pitch_type" }; state.op = "none"; state.explainOpen = false;
+    state.ellipses = false; state.lasso = false; hideToast();
+    state.picks.clear(); renderPicks();
+    state.tblGroup = null; state.slSearch = ""; $("#slSearch").value = ""; if (state.slidersOpen) setSlidersOpen(false, true);
+    $("#search").value = ""; $("#searchMsg").textContent = ""; $("#mbSearch").value = "";
+    state.rail.open = false; state.rail.tab = "groups";
+    if (state.dim !== 2) { state.dim = 2; syncDim(); if (G3) dispose3D(); }
+    try { Plotly.purge(plotEl); } catch (e) {}   // a fresh plot: fully zoomed out
+    plotReady = false; state.zoomK = 1;
+    if (state.level !== LEVELS[0]) { state.level = LEVELS[0]; syncLevel(); }
+    setView("all", null);
+    try { window.scrollTo({ top: 0, behavior: "auto" }); } catch (e) {}
   });
   $("#slMode").querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
     if (state.rangeMode === b.dataset.v) return;
