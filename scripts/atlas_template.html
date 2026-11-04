@@ -1997,14 +1997,13 @@ function hideToast() {
 // tabs stay available as pills under the toolbar.
 const RAIL_TABS = ["pitchers", "comps", "groups"];
 function railOpen(tab) { state.rail.open = true; if (tab) state.rail.tab = tab; syncRail(); }
-function railClose() { state.rail.open = false; syncRail(); }
+function railClose() { state.rail.open = false; if (state.showComps && state.preview) { state.showComps = false; render(); } else syncRail(); }
 function syncRail() {
-  const n = state.mbRows ? state.mbRows.length : 0, hasList = !!state.mbRows, hasComps = compsOnMap(), nG = saved.length;
-  const can = { pitchers: hasList, comps: hasComps, groups: true };
-  if (!can[state.rail.tab]) state.rail.tab = hasList ? "pitchers" : hasComps ? "comps" : "groups";
+  const n = state.mbRows ? state.mbRows.length : 0, nG = saved.length;
+  const can = { pitchers: true, comps: true, groups: true };
   const open = !!state.rail.open;
   $("#rail").hidden = !open;
-  const label = { pitchers: `Pitchers${hasList ? ` <b>${n.toLocaleString()}</b>` : ""}`, comps: "Comps", groups: `Groups${nG ? ` <b>${nG}</b>` : ""}` };
+  const label = { pitchers: `Pitchers${n ? ` <b>${n.toLocaleString()}</b>` : ""}`, comps: "Comps", groups: `Groups${nG ? ` <b>${nG}</b>` : ""}` };
   RAIL_TABS.forEach(t => {
     const b = $("#tab" + t[0].toUpperCase() + t.slice(1));
     b.disabled = !can[t]; b.innerHTML = label[t]; b.setAttribute("aria-selected", String(open && state.rail.tab === t));
@@ -2014,6 +2013,14 @@ function syncRail() {
   $("#savedBox").hidden = !(open && state.rail.tab === "groups");
   $("#railPills").hidden = open;
   $("#railPills").innerHTML = RAIL_TABS.filter(t => can[t]).map(t => `<button type="button" class="pill" data-tab="${t}">${label[t]}</button>`).join("");
+  if (!$("#matchBox").hidden && state.mbDirty) renderMatchList();
+  if (!$("#compBox").hidden) renderCompBox();
+}
+// Opening a tab: Comps also numbers the selected pitcher's lookalikes on the map; leaving it takes them off.
+function setRailTab(t) {
+  state.rail.open = true; state.rail.tab = t;
+  const wantComps = t === "comps" && !!state.preview && state.sel !== null && state.sel !== undefined;
+  if (!!state.showComps !== wantComps && state.preview) { state.showComps = wantComps; render(); } else syncRail();
 }
 
 // ----------------------------------------------------------------- ellipses
@@ -3047,11 +3054,13 @@ function updateMatchBox(view, rows, match, cg) {
     lit = rows.filter(r => state.teamPick.has(tMain[r]));
     title = [...state.teamPick].map(t => TEAM_NAMES[t] || t).join(", ");
   }
-  state.dlRows = lit;   // "Download CSV" exports every highlighted dot
+  // nothing highlighted: the list is everyone on the map (searchable), and there is no group to save
+  const filtered = !!lit, had = !!state.mbFiltered;
+  state.mbFiltered = filtered;
+  if (!lit) lit = rows;
+  state.dlRows = lit;   // "Download CSV" exports the list
   state.mbTitle = title;   // default name for "Save as group"
-  $("#svBtn").hidden = !lit || !lit.length;
-  const had = !!state.mbRows;
-  if (!lit) { state.mbRows = null; $("#mbDef").textContent = ""; return; }
+  $("#svBtn").hidden = !filtered || !lit.length;
   // one entry per pitcher: his most recent highlighted season (his pitches that season); earlier seasons are noted
   const by = new Map();
   lit.forEach(r => { const k = T.pitcher[r]; if (!by.has(k)) by.set(k, []); by.get(k).push(r); });
@@ -3062,13 +3071,14 @@ function updateMatchBox(view, rows, match, cg) {
     return cur;
   }).sort((a, b) => sortName(T.name[a[0]]).localeCompare(sortName(T.name[b[0]])));
   state.mbRows = items;
-  $("#mbTitle").textContent = `${title || "Highlighted"} · ${items.length.toLocaleString()} pitcher${items.length === 1 ? "" : "s"}`;
+  $("#mbTitle").textContent = `${filtered ? title || "Highlighted" : "Everyone on this map"} · ${items.length.toLocaleString()} pitcher${items.length === 1 ? "" : "s"}`;
   // the pitcher type's one-line definition leads the list, as it does under the finder
   const a = ARCH_BY_ID[state.archetype]; $("#mbDef").textContent = a && a.def ? a.def : "";
-  if (!had) railOpen("pitchers");   // a list just appeared: show it
-  renderMatchList();
+  if (filtered && !had) railOpen("pitchers");   // a highlight just appeared: show its list
+  if ($("#matchBox").hidden) state.mbDirty = true; else renderMatchList();   // drawn when its pane shows
 }
 function renderMatchList() {
+  state.mbDirty = false;
   const items = state.mbRows || [], q = ($("#mbSearch").value || "").trim().toLowerCase();
   const shown = items.filter(rs => !q || T.name[rs[0]].toLowerCase().includes(q));
   const selKey = state.sel === null || state.sel === undefined ? "" : String(T.pitcher[state.sel]);
@@ -3900,7 +3910,7 @@ function select(r) {
 function preview(r) {
   followLevel(r);
   if (r !== state.sel) remember(state.view, state.sel, r);
-  state.preview = true; state.showComps = false; state.sel = r;
+  state.preview = true; state.showComps = !!(state.rail.open && state.rail.tab === "comps"); state.sel = r;
   render(); renderDetail();
   if (state.simOpen) { renderSim(); return; }
   const b = $("#ctaOpen"); if (b && !$("#selCta").hidden) b.focus({ preventScroll: true });
@@ -3937,7 +3947,12 @@ function toggleComps() {
 }
 function renderCompBox() {
   const r = state.sel, on = compsOnMap();
-  if (!on) return;   // the rail shows or hides the pane
+  if (!on) {
+    $("#cbTitle").textContent = "Comps";
+    $("#cbHelp").textContent = "Search for a pitcher or click a dot on the map: his ten closest lookalikes are listed here and numbered on the map.";
+    $("#cbChips").hidden = true; $("#cbPool").hidden = true; $("#cbSave").hidden = true; $("#cbList").innerHTML = "";
+    return;
+  }
   const t = T.pitch_type[r], comps = compsOf(state.view, r);
   $("#cbTitle").textContent = `Closest ${PTN[t].toLowerCase()} comps`;
   const mine = state.view === "all"
@@ -4582,9 +4597,9 @@ function buildStatic() {
   $("#mbList").addEventListener("click", e => { const b = e.target.closest("[data-mb]"); if (b) select(+b.dataset.mb); });
   $("#mbSearch").addEventListener("input", renderMatchList);
   // the rail: its tabs, its close button, and the pills that stand in for the tabs while it is closed
-  $("#rail").querySelector(".railtabs").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b && !b.disabled) { state.rail.tab = b.dataset.tab; syncRail(); } });
+  $("#rail").querySelector(".railtabs").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b && !b.disabled) setRailTab(b.dataset.tab); });
   $("#railClose").addEventListener("click", railClose);
-  $("#railPills").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b) railOpen(b.dataset.tab); });
+  $("#railPills").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b) setRailTab(b.dataset.tab); });
   $("#simScrim").addEventListener("click", () => closeSim());
 
   // "How to read it" box: Hide / show, remembered for this viewer (storage may be blocked)
