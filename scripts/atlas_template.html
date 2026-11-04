@@ -313,7 +313,10 @@ button, input, select { font: inherit; color: inherit; }
 .simtype.added { border-style: dashed; }
 .simtype .x { margin-left: 2px; font-weight: 400; color: var(--map-ink2); }
 /* the canvas with the camera switch and Replay laid over its top right corner */
-.simstage { position: relative; }
+.simstage { position: relative; width: min(100%, max(320px, calc((100dvh - 300px) * 1.45))); margin: 0 auto; }   /* controls + animation on one screen */
+.simsel select { font: 600 14px var(--font-ui); color: var(--map-ink); background: var(--map-chrome); border: 1.5px solid var(--map-muted); border-radius: var(--r);
+  min-height: var(--ctl); padding: 0 12px; max-width: min(56ch, 100%); }
+.simsel select option, .simsel select optgroup { color: var(--ink); background: var(--field); }
 .simover { position: absolute; top: 10px; right: 10px; z-index: 2; display: flex; gap: 6px; }
 .sim-replay { font: 600 14px/1 var(--font-ui); min-height: calc(var(--ctl) - 3px); padding: 0 12px; border-radius: var(--r); border: 1.5px solid var(--map-muted); background: var(--map-chrome); color: var(--map-ink); cursor: pointer; }
 .sim-replay:hover { background: var(--map-hover); }
@@ -324,6 +327,7 @@ button, input, select { font: inherit; color: inherit; }
 .simkey .psw.fade { opacity: 0.4; }
 .simkey .psw.ring { box-shadow: 0 0 0 2px #ffffff, 0 0 0 3px var(--map-panel); }
 .simlook { padding-top: 8px; border-top: 1px solid var(--map-hair); }
+.simlook > summary { cursor: pointer; font: 600 15px var(--font-ui); color: var(--map-ink); padding: 4px 0 8px; }
 .simlook h3 { margin: 0 0 6px; font: 600 22px var(--font-serif); color: var(--map-ink); }
 .simlook .simrow { margin: 0 0 8px; }
 .sim-help { margin: 0 0 8px; font: 400 14px/1.4 var(--font-ui); color: var(--map-ink2); }
@@ -3612,7 +3616,9 @@ function simState(j) {
   const key = T.pitcher[j] + "|" + T.season[j] + "|" + T.level[j];
   if (!state.sim || state.sim.key !== key) {
     const mine = TYPES.filter(t => { const r = tRow(T.pitcher[j], T.season[j], t, T.level[j]); return r !== undefined && trajOf(r); });
-    state.sim = { key, types: new Set(mine), compType: mine.includes(T.pitch_type[j]) ? T.pitch_type[j] : mine[0], added: [], mode: (state.sim && state.sim.mode) || "ghost" };
+    // vs: what flies beside his pitches: "avg" (the MLB average of each, the default), a lookalike's row, or "none"
+    state.sim = { key, types: new Set(mine), compType: mine.includes(T.pitch_type[j]) ? T.pitch_type[j] : mine[0], added: [], mode: (state.sim && state.sim.mode) || "ghost",
+      vs: "avg", lookOpen: false };
   }
   return state.sim;
 }
@@ -3650,28 +3656,45 @@ function renderSim() {
   const addedSet = new Set(S.added);
   box.hidden = false;
   box.innerHTML = `<div class="sim-head"><div><h2 class="sim-name" id="simTitle">${esc(T.name[j])}</h2>
-      <p class="simsub">His pitches in flight against a comp’s · ${s}${lvl === "mlb" ? "" : " · Triple-A"} · ${esc(teamStr(j))}${isNum(myArm) ? ` · arm angle ${deg(myArm)}` : ""}${isNum(myRelH) ? ` · releases ${ft(myRelH)} high, ${ft(Math.abs(myRelS))} ${myRelS >= 0 ? "arm side" : "across"}` : ""}</p></div>
+      <p class="simsub">Pitch simulation · ${s}${lvl === "mlb" ? "" : " · Triple-A"} · ${esc(teamStr(j))}${isNum(myArm) ? ` · arm angle ${deg(myArm)}` : ""}${isNum(myRelH) ? ` · releases ${ft(myRelH)} high, ${ft(Math.abs(myRelS))} ${myRelS >= 0 ? "arm side" : "across"}` : ""}</p></div>
       <button type="button" class="sim-x" id="simClose" aria-label="Close the pitch simulation" title="Close (Esc)">×</button></div>
-    <div class="simrow sim-ctl"><span class="flbl">In the air</span><div class="simtypes">${his.join("")}${extra.join("")}</div></div>
+    <div class="simrow sim-ctl"><span class="flbl">His pitches</span><div class="simtypes">${his.join("")}${extra.join("")}</div></div>
+    <div class="simrow sim-ctl"><label class="flbl" for="simVs">Compare with</label><span class="simsel"><select id="simVs">
+      <option value="avg"${S.vs === "avg" ? " selected" : ""}>MLB average of each pitch (${T.p_throws[j]}HP, ${s})</option>
+      <optgroup label="A lookalike on his ${PTN[S.compType].toLowerCase()}, best ERA first">${looks.map(o => `<option value="${o.c}"${String(S.vs) === String(o.c) ? " selected" : ""}>${esc(T.name[o.c])} ${T.season[o.c]} · arm ${deg(o.arm)}${isNum(o.arm) && isNum(myArm) ? ` (${o.arm - myArm >= 0 ? "+" : "−"}${Math.abs(Math.round(o.arm - myArm))})` : ""} · ERA ${fmt(o.era, 2)}</option>`).join("")}</optgroup>
+      <option value="none"${S.vs === "none" ? " selected" : ""}>Nothing, just his</option>
+    </select></span></div>
     <div class="simstage"><div class="simover"><div class="mseg simcam" role="group" aria-label="Camera">${["catcher", "pitcher"].map(c => `<button type="button" data-simcam="${c}" aria-pressed="${cam === c}">${c === "catcher" ? "Catcher view" : "Pitcher view"}</button>`).join("")}</div>
       <button type="button" class="sim-replay" id="simReplay">Replay</button></div>
       <canvas id="simCv" class="simcv" role="img" aria-label="Animated flight of ${esc(T.name[j])}'s pitches"></canvas></div>
     <p class="flkey simkey" id="simKey"></p>
-    <section class="simlook"><h3>His lookalikes, and their pitches</h3>
+    <details class="simlook" id="simLook"${S.lookOpen ? " open" : ""}><summary>Pick single pitches from his lookalikes</summary>
       <div class="simrow"><span class="flbl">Lookalikes for his</span><div class="simtypes">${mine.map(([t]) => `<button type="button" class="simtype" data-simcomp="${t}" aria-pressed="${S.compType === t}"><i class="psw" style="background:${SAVANT_PITCH[t]}"></i>${PTN[t]}</button>`).join("")}</div></div>
       <p class="sim-help">Every pitch each of them throws is a button; press one and it flies beside his, in white. A dashed button is a pitch type he does not throw. The tinted numbers are how far each man's slot and release sit from his (${deg(myArm)}, ${ft(myRelH)} high, ${ft(myRelS)} to the arm side): white is the same, blue lower, red higher.</p>
       <div class="tablewrap"><table class="simtab"><thead><tr><th></th><th>Pitcher</th><th class="num">Arm angle</th><th class="num" title="Release height, feet above the ground">Rel. height</th><th class="num" title="Release side, feet toward the arm side (negative = across the body)">Rel. side</th><th class="num">ERA</th><th>His pitches</th></tr></thead><tbody>
       ${looks.map((o, k) => `<tr><td><span class="badge">${k + 1}</span></td><td>${esc(T.name[o.c])}${T.level[o.c] === "mlb" ? "" : `, Triple-A`}<div class="tm">${T.season[o.c]} · ${esc(teamStr(o.c))}${k === best ? " · best ERA of the ten" : ""}</div></td><td class="num">${deg(o.arm)} ${delta(o.arm, myArm, 0, 12)}</td><td class="num">${ft(o.relh)} ${delta(o.relh, myRelH, 1, 1)}</td><td class="num">${ft(o.rels)} ${delta(o.rels, myRelS, 1, 1)}</td><td class="num">${fmt(o.era, 2)}</td><td><div class="pchs">${o.arsenal.map(x => `<button type="button" class="pch${myTypes.has(T.pitch_type[x]) ? "" : " new"}" data-simadd="${x}" aria-pressed="${addedSet.has(x)}" title="${addedSet.has(x) ? "In the animation; press to take it out" : `Add his ${PTN[T.pitch_type[x]].toLowerCase()} to the animation`}${myTypes.has(T.pitch_type[x]) ? "" : ` (${esc(lastName(T.name[j]))} throws no ${PTN[T.pitch_type[x]].toLowerCase()})`}"><i class="psw" style="background:${SAVANT_PITCH[T.pitch_type[x]]}"></i>${PTN[T.pitch_type[x]]} <span class="tm">${fmt(T.velo[x], 1)}</span></button>`).join("")}</div></td></tr>`).join("")}
       </tbody></table></div>
       <div class="simrow simmoderow"><span class="flbl">Draw added pitches as</span><div class="mseg simmode" role="group" aria-label="How added pitches are drawn">${SIM_MODES.map(([m, l]) => `<button type="button" data-simmode="${m}" aria-pressed="${S.mode === m}">${l}</button>`).join("")}</div></div>
-    </section>`;
+    </details>`;
   // paths: his chosen pitches, then every added pitch
   const paths = mine.filter(([t]) => S.types.has(t)).map(([t, r]) => ({ type: t, row: r, color: SAVANT_PITCH[t], ...flightPath(trajOf(r)) }));
+  const vsPaths = [];
+  if (S.vs === "avg") mine.filter(([t]) => S.types.has(t)).forEach(([t, r]) => {   // the league's version of each: dashed, in the pitch's colour
+    const lg = leagueTraj(r); if (lg) vsPaths.push({ type: t, avg: true, ghost: true, color: SAVANT_PITCH[t], ...flightPath(lg) });
+  });
+  else if (S.vs !== "none" && Number.isInteger(+S.vs)) { const c = +S.vs;   // a lookalike's version of each, in white
+    mine.filter(([t]) => S.types.has(t)).forEach(([t]) => { const r2 = tRow(T.pitcher[c], T.season[c], t, T.level[c]);
+      if (r2 !== undefined && trajOf(r2)) vsPaths.push({ type: t, row: r2, alt: true, ring: true, color: COMP_COLOR, ...flightPath(trajOf(r2)) }); });
+  }
+  paths.push(...vsPaths);
   S.added.forEach(r => paths.push({ type: T.pitch_type[r], row: r, alt: true, color: COMP_COLOR, ghost: S.mode === "ghost", fade: S.mode === "fade", ring: S.mode === "solid", ...flightPath(trajOf(r)) }));
-  $("#simKey").innerHTML = paths.length ? paths.map(p => p.alt
+  $("#simKey").innerHTML = paths.length ? paths.map(p => p.avg
+    ? `<span><i class="psw dash" style="background:none;border-color:${p.color}"></i>MLB average ${PTN[p.type].toLowerCase()} ${p.mph.toFixed(1)} mph</span>`
+    : p.alt
     ? `<span class="${p.ghost ? "flghost" : ""}"><i class="psw ${p.ghost ? "dash" : p.fade ? "fade" : "ring"}" style="background:${p.ghost ? "none" : p.color};border-color:${p.color}"></i>${esc(lastName(T.name[p.row]))}'s ${PTN[p.type].toLowerCase()} ${fmt(T.velo[p.row], 1)} mph</span>`
     : `<span><i class="psw" style="background:${p.color}"></i><b>${PTN[p.type]}</b> ${fmt(T.velo[p.row], 1)} mph</span>`).join("")
     : "Turn on a pitch to see it fly.";
+  if (Number.isInteger(+S.vs) && S.vs !== "avg" && S.vs !== "none" && !vsPaths.length) $("#simKey").innerHTML += `<span class="tm">${esc(T.name[+S.vs])} throws none of these pitch types.</span>`;
   // wiring (rebuilt on every change, so plain onclick handlers)
   $("#simClose").onclick = () => closeSim();
   $("#simReplay").onclick = () => renderSim();
@@ -3681,6 +3704,8 @@ function renderSim() {
   box.querySelectorAll("[data-simcomp]").forEach(b => b.onclick = () => { S.compType = b.dataset.simcomp; renderSim(); });
   box.querySelectorAll("[data-simmode]").forEach(b => b.onclick = () => { S.mode = b.dataset.simmode; renderSim(); });
   box.querySelectorAll("[data-simcam]").forEach(b => b.onclick = () => { state.flightCam = b.dataset.simcam; renderSim(); });
+  $("#simVs").onchange = e => { S.vs = e.target.value; renderSim(); };
+  $("#simLook").addEventListener("toggle", e => { S.lookOpen = e.target.open; });
   if (!paths.length) return;
   const flight = Math.max(...paths.map(p => p.tEnd));
   const hold0 = Math.round(FL.HOLD0 * FL.FPS), nAnim = Math.max(2, Math.round(FL.FPS * flight * FL.SLOW)), hold1 = Math.round(FL.HOLD1 * FL.FPS);
