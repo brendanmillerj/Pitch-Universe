@@ -133,10 +133,11 @@ def continuity_checks(meta, P, idx, label):
             f"{100 * (pt[idx] == pt[:, None]).mean():.1f}%")
 
 
-def type_space(types):
+def type_space(types, blocks=TYPE_BLOCKS):
+    """`blocks` picks the feature blocks that build the space (the atlas maps leave out usage)."""
     keys = profiles.KEYS + ["pitch_type", "player_name", "p_throws", "n"]
-    assert_no_outcomes(TYPE_BLOCKS)
-    cols = [c for cs in TYPE_BLOCKS.values() for c in cs]
+    assert_no_outcomes(blocks)
+    cols = [c for cs in blocks.values() for c in cs]
     out = types[keys + profiles.OUTCOME_COLUMNS + ["rv100_raw"]].copy()
 
     for scaling in ("global", "within"):
@@ -144,7 +145,7 @@ def type_space(types):
         F = F.fillna(F.groupby(types.pitch_type).transform("median"))
         Z = zscore(F) if scaling == "global" else pd.concat(
             zscore(g) for _, g in F.groupby(types.pitch_type)).loc[F.index]
-        X = block_scale(Z, TYPE_BLOCKS)
+        X = block_scale(Z, blocks)
         P, idx, leiden, U = embed(X, f"type/{scaling}")
         continuity_checks(types[keys], P, idx, f"type/{scaling}")
         out[[f"{scaling}_pc{i + 1}" for i in range(P.shape[1])]] = P

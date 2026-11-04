@@ -5,6 +5,7 @@ of one pitch (2024-2026). No whole-arsenal pitcher map, by design.
 
   all pitches        pitcher x season x pitch type, global scaling (types separate)
   <type> universe    one UMAP per pitch type, fit on that type's rows alone
+  (both maps leave out the usage block: 27 of the 32 measures; comps and uniqueness use all 32)
   comps              10 nearest DISTINCT other pitchers in the PCA space each map
                      is drawn from (not the 2D map), any season
 
@@ -81,6 +82,11 @@ ACTIVE_SPIN_TYPES = {"fourseam": "FF", "sinker": "SI", "cutter": "FC", "changeup
                      "curve": "CU", "slider": "SL", "sweeper": "ST"}
 FA_URL = "https://statsapi.mlb.com/api/v1/people/freeAgents?season={season}"
 TYPE_FEATURES = [c for cs in TYPE_BLOCKS.values() for c in cs]
+# The maps (2D, 3D, clusters, and where Triple-A pitches land) are laid out WITHOUT the usage block, so a pitch
+# sits by what it is, not how often or when it is thrown (user's call, 2026-11-03). Comps, uniqueness, the
+# filters and every card still use all 32 measures, usage included.
+MAP_BLOCKS = {k: v for k, v in TYPE_BLOCKS.items() if k != "usage"}
+MAP_FEATURES = [c for cs in MAP_BLOCKS.values() for c in cs]
 
 
 def log(msg):
@@ -167,6 +173,26 @@ def free_agents(season=max(SEASONS)):
         fa = pd.read_parquet(path)
         log(f"free agents: fetch failed ({e}); using cached {path.name}")
     return fa
+
+
+def free_agents_asof(season=max(SEASONS)):
+    """The day the free-agent list was last fetched (the cached file's date), shown as "as of" on the page."""
+    import datetime
+    path = paths.META / f"free_agents_{season}.parquet"
+    if not path.exists():
+        return None
+    return datetime.date.fromtimestamp(path.stat().st_mtime).isoformat()
+
+
+def data_through(level):
+    """Last game date with pitches in the store at this level: the page's "data through" line."""
+    last = None
+    for season in level_seasons(level):
+        m = pd.read_parquet(paths.meta_dir(level) / f"manifest_{season}.parquet")
+        m = m[m.n_pitches > 0]
+        if len(m):
+            last = max(last or "", str(m.game_date.max()))
+    return last
 
 
 def movement_sample(rebuild, level="mlb"):
@@ -319,10 +345,10 @@ def _fill(F, med, by_type):
     return F.fillna(fill)
 
 
-def scaler_fit(F, by_type=None):
+def scaler_fit(F, by_type=None, blocks=TYPE_BLOCKS):
     """The feature scaling of one map, fitted on MLB rows so another level can be put in the same space.
 
-    Reproduces block_scale(zscore(F.fillna(median))) exactly for the rows it was fitted on. `by_type`
+    Reproduces block_scale(zscore(F.fillna(median)), blocks) exactly for the rows it was fitted on. `by_type`
     (those rows' pitch types) makes the fill median per type, as the all-pitches map does.
     """
     F = F.astype("float64")
@@ -331,15 +357,15 @@ def scaler_fit(F, by_type=None):
     mu, sd = Ff.mean(), Ff.std(ddof=0).replace(0, 1)
     Z = (Ff - mu) / sd
     fac = {}
-    for name, cols in TYPE_BLOCKS.items():
+    for name, cols in blocks.items():
         tot = np.nansum(np.nanvar(Z[cols].to_numpy(dtype="float64"), axis=0))
         fac[name] = np.sqrt(tot if tot > 0 else 1)
-    return {"med": med, "mu": mu, "sd": sd, "fac": fac}
+    return {"med": med, "mu": mu, "sd": sd, "fac": fac, "blocks": blocks}
 
 
 def scaler_apply(sc, F, by_type=None):
     Z = (_fill(F.astype("float64"), sc["med"], by_type) - sc["mu"]) / sc["sd"]
-    return np.nan_to_num(np.hstack([Z[cols].to_numpy(dtype="float64") / sc["fac"][n] for n, cols in TYPE_BLOCKS.items()]))
+    return np.nan_to_num(np.hstack([Z[cols].to_numpy(dtype="float64") / sc["fac"][n] for n, cols in sc["blocks"].items()]))
 
 
 def place_level(types_mlb, space_mlb, types_new):
@@ -373,10 +399,10 @@ def place_level(types_mlb, space_mlb, types_new):
             out.loc[rows_new, "tcluster"] = [int(np.bincount(r[r >= 0], weights=ww[r >= 0]).argmax()) if (r >= 0).any() else -1
                                              for r, ww in zip(cl, w)]
 
-    Fm, Fn = types_mlb[TYPE_FEATURES], types_new[TYPE_FEATURES]
+    Fm, Fn = types_mlb[MAP_FEATURES], types_new[MAP_FEATURES]
     gm, gn = types_mlb.groupby("pitch_type").indices, types_new.groupby("pitch_type").indices
     # all-pitches map: one global scaling, same-type neighbours
-    sc = scaler_fit(Fm, types_mlb.pitch_type)
+    sc = scaler_fit(Fm, types_mlb.pitch_type, MAP_BLOCKS)
     Xm = scaler_apply(sc, Fm, types_mlb.pitch_type)
     pca = PCA(n_components=min(30, Xm.shape[1]), random_state=0).fit(Xm)
     Pm, Pn = pca.transform(Xm), pca.transform(scaler_apply(sc, Fn, types_new.pitch_type))
@@ -388,7 +414,7 @@ def place_level(types_mlb, space_mlb, types_new):
         if pt not in gm:
             continue
         rm = gm[pt]
-        sc = scaler_fit(Fm.iloc[rm])
+        sc = scaler_fit(Fm.iloc[rm], blocks=MAP_BLOCKS)
         Xm = scaler_apply(sc, Fm.iloc[rm])
         pca = PCA(n_components=min(30, Xm.shape[1]), random_state=0).fit(Xm)
         land(pca.transform(Xm), pca.transform(scaler_apply(sc, Fn.iloc[rn])), rm, rn, T_COLS, True)
@@ -506,14 +532,14 @@ def umap_3d(types):
 
     types = types.reset_index(drop=True)
     out = pd.DataFrame(index=types.index, columns=["gx3", "gy3", "gz3", "tx3", "ty3", "tz3"], dtype="float64")
-    F = types[TYPE_FEATURES].astype("float64")
+    F = types[MAP_FEATURES].astype("float64")
     F = F.fillna(F.groupby(types.pitch_type).transform("median"))
-    Pg = PCA(n_components=30, random_state=0).fit_transform(block_scale(zscore(F), TYPE_BLOCKS))
+    Pg = PCA(n_components=min(30, F.shape[1]), random_state=0).fit_transform(block_scale(zscore(F), MAP_BLOCKS))
     out[["gx3", "gy3", "gz3"]] = umap_mod.UMAP(n_components=3, n_neighbors=15, min_dist=0.3, random_state=0).fit_transform(Pg)
     log("umap 3d: all pitches done")
     for pt, rows in types.groupby("pitch_type").indices.items():
-        Ft = types.loc[rows, TYPE_FEATURES].astype("float64")
-        Pt = PCA(n_components=30, random_state=0).fit_transform(block_scale(zscore(Ft.fillna(Ft.median())), TYPE_BLOCKS))
+        Ft = types.loc[rows, MAP_FEATURES].astype("float64")
+        Pt = PCA(n_components=min(30, Ft.shape[1]), random_state=0).fit_transform(block_scale(zscore(Ft.fillna(Ft.median())), MAP_BLOCKS))
         out.loc[rows, ["tx3", "ty3", "tz3"]] = umap_mod.UMAP(n_components=3, n_neighbors=15, min_dist=0.3, random_state=0).fit_transform(Pt)
         log(f"umap 3d: {pt} done")
     return out
@@ -521,7 +547,7 @@ def umap_3d(types):
 
 def build_type_space(types):
     types = types.reset_index(drop=True)
-    glob = type_space(types)                     # global scaling: the "all pitches" map
+    glob = type_space(types, MAP_BLOCKS)         # global scaling: the "all pitches" map (no usage block)
     out = types[profiles.KEYS + ["pitch_type"]].copy()
     out["gx"], out["gy"] = glob.global_umap1.to_numpy(), glob.global_umap2.to_numpy()
     out["tx"] = out["ty"] = np.nan
@@ -530,8 +556,8 @@ def build_type_space(types):
     comp_pct = np.full((len(types), K_COMPS), np.nan)
     pid = types.pitcher.to_numpy()
     for pt, rows in types.groupby("pitch_type").indices.items():
-        F = types.loc[rows, TYPE_FEATURES].astype("float64")
-        X = block_scale(zscore(F.fillna(F.median())), TYPE_BLOCKS)
+        F = types.loc[rows, MAP_FEATURES].astype("float64")
+        X = block_scale(zscore(F.fillna(F.median())), MAP_BLOCKS)
         P_sub, _, leiden, U = embed(X, f"type/{pt}")
         out.loc[rows, ["tx", "ty"]] = U
         out.loc[rows, "tcluster"] = leiden
@@ -699,6 +725,8 @@ def export(types, pitchers, t_space, lead, fa, spin, mv, tj, teams, levels, team
         "flight": trajectory_blob(types, tj),
         "archetypes": json.loads(PITCHER_TYPES.read_text()) if PITCHER_TYPES.exists() else [],
         "fa_season": max(SEASONS),
+        "fa_asof": free_agents_asof(),
+        "data_through": {l: data_through(l) for l in levels},
         "fa": {str(r.pitcher): [None if pd.isna(v) else v for v in
                                 (r.fa_from, r.fa_to, r.fa_signed, r.fa_declared, r.fa_notes)]
                for r in fa[fa.pitcher.isin(pitchers.pitcher)].itertuples()},
