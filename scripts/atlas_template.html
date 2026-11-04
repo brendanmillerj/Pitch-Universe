@@ -319,6 +319,19 @@ button, input, select { font: inherit; color: inherit; }
 .simstage { position: relative; width: min(100%, max(320px, calc((100dvh - 290px) * 1.45))); margin: 0 auto; }   /* controls + animation on one screen */
 .simtype .psw.dash { border: 2px dashed; box-sizing: border-box; }
 .simtype .psw.ring { box-shadow: 0 0 0 2px #ffffff, 0 0 0 3px var(--map-panel); }
+/* pitch lab: sliders on the left, the flight on the right (stacked when narrow) */
+.lab { display: grid; grid-template-columns: minmax(280px, 380px) minmax(0, 1fr); gap: 14px 20px; align-items: start; }
+@media (max-width: 900px) { .lab { grid-template-columns: minmax(0, 1fr); } }
+.labsliders { display: flex; flex-direction: column; gap: 8px; }
+.labrow { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "l v" "s s" "r r"; gap: 2px 8px; font: 500 14px var(--font-ui); color: var(--map-ink); }
+.labl { grid-area: l; font-weight: 600; } .labv { grid-area: v; font-variant-numeric: tabular-nums; font-weight: 700; }
+.labrow input[type=range] { grid-area: s; width: 100%; accent-color: #ffffff; }
+.labr { grid-area: r; font: 400 12px var(--font-ui); color: var(--map-ink2); }
+.labshow { margin-top: 4px; }
+.labmine { cursor: default; color: var(--map-ink); border-color: var(--map-ink); }
+.labread { margin: 4px 0 0; font: 400 14px/1.45 var(--font-ui); color: var(--map-ink); }
+.labread b { font-weight: 700; } .labd { color: var(--map-ink2); }
+.labstage { width: 100%; margin: 0; }
 /* head to head: the two sides as the title, "vs" between them */
 .simh2h { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 18px; min-width: 0; }
 .simside { min-width: 0; }
@@ -3641,98 +3654,126 @@ window.addEventListener("resize", () => { if (!FLS) return; flightSetup(); fligh
 // Opened from the name bar. One list of pitches is in the air: his (each on or off) plus any single pitch added
 // from a lookalike's row below. The lookalike table shows arm angle, so a pitch from a similar slot is easy to
 // pick, and ERA, best first. Same trajectory engine and cameras as the card's flight panel.
-// The simulation is head to head: him against one other side, S.vs = "avg" (the MLB average for his hand and season)
-// or {pid, season, level} (any pitcher). S.types are the pitch types in the air; each flies for both sides.
+// The simulation is a pitch lab: pick one of his pitches, move six sliders (velocity, ride, run, release height,
+// release side, extension), and the designed pitch flies in white beside his real one (its own colour) and the MLB
+// average (dashed). Physics, in Statcast's frame (+x catcher's right, +y toward the pitcher, +z up; feet, seconds):
+// ride and run change the spin acceleration so the pitch moves that much more over the window Statcast measures
+// movement on (y = 40 ft to the plate): d(az) = 2 d(IVB) / t40^2, likewise ax. A right-hander's arm side is -x (release
+// x = -release side, ax opposite to arm-side break); a left-hander's is +x. Release height is z, extension 60.5 - y.
+// The design is re-aimed at the spot his real pitch arrives, so the comparison is shape, not location.
+const ARM_SIGN = h => h === "R" ? -1 : 1;
+function labBase(p) {   // release state of a nine-parameter pitch (same walk-back to the release as flightPath)
+  const [rx, ry, rz, vx, vy, vz, ax, ay, az] = p;
+  const root = (A, B, C, sign) => { const disc = Math.max(B * B - 4 * A * C, 0); return (-B + sign * Math.sqrt(disc)) / (2 * A); };
+  let tr = root(0.5 * ay, vy, FL.Y_REF - ry, 1); if (tr > 0) tr = root(0.5 * ay, vy, FL.Y_REF - ry, -1);
+  const v = [vx + ax * tr, vy + ay * tr, vz + az * tr];
+  const T = root(0.5 * ay, v[1], ry - FL.PLATE_Y, -1), t40 = root(0.5 * ay, v[1], ry - 40, -1);
+  return { r: [rx, ry, rz], v, a: [ax, ay, az], T, win: T - t40, plate: [rx + v[0] * T + 0.5 * ax * T * T, rz + v[2] * T + 0.5 * az * T * T] };
+}
+function labPath(b, d, sgn) {   // d: { mph, divb, dhb, relH, relS, ext } -> a flight like flightPath's, plus its approach angle
+  const a = [b.a[0] + sgn * 2 * (d.dhb / 12) / (b.win * b.win), b.a[1], b.a[2] + 2 * (d.divb / 12) / (b.win * b.win)];
+  const r = [sgn * d.relS, 60.5 - d.ext, d.relH], speed = d.mph * 5280 / 3600;
+  let v = b.v.slice(), T = b.T;
+  for (let it = 0; it < 8; it++) {   // aim at his pitch's plate spot, keeping the speed: x and z from the aim, y from the speed
+    v[0] = (b.plate[0] - r[0] - 0.5 * a[0] * T * T) / T; v[2] = (b.plate[1] - r[2] - 0.5 * a[2] * T * T) / T;
+    v[1] = -Math.sqrt(Math.max(speed * speed - v[0] * v[0] - v[2] * v[2], 1));
+    const A = 0.5 * a[1], B = v[1], C = r[1] - FL.PLATE_Y; T = (-B - Math.sqrt(Math.max(B * B - 4 * A * C, 0))) / (2 * A);
+  }
+  const n = FL.NPTS, pos = new Float64Array(3 * n);
+  for (let k = 0; k < n; k++) { const t = T * k / (n - 1), h = 0.5 * t * t; pos[3 * k] = r[0] + v[0] * t + a[0] * h; pos[3 * k + 1] = r[1] + v[1] * t + a[1] * h; pos[3 * k + 2] = r[2] + v[2] * t + a[2] * h; }
+  const vp = [v[0] + a[0] * T, v[1] + a[1] * T, v[2] + a[2] * T];
+  return { pos, tEnd: T, n, mph: Math.hypot(...v) * 3600 / 5280, vaa: Math.atan2(vp[2], -vp[1]) * 180 / Math.PI };
+}
+function simLeague(season, hand, t) { const d = flightData(); if (d.none) return null; const L = d.league[`${season}|${hand}|${t}`]; return L ? L.slice(0, 9) : null; }
+// the sliders: key, label, unit, decimals, how far either side of his real value, the his-real-value getter
+const LAB_SLIDERS = [
+  ["mph", "Velocity", "mph", 1, 8], ["ivb", "Ride (IVB)", "in", 1, 10], ["hb", "Run (arm side +)", "in", 1, 10],
+  ["relH", "Release height", "ft", 2, 1.5], ["relS", "Release side (arm side +)", "ft", 2, 1.5], ["ext", "Extension", "ft", 2, 1.2],
+];
+function labReal(r) {   // his real values for the sliders, from the same trajectory the lab flies
+  const p = trajOf(r), b = labBase(p), sgn = ARM_SIGN(T.p_throws[r]);
+  return { mph: flightPath(p).mph, ivb: T.ivb[r], hb: T.hb[r], relH: b.r[2], relS: sgn * b.r[0], ext: 60.5 - b.r[1] };
+}
 function simState(j) {
   const key = T.pitcher[j] + "|" + T.season[j] + "|" + T.level[j];
   if (!state.sim || state.sim.key !== key) {
     const mine = TYPES.filter(t => { const r = tRow(T.pitcher[j], T.season[j], t, T.level[j]); return r !== undefined && trajOf(r); });
-    state.sim = { key, types: new Set(mine), vs: "avg", q: "" };
+    const t = mine.includes(T.pitch_type[j]) ? T.pitch_type[j] : mine[0];
+    state.sim = { key, t, d: null, showReal: true, showAvg: true };
   }
-  return state.sim;
+  const S = state.sim; if (!S.d && S.t) S.d = labReal(tRow(T.pitcher[j], T.season[j], S.t, T.level[j]));
+  return S;
 }
-function simLeague(season, hand, t) { const d = flightData(); if (d.none) return null; const L = d.league[`${season}|${hand}|${t}`]; return L ? L.slice(0, 9) : null; }
-// his ten closest comps' version of one of his pitches (MLB comps, so each has an ERA), best ERA first
-function simLookalikes(j, t) {
-  const r = tRow(T.pitcher[j], T.season[j], t, T.level[j]); if (r === undefined) return [];
-  return (D.tcomps[r] || []).slice(0, K_SHOWN).map(([c, q]) => { const i = pRow(T.pitcher[c], T.season[c], T.level[c]);
-    return { c, q, i, era: i === undefined ? null : P.era[i], arm: i === undefined ? null : P.arm_angle[i] }; })
-    .sort((a, b) => (isNum(a.era) ? a.era : 99) - (isNum(b.era) ? b.era : 99));
+function labPaths(j, S) {
+  const r = tRow(T.pitcher[j], T.season[j], S.t, T.level[j]), p = trajOf(r), b = labBase(p), real = labReal(r), sgn = ARM_SIGN(T.p_throws[j]);
+  const design = labPath(b, { mph: S.d.mph, divb: S.d.ivb - real.ivb, dhb: S.d.hb - real.hb, relH: S.d.relH, relS: S.d.relS, ext: S.d.ext }, sgn);
+  const mine = labPath(b, { mph: real.mph, divb: 0, dhb: 0, relH: real.relH, relS: real.relS, ext: real.ext }, sgn);   // his own, for the angles
+  const paths = [];
+  if (S.showAvg) { const lg = simLeague(T.season[j], T.p_throws[j], S.t); if (lg) paths.push({ type: S.t, avg: true, ghost: true, color: SAVANT_PITCH[S.t], ...flightPath(lg) }); }
+  if (S.showReal) paths.push({ type: S.t, row: r, color: SAVANT_PITCH[S.t], ...flightPath(p) });
+  paths.push({ type: S.t, alt: true, ring: true, color: "#ffffff", design: true, ...design });
+  return { paths, design, mine, real };
 }
-// the other side's trajectory for pitch type t (null when that side has no such pitch)
-function simOther(j, S, t) {
-  if (S.vs === "avg") return simLeague(T.season[j], T.p_throws[j], t);
-  const r = tRow(S.vs.pid, S.vs.season, t, S.vs.level); return r === undefined ? null : trajOf(r);
+function labReadout(j, S, L) {
+  const dv = (x, y, dec, u) => { const d = x - y; return Math.abs(d) < Math.pow(10, -dec) / 2 ? "" : ` <span class="labd">${d > 0 ? "+" : "−"}${Math.abs(d).toFixed(dec)}${u}</span>`; };
+  const flat = L.design.vaa - L.mine.vaa;
+  return `Your ${PTN[S.t].toLowerCase()}: <b>${S.d.mph.toFixed(1)} mph</b>, <b>${S.d.ivb.toFixed(1)} in</b> ride, <b>${S.d.hb.toFixed(1)} in</b> run, arriving at <b>${L.design.vaa.toFixed(1)}°</b>`
+    + ` (his ${L.mine.vaa.toFixed(1)}°${Math.abs(flat) >= 0.05 ? `, ${Math.abs(flat).toFixed(1)}° ${flat > 0 ? "flatter" : "steeper"}` : ""}). Aimed at the spot his pitch arrives.`;
 }
-const simOtherName = (j, S) => S.vs === "avg" ? "MLB average" : S.vs.name;
-const simOtherSub = (j, S) => S.vs === "avg" ? `${T.p_throws[j] === "R" ? "right" : "left"}-handers, ${T.season[j]}` : `${S.vs.season}${S.vs.level === "mlb" ? "" : " · Triple-A"}${isNum(S.vs.arm) ? ` · arm angle ${Math.round(S.vs.arm)}°` : ""}`;
-// choices for the other side: empty box = MLB average and his best lookalikes; a name = matching pitchers
-function simChoices(j, q) {
-  const out = [];
-  if (!q.trim()) {
-    out.push({ vs: "avg", label: "MLB average", sub: `${T.p_throws[j]}HP ${T.season[j]}` });
-    const main = T.pitch_type[j];
-    simLookalikes(j, main).slice(0, 5).forEach(o => out.push({ vs: { pid: T.pitcher[o.c], season: T.season[o.c], level: T.level[o.c], name: T.name[o.c], arm: o.arm },
-      label: T.name[o.c], sub: `lookalike · ${T.season[o.c]} · ERA ${fmt(o.era, 2)}${isNum(o.arm) ? ` · arm ${Math.round(o.arm)}°` : ""}` }));
-    return out;
-  }
-  const { names, folded, latest } = suggIndex(), fq = fold(q.trim()), hits = [];
-  for (let k = 0; k < names.length && hits.length < 8; k++) if (folded[k].includes(fq)) hits.push(names[k]);
-  hits.sort((a, b) => (fold(a).startsWith(fq) ? 0 : 1) - (fold(b).startsWith(fq) ? 0 : 1));
-  hits.forEach(n => { const e = latest[n], i = P.name.findIndex((x, ii) => x === n && P.season[ii] === e.season && P.level[ii] === e.level); if (i < 0) return;
-    out.push({ vs: { pid: P.pitcher[i], season: P.season[i], level: P.level[i], name: n, arm: P.arm_angle[i] }, label: n, sub: `${P.p_throws[i]}HP · ${P.season[i]}${P.level[i] === "mlb" ? "" : " · Triple-A"}` }); });
-  return out;
-}
-function renderSimChoices(show) {
-  const j = state.sel, S = state.sim, ul = $("#simVsList"); if (!ul || !S || j === null || j === undefined) return;
-  S.choices = simChoices(j, S.q || "");
-  ul.hidden = !show;
-  ul.innerHTML = S.choices.length ? S.choices.map((c, k) => `<li><button type="button" data-vs="${k}"><b>${esc(c.label)}</b><span class="tm">${esc(c.sub)}</span></button></li>`).join("")
-    : `<li class="none">No pitcher named “${esc(S.q.trim())}”</li>`;
-  ul.querySelectorAll("[data-vs]").forEach(b => { b.onmousedown = e => e.preventDefault(); b.onclick = () => { S.vs = S.choices[+b.dataset.vs].vs; S.q = ""; renderSim(); }; });
+function labRun(play) {   // fly (or redraw, while a slider moves) what the sliders say
+  const j = state.sel, S = state.sim; if (j === null || j === undefined || !S) return;
+  const L = labPaths(j, S), cam = state.flightCam || "catcher";
+  const rd = $("#labRead"); if (rd) rd.innerHTML = labReadout(j, S, L);
+  const flight = Math.max(...L.paths.map(p => p.tEnd));
+  const hold0 = Math.round(FL.HOLD0 * FL.FPS), nAnim = Math.max(2, Math.round(FL.FPS * flight * FL.SLOW)), hold1 = Math.round(FL.HOLD1 * FL.FPS);
+  stopFlight();
+  FLS = { j, paths: L.paths, flight, hold0, nAnim, total: hold0 + nAnim + hold1, cam, start: null, raf: 0, zone: flightZone(j), cvId: "simCv" };
+  if (play) requestAnimationFrame(() => { if (FLS && FLS.cvId === "simCv") { flightSetup(); flightPlay(); } });
+  else { flightSetup(); flightDraw(FLS.total - 1); }
 }
 function renderSim() {
   stopFlight();
   const box = $("#simBox"), j = state.sel; if (j === null || j === undefined) { box.hidden = true; return; }
   const S = simState(j), pid = T.pitcher[j], s = T.season[j], lvl = T.level[j], cam = state.flightCam || "catcher";
-  const me = lastName(T.name[j]), them = S.vs === "avg" ? "MLB average" : lastName(S.vs.name);
-  const mineRow = t => tRow(pid, s, t, lvl), hasMine = t => { const r = mineRow(t); return r !== undefined && !!trajOf(r); };
-  const types = TYPES.filter(t => hasMine(t) || simOther(j, S, t));
-  const chip = t => { const a = hasMine(t), b = !!simOther(j, S, t), on = S.types.has(t);
-    return `<button type="button" class="simtype" data-simtype="${t}" aria-pressed="${on}" title="${on ? "Take" : "Put"} the ${PTN[t].toLowerCase()} ${on ? "out of" : "in"} the air"><i class="psw" style="background:${SAVANT_PITCH[t]}"></i>${PTN[t]}${a && b ? "" : ` <span class="tm">only ${esc(a ? me : them)}</span>`}</button>`; };
-  // paths: his ticked pitches in their colours; the other side's version of each, dashed (average) or white (a pitcher)
-  const paths = [];
-  types.filter(t => S.types.has(t)).forEach(t => {
-    if (hasMine(t)) { const r = mineRow(t); paths.push({ type: t, row: r, color: SAVANT_PITCH[t], ...flightPath(trajOf(r)) }); }
-    const o = simOther(j, S, t);
-    if (o) paths.push(S.vs === "avg" ? { type: t, avg: true, ghost: true, color: SAVANT_PITCH[t], ...flightPath(o) } : { type: t, alt: true, ring: true, color: "#ffffff", ...flightPath(o) });
-  });
+  const mine = TYPES.map(t => [t, tRow(pid, s, t, lvl)]).filter(([, r]) => r !== undefined && trajOf(r));
+  if (!S.t) { box.hidden = false; box.innerHTML = `<div class="sim-head"><h2 class="sim-name" id="simTitle">${esc(T.name[j])}</h2><button type="button" class="sim-x" id="simClose" aria-label="Close">×</button></div><p class="simsub">No tracked flight paths for him.</p>`; $("#simClose").onclick = () => closeSim(); return; }
+  const real = labReal(tRow(pid, s, S.t, lvl));
+  const slider = ([k, label, unit, dec, span]) => {
+    const lo = +(real[k] - span).toFixed(dec), hi = +(real[k] + span).toFixed(dec), step = Math.pow(10, -dec);
+    return `<label class="labrow" for="lab-${k}"><span class="labl">${esc(label)}</span>
+      <input type="range" id="lab-${k}" data-lab="${k}" min="${lo}" max="${hi}" step="${step}" value="${S.d[k]}">
+      <span class="labv" id="labv-${k}">${S.d[k].toFixed(dec)} ${unit}</span><span class="labr">his ${real[k].toFixed(dec)}</span></label>`;
+  };
   box.hidden = false;
-  box.innerHTML = `<div class="sim-head"><div class="simh2h">
-      <div class="simside"><h2 class="sim-name" id="simTitle">${esc(T.name[j])}</h2><p class="simsub">${s}${lvl === "mlb" ? "" : " · Triple-A"} · ${esc(teamStr(j))} · his pitches in their colours</p></div>
-      <span class="simvsword">vs</span>
-      <div class="simside simvs"><h2 class="sim-name">${esc(simOtherName(j, S))}</h2><p class="simsub">${esc(simOtherSub(j, S))} · ${S.vs === "avg" ? "dashed" : "white"}</p>
-        <input type="search" id="simVsQ" class="simaddq" placeholder="Change: MLB average, a lookalike or any pitcher" autocomplete="off" aria-label="Compare him with" value="${esc(S.q || "")}">
-        <ul class="simvslist" id="simVsList" hidden></ul></div></div>
-      <button type="button" class="sim-x" id="simClose" aria-label="Close the pitch simulation" title="Close (Esc)">×</button></div>
-    <div class="simrow"><span class="flbl">Pitches</span><div class="simtypes">${types.map(chip).join("")}</div></div>
-    <div class="simstage"><div class="simover"><div class="mseg simcam" role="group" aria-label="Camera">${["catcher", "pitcher"].map(c => `<button type="button" data-simcam="${c}" aria-pressed="${cam === c}">${c === "catcher" ? "Catcher view" : "Pitcher view"}</button>`).join("")}</div>
-      <button type="button" class="sim-replay" id="simReplay">Replay</button></div>
-      <canvas id="simCv" class="simcv" role="img" aria-label="Animated flight of ${esc(T.name[j])}'s pitches against ${esc(simOtherName(j, S))}"></canvas></div>`;
+  box.innerHTML = `<div class="sim-head"><div><h2 class="sim-name" id="simTitle">${esc(T.name[j])} · Pitch lab</h2>
+      <p class="simsub">${s}${lvl === "mlb" ? "" : " · Triple-A"} · ${esc(teamStr(j))} · change his pitch and watch it fly beside the real one</p></div>
+      <button type="button" class="sim-x" id="simClose" aria-label="Close the pitch lab" title="Close (Esc)">×</button></div>
+    <div class="simrow"><span class="flbl">Start from his</span><div class="simtypes">${mine.map(([t, r]) => `<button type="button" class="simtype" data-labt="${t}" aria-pressed="${S.t === t}"><i class="psw" style="background:${SAVANT_PITCH[t]}"></i>${PTN[t]} <span class="tm">${fmt(T.velo[r], 1)}</span></button>`).join("")}</div>
+      <button type="button" class="sim-replay" id="labReset">Reset to his</button></div>
+    <div class="lab">
+      <div class="labsliders">${LAB_SLIDERS.map(slider).join("")}
+        <div class="simrow labshow"><span class="flbl">Show</span>
+          <button type="button" class="simtype" id="labReal" aria-pressed="${S.showReal}"><i class="psw" style="background:${SAVANT_PITCH[S.t]}"></i>His real ${PTN[S.t].toLowerCase()}</button>
+          <button type="button" class="simtype" id="labAvg" aria-pressed="${S.showAvg}"><i class="psw dash" style="background:none;border-color:${SAVANT_PITCH[S.t]}"></i>MLB average</button>
+          <span class="simtype labmine"><i class="psw ring" style="background:#ffffff"></i>Your design</span></div>
+        <p class="labread" id="labRead"></p></div>
+      <div class="simstage labstage"><div class="simover"><div class="mseg simcam" role="group" aria-label="Camera">${["catcher", "pitcher"].map(c => `<button type="button" data-simcam="${c}" aria-pressed="${cam === c}">${c === "catcher" ? "Catcher view" : "Pitcher view"}</button>`).join("")}</div>
+        <button type="button" class="sim-replay" id="simReplay">Replay</button></div>
+        <canvas id="simCv" class="simcv" role="img" aria-label="Animated flight of the designed pitch beside his real one"></canvas></div>
+    </div>`;
   $("#simClose").onclick = () => closeSim();
-  $("#simReplay").onclick = () => renderSim();
-  box.querySelectorAll("[data-simtype]").forEach(b => b.onclick = () => { const t = b.dataset.simtype; if (S.types.has(t)) S.types.delete(t); else S.types.add(t); renderSim(); });
+  $("#simReplay").onclick = () => labRun(true);
+  $("#labReset").onclick = () => { S.d = labReal(tRow(pid, s, S.t, lvl)); renderSim(); };
+  $("#labReal").onclick = () => { S.showReal = !S.showReal; renderSim(); };
+  $("#labAvg").onclick = () => { S.showAvg = !S.showAvg; renderSim(); };
+  box.querySelectorAll("[data-labt]").forEach(b => b.onclick = () => { S.t = b.dataset.labt; S.d = null; simState(j); renderSim(); });
   box.querySelectorAll("[data-simcam]").forEach(b => b.onclick = () => { state.flightCam = b.dataset.simcam; renderSim(); });
-  const qi = $("#simVsQ");
-  qi.onfocus = () => renderSimChoices(true);
-  qi.oninput = () => { S.q = qi.value; renderSimChoices(true); };
-  qi.onblur = () => setTimeout(() => { const ul = $("#simVsList"); if (ul) ul.hidden = true; }, 150);
-  qi.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); renderSimChoices(false); if (S.choices && S.choices[0]) { S.vs = S.choices[0].vs; S.q = ""; renderSim(); } } };
-  if (!paths.length) return;
-  const flight = Math.max(...paths.map(p => p.tEnd));
-  const hold0 = Math.round(FL.HOLD0 * FL.FPS), nAnim = Math.max(2, Math.round(FL.FPS * flight * FL.SLOW)), hold1 = Math.round(FL.HOLD1 * FL.FPS);
-  FLS = { j, paths, flight, hold0, nAnim, total: hold0 + nAnim + hold1, cam, start: null, raf: 0, zone: flightZone(j), cvId: "simCv" };
-  requestAnimationFrame(() => { if (FLS && FLS.cvId === "simCv") { flightSetup(); flightPlay(); } });   // once the overlay has its width
+  box.querySelectorAll("[data-lab]").forEach(inp => {
+    const k = inp.dataset.lab, spec = LAB_SLIDERS.find(x => x[0] === k);
+    inp.oninput = () => { S.d[k] = +inp.value; const v = $("#labv-" + k); if (v) v.textContent = `${S.d[k].toFixed(spec[3])} ${spec[2]}`; labRun(false); };
+    inp.onchange = () => labRun(true);
+  });
+  labRun(true);
 }
 
 // --------------------------------------------------- Savant-style pitch movement
