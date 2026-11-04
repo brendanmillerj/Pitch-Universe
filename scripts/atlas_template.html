@@ -1240,7 +1240,9 @@ tr.self td { font-weight: 600; background: none; }
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script>
 "use strict";
-const D = /*__ATLAS_DATA__*/null;
+// Data: inlined by atlas_build.py for the self-contained file; the deployed Space ships it as data/*.js
+// files loaded just above (the Hub turns a >10 MB page into an LFS object that is no longer served inline).
+const D = /*__ATLAS_DATA__*/null || window.__ATLAS_DATA__;
 const P = D.pitchers, T = D.types;
 const NP = P.pitcher.length, NT = T.pitcher.length;
 // Levels. MLB is the reference: the maps, comps, percentiles and baselines are all big-league. Triple-A
