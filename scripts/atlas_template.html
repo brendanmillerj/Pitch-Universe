@@ -790,6 +790,11 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
 .svcomps { font: 600 13px var(--font-ui); padding: 4px 10px; border: 1.5px solid var(--ink); border-radius: 6px; background: var(--field); color: var(--ink); cursor: pointer; }
 .svcomps:hover:not(:disabled) { background: var(--wash); }
 .svcomps:disabled { color: var(--muted); border-color: var(--line); cursor: default; }
+/* a Triple-A pitcher's comps: among big-leaguers or among Triple-A arms */
+.poolseg { display: inline-flex; margin: 0 0 10px; border: 1.5px solid var(--ink); border-radius: var(--r); overflow: hidden; }
+.poolseg button { font: 700 15px/1 var(--font-ui); padding: 8px 12px; border: 0; background: var(--field); color: var(--ink2); cursor: pointer; }
+.poolseg button + button { border-left: 1.5px solid var(--ink); }
+.poolseg button[aria-pressed="true"] { background: var(--ink); color: var(--field); }
 
 .tablewrap { overflow-x: auto; }
 table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums lining-nums; }
@@ -1182,6 +1187,7 @@ tr.self td { font-weight: 600; background: none; }
     <aside class="matchbox compbox" id="compBox" aria-label="Similar pitchers" hidden>
       <div class="mb-head"><b id="cbTitle"></b><button type="button" class="link" id="cbHide">Hide</button></div>
       <div class="cbchips" id="cbChips" role="group" aria-label="Comps for which of his pitches"></div>
+      <div class="cbchips" id="cbPool" role="group" aria-label="Comps among which pitchers" hidden></div>
       <p class="cbhelp" id="cbHelp"></p>
       <button type="button" class="dlbtn keepbtn" id="cbSave" title="Keep him and these comps as a named group, circled on every map, with what they share">Keep similar pitchers as a group</button>
       <ol id="cbList"></ol>
@@ -1462,6 +1468,7 @@ const state = {
   tblSort: { key: null, dir: -1 },   // measure table: column key ("name" or a measure) and direction
   slGroupsOpen: new Set(),   // measure-filter sections the user has opened (all start closed)
   level: LEVELS[0],   // which level's pitchers the maps show; pools stay MLB
+  compPool: "mlb",    // a Triple-A pitcher's comps: among MLB pitchers ("mlb") or Triple-A pitchers ("aaa")
   seasons: new Set(D.seasons),
   throws: "all",
   team: "all",
@@ -2026,13 +2033,13 @@ function saveCurrentGroup() {
   $("#dlMsg").textContent = `Kept “${e.name}” (${pitchers.toLocaleString()} pitcher${pitchers === 1 ? "" : "s"}) as a group, circled on every map. Rename, recolor or hide it in the Groups panel.`;
 }
 // Him + his closest comps as one ellipse (once per pitcher-season-pitch); both save buttons then read "Saved"
-const compsKey = r => T.pitcher[r] + "|" + T.season[r] + "|" + T.pitch_type[r];
+const compsKey = r => T.pitcher[r] + "|" + T.season[r] + "|" + T.pitch_type[r] + (compPoolOf(r) === "aaa" ? "|aaa" : "");
 const compsSavedId = r => { const k = compsKey(r), e = saved.find(x => x.comps && x.comps.key === k); return e ? e.id : null; };
 function saveCompsGroup(r) {
   if (r === null || r === undefined || compsSavedId(r)) return;
   const comps = compsOf(state.view, r); if (!comps.length) return;
   const t = T.pitch_type[r], tol = T.comp_tol[r];
-  saveGroup([r, ...comps.map(x => x[0])], `Like ${T.name[r]} (${PTN[t].toLowerCase()})`,
+  saveGroup([r, ...comps.map(x => x[0])], `Like ${T.name[r]} (${PTN[t].toLowerCase()}${compPoolOf(r) === "aaa" ? ", Triple-A" : ""})`,
     { key: compsKey(r), of: T.name[r], pt: t, tol: isNum(tol) && isFinite(tol) ? tol : null });
   syncCompsSaveButtons();
 }
@@ -2658,8 +2665,19 @@ function wrapTitle(t, n = 22) {
 }
 
 const K_SHOWN = 10;   // displayed comps; D.tcomps holds a 30-pitcher neighbourhood
-const compsOf = (view, r) => (D.tcomps[r] || []).slice(0, K_SHOWN);
+// Which pool a pitch's comps come from: MLB always for an MLB pitch; a Triple-A pitch can switch to
+// its lookalikes among Triple-A pitchers (D.tcomps_aaa). Lookalike xERA and the 30-neighbourhood stay MLB.
+const compPoolOf = r => state.compPool === "aaa" && T.level[r] === "aaa" && D.tcomps_aaa ? "aaa" : "mlb";
+const compsOf = (view, r) => ((compPoolOf(r) === "aaa" ? D.tcomps_aaa : D.tcomps)[r] || []).slice(0, K_SHOWN);
+const compTolOf = r => compPoolOf(r) === "aaa" ? T.comp_tol_aaa[r] : T.comp_tol[r];
 const nbhdOf = r => D.tcomps[r] || [];
+const POOL_LABEL = { mlb: "MLB similar", aaa: "AAA similar" };
+const poolSegHTML = r => T.level[r] !== "aaa" || !D.tcomps_aaa ? "" : ["mlb", "aaa"].map(v =>
+  `<button type="button" data-pool="${v}" aria-pressed="${compPoolOf(r) === v}" title="${v === "mlb" ? "The big-league pitchers his pitch most resembles" : "The Triple-A pitchers his pitch most resembles"}">${POOL_LABEL[v]}</button>`).join("");
+function setCompPool(v) {
+  if (v !== "mlb" && v !== "aaa" || v === state.compPool) return;
+  state.compPool = v; render(); renderDetail();
+}
 
 // ------------------------------------------------------------------ detail
 const fitOf = q => q < 0.5 ? ["close", "Close"] : q < 0.9 ? ["fair", "Fair"] : ["loose", "Loose"];
@@ -2788,7 +2806,7 @@ function compsPanel(view, j) {
     <p class="cmprow"><label class="flbl" for="cmpSel">Compare with</label><span class="sel"><select id="cmpSel">${opts}</select></span></p>
     <div class="cmpkey" id="cmpKey"></div>
     <div id="cmpPlot" class="moveplot" role="img" aria-label="Pitch movement of ${esc(T.name[j])} compared with a comp"></div></section>` : ""}
-    <section class="sec"><h3>Closest ${PTN[t].toLowerCase()} comps</h3>${comps.length ? `<button type="button" class="bigbtn primary keepcard" data-svcomps="${j}" data-label="Keep similar pitchers as a group"${compsSavedId(j) ? " disabled" : ""} title="Keep him and these ${comps.length} as a named group, circled on every map, with what they share">${compsSavedId(j) ? "Kept as a group" : "Keep similar pitchers as a group"}</button>` : ""}<p class="help">Nearest ${T.level[j] === "mlb" ? "other" : "big-league"} pitchers' ${PTN[t].toLowerCase()}s on shape, angles, delivery, command, consistency and usage, any season. Only ${T.p_throws[j] === "R" ? "right" : "left"}-handers with an arm angle within ±${isNum(T.comp_tol[j]) && isFinite(T.comp_tol[j]) ? T.comp_tol[j] : "any"}° of his${isNum(T.comp_tol[j]) && T.comp_tol[j] > 7.5 ? " (window widened: too few pitchers within ±7.5°)" : ""}. Whiff% is on this pitch; xERA is the comp's whole season.</p>
+    <section class="sec"><h3>Closest ${PTN[t].toLowerCase()} comps</h3>${poolSegHTML(j) ? `<div class="poolseg" role="group" aria-label="Comps among which pitchers">${poolSegHTML(j)}</div>` : ""}${comps.length ? `<button type="button" class="bigbtn primary keepcard" data-svcomps="${j}" data-label="Keep similar pitchers as a group"${compsSavedId(j) ? " disabled" : ""} title="Keep him and these ${comps.length} as a named group, circled on every map, with what they share">${compsSavedId(j) ? "Kept as a group" : "Keep similar pitchers as a group"}</button>` : ""}<p class="help">Nearest ${T.level[j] === "mlb" ? "other" : compPoolOf(j) === "aaa" ? "Triple-A" : "big-league"} pitchers' ${PTN[t].toLowerCase()}s on shape, angles, delivery, command, consistency and usage, any season. Only ${T.p_throws[j] === "R" ? "right" : "left"}-handers with an arm angle within ±${isNum(compTolOf(j)) && isFinite(compTolOf(j)) ? compTolOf(j) : "any"}° of his${isNum(compTolOf(j)) && compTolOf(j) > 7.5 ? " (window widened: too few pitchers within ±7.5°)" : ""}. Whiff% is on this pitch; xERA is the comp's whole season.</p>
     <div class="tablewrap"><table><thead><tr><th></th><th>Pitcher</th><th>Season</th><th title="${FIT_TIP}">Fit</th><th class="num" title="${esc(EXPLAIN.whiff)}">Whiff%</th><th class="num" title="${esc(EXPLAIN["P:xera"])}">xERA</th></tr></thead><tbody>
     <tr class="self"><td><span class="badge self"></span></td><td>${esc(T.name[j])}</td><td>${T.season[j]} <span class="tm">${esc(teamStr(j))}</span></td><td></td><td class="num">${fmt(T.whiff[j], 1)}</td><td class="num">${i === undefined ? "—" : fmt(P.xera[i], 2)}</td></tr>`;
   comps.forEach(([c, q], k) => {
@@ -3603,9 +3621,12 @@ function renderCompBox() {
     ? TYPES.map(x => tRow(T.pitcher[r], T.season[r], x, T.level[r])).filter(x => x !== undefined && (x === r || T.n[x] >= state.minN)) : [];
   $("#cbChips").hidden = mine.length < 2;
   $("#cbChips").innerHTML = mine.length < 2 ? "" : mine.map(x => `<button type="button" data-cb="${x}" aria-pressed="${x === r}">${PTN[T.pitch_type[x]]}</button>`).join("");
-  const tol = T.comp_tol[r], tolTxt = isNum(tol) && isFinite(tol) ? `within ±${tol}° of his arm angle` : "any arm angle";
+  const poolSeg = poolSegHTML(r);
+  $("#cbPool").hidden = !poolSeg; $("#cbPool").innerHTML = poolSeg;
+  const tol = compTolOf(r), tolTxt = isNum(tol) && isFinite(tol) ? `within ±${tol}° of his arm angle` : "any arm angle";
+  const who = T.level[r] !== "aaa" ? "" : compPoolOf(r) === "aaa" ? "Triple-A " : "Big-league ";
   $("#cbHelp").textContent = comps.length
-    ? `${T.p_throws[r] === "R" ? "Right" : "Left"}-handers ${tolTxt}, any season. Click a name to show him.`
+    ? `${who}${who ? (T.p_throws[r] === "R" ? "right" : "left") : (T.p_throws[r] === "R" ? "Right" : "Left")}-handers ${tolTxt}, any season. Click a name to show him.`
     : "No comps for this pitch.";
   $("#cbSave").hidden = !comps.length; syncCompsSaveButtons();
   $("#cbList").innerHTML = comps.map(([c, q], k) => `<li><button type="button" data-cbp="${c}"><span class="cbn">${k + 1}</span>`
@@ -4196,6 +4217,7 @@ function buildStatic() {
   $("#cbList").addEventListener("click", e => { const b = e.target.closest("[data-cbp]"); if (b) preview(+b.dataset.cbp); });
   $("#cbSave").addEventListener("click", () => saveCompsGroup(state.sel));
   document.addEventListener("click", e => { const b = e.target.closest("[data-svcomps]"); if (b && !b.disabled) saveCompsGroup(+b.dataset.svcomps); });
+  document.addEventListener("click", e => { const b = e.target.closest("[data-pool]"); if (b) setCompPool(b.dataset.pool); });
   $("#ctaClose").addEventListener("click", () => select(null));
   if (window.claude && typeof window.claude.use === "function") {
     window.claude.use("downloads").then(d => { DOWNLOADS = d; $("#dlBtn").hidden = !d; }, () => {});

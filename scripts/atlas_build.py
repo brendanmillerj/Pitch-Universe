@@ -409,15 +409,17 @@ def comps_for(P, pid, rows=None):
 ARM_TOLS = (7.5, 10, 12.5, 15, 20, 30, np.inf)   # arm-angle window, widened only when too few comps
 
 
-def type_comps(types):
+def type_comps(types, query_level=None, cand_level="mlb"):
     """Comps per pitch: same pitch type, SAME HAND, arm angle within ARM_TOLS[0] degrees (the window
     widens step by step only when fewer than K_COMPS distinct other pitchers qualify), ranked by
     distance in that type's PCA space (the same space the per-type maps are drawn from).
     Returns comp rows, fit percentile, and the arm-angle window actually used per row.
 
-    `types` may hold several levels (column `level`). The space is fitted on, and the candidates are,
-    MLB rows only; every row is a query. A Triple-A pitch's comps are therefore the big-league
-    pitchers it most resembles, and a call-up never comps to himself at the other level."""
+    `types` may hold several levels (column `level`). The space is always fitted on MLB rows.
+    `cand_level` picks the candidates and `query_level` the rows that get comps (None = every row):
+      type_comps(t)                              every pitch's comps among MLB pitchers (the default)
+      type_comps(t, "aaa", "aaa")                a Triple-A pitch's lookalikes among Triple-A pitchers
+    A pitcher never comps to himself, at either level. Rows that are not queries get no comps."""
     from scipy.spatial.distance import cdist
     from sklearn.decomposition import PCA
 
@@ -430,6 +432,8 @@ def type_comps(types):
     arm = types.arm_angle.to_numpy(dtype="float64")
     hand = types.p_throws.to_numpy()
     lvl = types.level.to_numpy() if "level" in types else np.full(n, "mlb")
+    is_query = np.ones(n, bool) if query_level is None else lvl == query_level
+    nbhd_of = (lambda l: NBHD_LEVEL.get(l, NBHD)) if cand_level == "mlb" else (lambda l: K_COMPS)
     for pt, rows in types.groupby("pitch_type").indices.items():
         is_m = lvl[rows] == "mlb"
         mrows = rows[is_m]
@@ -441,15 +445,16 @@ def type_comps(types):
         Pc[is_m] = pca.fit_transform(scaler_apply(sc, types.loc[mrows, TYPE_FEATURES]))
         if (~is_m).any():
             Pc[~is_m] = pca.transform(scaler_apply(sc, types.loc[rows[~is_m], TYPE_FEATURES]))
+        is_c = lvl[rows] == cand_level
         for h in np.unique(hand[rows]):
-            local = np.flatnonzero(hand[rows] == h)                 # queries: every level
-            cand = np.flatnonzero((hand[rows] == h) & is_m)         # candidates: MLB only
+            local = np.flatnonzero((hand[rows] == h) & is_query[rows])   # queries
+            cand = np.flatnonzero((hand[rows] == h) & is_c)              # candidates
             g, gc = rows[local], rows[cand]
-            if len(gc) < 2:
+            if len(gc) < 2 or not len(g):
                 continue
             D = cdist(Pc[local], Pc[cand])
             for a in range(len(g)):
-                nbhd = NBHD_LEVEL.get(lvl[g[a]], NBHD)
+                nbhd = nbhd_of(lvl[g[a]])
                 order = np.argsort(D[a])
                 darm = np.abs(arm[gc] - arm[g[a]])
                 not_self = gc[order] != g[a]
@@ -479,11 +484,14 @@ def type_comps(types):
                 rows_out[g[a], :len(picks)] = gc[picks]
                 dist_out[g[a], :len(picks)] = D[a, picks]
                 tol_out[g[a]] = tol
-    # fit percentile against the MLB distribution of nearest-comp distances
-    first = np.sort(dist_out[lvl == "mlb", 0][~np.isnan(dist_out[lvl == "mlb", 0])])
+    # fit percentile against the reference distribution of nearest-comp distances: MLB pitches among
+    # MLB candidates, or the queried level among its own
+    ref = is_query if cand_level != "mlb" else (lvl == "mlb")
+    first = np.sort(dist_out[ref, 0][~np.isnan(dist_out[ref, 0])])
     pct = np.searchsorted(first, np.nan_to_num(dist_out, nan=np.inf)) / len(first)
-    widened = np.nanmean(tol_out > ARM_TOLS[0])
-    log(f"comps: same hand, arm angle within {ARM_TOLS[0]} deg ({100 * widened:.1f}% of pitches needed a wider window)")
+    widened = np.nanmean(tol_out[is_query] > ARM_TOLS[0])
+    log(f"comps among {cand_level} for {'every' if query_level is None else query_level} pitch: same hand, "
+        f"arm angle within {ARM_TOLS[0]} deg ({100 * widened:.1f}% of pitches needed a wider window)")
     return rows_out, np.where(np.isnan(dist_out), np.nan, pct), tol_out
 
 
@@ -663,7 +671,8 @@ def export(types, pitchers, t_space, lead, fa, spin, mv, tj, teams, levels, team
     assert (types.level.to_numpy() == t_space.level.to_numpy()).all()
 
     t_out = types[["pitcher", "season", "level", "pitch_type", "p_throws", "n", "gx", "gy", "tx", "ty",
-                   "tcluster", "comp_tol", "gx3", "gy3", "gz3", "tx3", "ty3", "tz3"]].copy()
+                   "tcluster", "comp_tol", "gx3", "gy3", "gz3", "tx3", "ty3", "tz3"]
+                  + (["comp_tol_aaa"] if "comp_tol_aaa" in types else [])].copy()
     t_out = pd.concat([t_out, type_display(types)], axis=1)
     p_out = pitchers[["pitcher", "season", "level", "p_throws", "n", "primary_fb", "teams", "team_main"]].copy()
     p_out = pd.concat([p_out, pitcher_display(pitchers)], axis=1)
@@ -684,6 +693,8 @@ def export(types, pitchers, t_space, lead, fa, spin, mv, tj, teams, levels, team
         "pitchers": columnar(p_out),
         "types": columnar(t_out),
         "tcomps": comps_columnar(types.comp_rows, types.comp_pct),
+        # Triple-A lookalikes among Triple-A pitchers; empty for every MLB row
+        **({"tcomps_aaa": comps_columnar(types.comp_rows_aaa, types.comp_pct_aaa)} if "comp_rows_aaa" in types else {}),
         "movement": movement_blob(types, mv),
         "flight": trajectory_blob(types, tj),
         "archetypes": json.loads(PITCHER_TYPES.read_text()) if PITCHER_TYPES.exists() else [],
@@ -742,6 +753,10 @@ def main():
     # comps are cheap and rule-driven (same hand, similar arm angle): always recompute
     cr, cp, ctol = type_comps(types)
     t_space["comp_rows"], t_space["comp_pct"], t_space["comp_tol"] = list(cr), list(cp), ctol
+    # a Triple-A pitch also gets its lookalikes among Triple-A pitchers (the page offers both)
+    if "aaa" in levels:
+        cr, cp, ctol = type_comps(types, "aaa", "aaa")
+        t_space["comp_rows_aaa"], t_space["comp_pct_aaa"], t_space["comp_tol_aaa"] = list(cr), list(cp), ctol
     t_space.to_parquet(ATLAS, index=False)
     spin = pd.concat([active_spin(s, a.refetch_leaders) for s in SEASONS], ignore_index=True)
     export(types, pitchers, t_space, lead, free_agents(), spin, mv, tj, teams, levels, teams_aaa)
