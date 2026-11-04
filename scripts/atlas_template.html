@@ -3848,19 +3848,39 @@ function labFocus(S) {   // the pitch the sliders work on: the one in the lab, e
   if (!it.d) it.d = { ...it.ref };
   return { st: it, own: true };
 }
+// Normalize release point (state.simNorm: off | v | h | both): every pitch that is not his own is flown from his
+// release height (v), side (h) or both, keeping its velocity, ride, run, extension and plate spot. His release is
+// his own pitch of that type, else his most-used pitch. Side is matched physically (a lefty's pitch moves to where
+// a right-hander lets go), so arm-side run still breaks the way its thrower's does.
+const NORM_OPTS = [["off", "As thrown"], ["v", "Vertical"], ["h", "Horizontal"], ["both", "Both"]];
+const normAxis = k => { const n = state.simNorm || "off"; return k === "relH" ? n === "v" || n === "both" : k === "relS" ? n === "h" || n === "both" : false; };
+function hisRel(j, t) {
+  const own = tRow(T.pitcher[j], T.season[j], t, T.level[j]), r = own !== undefined && trajOf(own) ? own : (labMine(j)[0] || [])[1];
+  return r === undefined ? null : labReal(r);
+}
+function labPlace(j, r, d) {   // slider values d of row r, with the release moved to his where normalizing
+  if (!normAxis("relH") && !normAxis("relS")) return d;
+  const h = hisRel(j, T.pitch_type[r]); if (!h) return d;
+  const o = { ...d };
+  if (normAxis("relH")) o.relH = h.relH;
+  if (normAxis("relS")) o.relS = h.relS * ARM_SIGN(T.p_throws[j]) * ARM_SIGN(T.p_throws[r]);   // same spot on the rubber side
+  return o;
+}
+const normOn = () => (state.simNorm || "off") !== "off";
 function labPaths(j, S) {
   const paths = [], F = labFocus(S), avgOf = [];
   S.items.forEach(it => {
     if (!it.on) return;
     const c = SAVANT_PITCH[it.t]; if (it.kind !== "ghost") avgOf.push(it.r);
     if (it.kind === "own") paths.push({ type: it.t, row: it.r, color: c, ...flightPath(trajOf(it.r)) });
-    else if (it.kind === "ghost") { paths.push({ type: it.t, row: it.r, ghost: true, color: c, ...flightPath(trajOf(it.r)) }); }   // a lookalike's real pitch, dashed
-    else paths.push({ type: it.t, row: it.r, alt: true, fade: true, color: c, ...labFly(it.r, it.d) });   // added: see-through
+    else if (it.kind === "ghost") paths.push({ type: it.t, row: it.r, ghost: true, color: c, ...(normOn() ? labFly(it.r, labPlace(j, it.r, labReal(it.r))) : flightPath(trajOf(it.r))) });   // a lookalike's pitch, dashed
+    else paths.push({ type: it.t, row: it.r, alt: true, fade: true, color: c, ...labFly(it.r, labPlace(j, it.r, it.d)) });   // added: see-through
   });
   let design = null, base = null;
   if (F) {
     const st = F.st; avgOf.push(st.r);
-    design = labFly(st.r, st.d); base = labFly(st.r, st.ref);   // base: untouched, for the angles
+    const pl = d => F.own ? d : labPlace(j, st.r, d);
+    design = labFly(st.r, pl(st.d)); base = labFly(st.r, pl(st.ref));   // base: untouched, for the angles
     if (!F.own && S.showDonor) paths.push({ type: st.t, row: st.r, alt: true, ring: true, color: "#ffffff", ...flightPath(trajOf(st.r)) });
     paths.push({ type: st.t, alt: true, fade: true, design: true, color: SAVANT_PITCH[st.t], ...design });
   }
@@ -3934,6 +3954,10 @@ function renderSim() {
   const own = S.items.filter(it => it.kind === "own"), have = new Set(own.map(it => it.t)), lack = TYPES.filter(t => !have.has(t));
   const F = labFocus(S), st = F && F.st, ty = st ? PTN[st.t].toLowerCase() : "", dn = st && !F.own ? lastName(T.name[st.r]) : null;
   const slider = ([k, label, unit, dec, span]) => {
+    if (!F.own && normAxis(k)) {   // normalized: this release axis is his, not a slider
+      const v = labPlace(j, st.r, st.d)[k];
+      return `<div class="labrow"><span class="labl">${esc(label)}</span><span class="labv">${v.toFixed(dec)} ${unit}</span><span class="labr">his (Normalize release point)</span></div>`;
+    }
     const ref = st.ref, lo = +(ref[k] - span).toFixed(dec), hi = +(ref[k] + span).toFixed(dec), step = Math.pow(10, -dec);
     const who = F.own || (st.kind === "lack" && ["relH", "relS", "ext"].includes(k)) ? "his" : `${dn}’s`;
     return `<label class="labrow" for="lab-${k}"><span class="labl">${esc(label)}</span>
@@ -3970,6 +3994,7 @@ function renderSim() {
     <div class="simrow"><label class="flbl" for="simAddQ">Add pitch to simulate</label><div class="simvs"><input type="search" id="simAddQ" class="simaddq" autocomplete="off" spellcheck="false"
       placeholder="Pitcher name or pitch, e.g. Skubal changeup" aria-controls="simAddList"><ul class="simvslist" id="simAddList" hidden></ul></div></div>
     ${lack.length ? `<div class="simrow"><span class="flbl">Add pitch he lacks</span><div class="simtypes">${lack.map(t => `<button type="button" class="simtype added" data-labt="${t}" aria-pressed="${!!(S.stage && S.stage.kind === "lack" && S.stage.t === t)}" title="Build a ${PTN[t].toLowerCase()} from his closest lookalike by arm angle and release point, thrown from his release point"><i class="psw" style="background:${SAVANT_PITCH[t]}"></i>${PTN[t]}</button>`).join("")}</div></div>` : ""}
+    ${S.stage || S.items.some(it => it.kind !== "own") ? `<div class="simrow"><span class="flbl" id="normLbl">Normalize release point</span><div class="mseg simnorm" role="group" aria-labelledby="normLbl">${NORM_OPTS.map(([v, l]) => `<button type="button" data-norm="${v}" aria-pressed="${(state.simNorm || "off") === v}" title="${v === "off" ? "Every pitch from its own release point" : `Every pitch that is not his from his release ${v === "v" ? "height" : v === "h" ? "side" : "height and side"}`}">${l}</button>`).join("")}</div></div>` : ""}
     <div class="lab">
       <div class="labsliders">
         <div class="simrow labshow">${controls}${avgBtn}</div>
@@ -4009,6 +4034,7 @@ function renderSim() {
   };
   list.onclick = e => { const b = e.target.closest("[data-addr]"); if (b) pick(+b.dataset.addr); };
   box.querySelectorAll("[data-simcam]").forEach(b => b.onclick = () => { state.flightCam = b.dataset.simcam; renderSim(); });
+  box.querySelectorAll("[data-norm]").forEach(b => b.onclick = () => { state.simNorm = b.dataset.norm; renderSim(); });
   box.querySelectorAll("[data-lab]").forEach(inp => {
     const k = inp.dataset.lab, spec = LAB_SLIDERS.find(x => x[0] === k);
     inp.oninput = () => { st.d[k] = +inp.value; const v = $("#labv-" + k); if (v) v.textContent = `${st.d[k].toFixed(spec[3])} ${spec[2]}`; labRun(false); };
