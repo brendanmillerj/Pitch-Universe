@@ -241,7 +241,10 @@ button, input, select { font: inherit; color: inherit; }
 .svnew-name { flex: 1 1 140px; min-width: 0; min-height: var(--ctl); padding: 0 8px; border: 1px solid var(--map-muted); border-radius: var(--r); background: rgba(0, 0, 0, 0.25); color: var(--map-ink); font: 500 14px var(--font-ui); }
 .svnew-name::placeholder { color: var(--map-muted); }
 #svList { list-style: none; margin: 0; padding: 0 0 8px; overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
-#svList > li { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto auto auto; align-items: center; gap: 4px 6px; padding: 8px 10px; border-top: 1px solid var(--map-hair); }
+#svList > li { display: grid; grid-template-columns: auto auto minmax(0, 1fr); grid-template-areas: "exp sw name" ". . acts"; align-items: center; gap: 4px 8px; padding: 8px 10px; border-top: 1px solid var(--map-hair); }
+#svList > li .sv-exp { grid-area: exp; } #svList > li .sv-sw { grid-area: sw; } #svList > li .sv-name { grid-area: name; }
+.sv-acts { grid-area: acts; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.sv-acts .sv-n { margin-right: auto; }
 .sv-exp { width: 26px; height: 26px; border: 0; border-radius: 6px; background: none; cursor: pointer; display: grid; place-items: center; }
 .sv-exp:hover { background: var(--map-hover); }
 .sv-exp .chev { width: 8px; height: 8px; border-right: 2px solid var(--map-ink); border-bottom: 2px solid var(--map-ink); transform: rotate(-45deg); transition: transform 0.15s; }
@@ -253,7 +256,7 @@ button, input, select { font: inherit; color: inherit; }
 .sv-sw { width: 20px; height: 20px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 1.5px var(--map-ring); position: relative; cursor: pointer; overflow: hidden; }
 .sv-sw input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; padding: 0; border: 0; cursor: pointer; }
 .sv-name { min-width: 0; font: 600 15px/1.3 var(--font-ui); color: var(--map-ink); background: none; border: 1px solid transparent; border-radius: 6px; padding: 2px 4px;
-  white-space: normal; overflow-wrap: anywhere; cursor: text; }
+  white-space: normal; overflow-wrap: break-word; cursor: text; }   /* wraps between words; only a very long word breaks */
 .sv-name:hover { border-color: var(--map-muted); }
 .sv-name:focus { border-color: var(--map-ink); background: rgba(0, 0, 0, 0.25); outline: none; }
 .sv-tog, .sv-del { flex: none; font: 600 13px var(--font-ui); min-height: 30px; padding: 0 8px; border-radius: 6px; cursor: pointer; background: none; border: 1.5px solid var(--map-muted); color: var(--map-ink); }
@@ -2137,7 +2140,7 @@ function syncRail() {
   const can = { pitchers: true, look: true, groups: true };
   const open = !!state.rail.open;
   $("#rail").hidden = !open;
-  const label = { pitchers: `Pitchers${n ? ` <b>${n.toLocaleString()}</b>` : ""}`, look: "Lookalikes", groups: `Groups${nG ? ` <b>${nG}</b>` : ""}` };
+  const label = { pitchers: "Pitchers", look: "Lookalikes", groups: `Groups${nG ? ` <b>${nG}</b>` : ""}` };
   RAIL_TABS.forEach(t => {
     const b = $("#tab" + t[0].toUpperCase() + t.slice(1));
     b.disabled = !can[t]; b.innerHTML = label[t]; b.setAttribute("aria-selected", String(open && state.rail.tab === t));
@@ -2429,10 +2432,10 @@ function renderSaved() {
     + `<button type="button" class="sv-exp" data-exp aria-expanded="${x}" aria-label="${x ? "Fold" : "Open"} ${esc(e.name)}" title="${x ? "Fold" : "Show what they share and who is inside"}"><i class="chev" aria-hidden="true"></i></button>`
     + `<label class="sv-sw" style="--c:${e.color}" title="Change color"><input type="color" value="${e.color}" data-color aria-label="Color for ${esc(e.name)}"></label>`
     + `<span class="sv-name" contenteditable="true" role="textbox" spellcheck="false" data-name aria-label="Group name" title="Click to rename">${esc(e.name)}</span>`
-    + `<span class="sv-n">${n}</span>`
+    + `<span class="sv-acts"><span class="sv-n">${n} pitcher${n === 1 ? "" : "s"}</span>`
     + `<button type="button" class="sv-tog sv-only" data-only aria-pressed="${only}" title="${only ? "Show everyone again" : "Show only this group’s pitchers on the map"}">${only ? "Show everyone" : "Only these"}</button>`
     + `<button type="button" class="sv-tog" data-tog aria-pressed="${e.on}">${e.on ? "Hide" : "Show"}</button>`
-    + `<button type="button" class="sv-del" data-del aria-label="Delete ${esc(e.name)}" title="Delete">×</button>`
+    + `<button type="button" class="sv-del" data-del aria-label="Delete ${esc(e.name)}" title="Delete">×</button></span>`
     + (x ? `<div class="sv-body"><span class="sv-meta">${esc(savedMeta(e, state.view))}</span>`
       + `<button type="button" class="sv-why" data-why aria-expanded="${svOpen.has(e.id)}">${svOpen.has(e.id) ? "Hide what they share" : "What they share"}</button>`
       + `<div class="sv-traits" data-traits${svOpen.has(e.id) ? "" : " hidden"}>${svOpen.has(e.id) ? sharedTraitsHTML(e) : ""}</div>`
