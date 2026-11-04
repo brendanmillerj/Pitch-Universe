@@ -172,6 +172,13 @@ button, input, select { font: inherit; color: inherit; }
 .railtab[aria-selected="true"] { color: var(--map-ink); border-bottom-color: var(--map-ink); }
 .railtab:disabled { color: var(--map-muted); cursor: default; }
 .railtab b { font-weight: 400; }
+.railtabs .railtab { flex: none; padding: 0 12px; }
+/* Show Only Groups: a dropdown of the saved groups beside the tabs (same setting as a group's "Only these") */
+.railsel { flex: 1 1 auto; min-width: 0; align-self: center; margin: 0 4px 0 6px; font: 600 13px var(--font-ui); min-height: 32px; padding: 0 6px; border: 1.5px solid var(--map-muted);
+  border-radius: var(--r); background: var(--map-chrome); color: var(--map-ink); cursor: pointer; text-overflow: ellipsis; }
+.railsel[aria-pressed="true"] { border-color: var(--map-ink); background: var(--field); color: var(--ink); }
+.railsel:disabled { color: var(--map-muted); cursor: default; }
+.railsel option { color: var(--ink); background: var(--field); }
 .railx { flex: none; width: var(--ctl); border: 0; background: none; color: var(--map-ink); font: 400 22px/1 var(--font-ui); cursor: pointer; }
 .railx:hover { background: var(--map-hover); }
 .railpane { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
@@ -323,11 +330,8 @@ button, input, select { font: inherit; color: inherit; }
 .lk-name { font: 600 14px var(--font-ui); overflow-wrap: break-word; }
 .lk-yr { font-weight: 400; color: var(--ink2); }
 .lk-nums { font: 400 12px var(--font-ui); color: var(--ink2); font-variant-numeric: tabular-nums; }
-.lk-fit { flex: none; font: 600 12px var(--font-ui); padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink2); }
+.lk-fit { flex: none; white-space: nowrap; font: 600 12px var(--font-ui); padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink2); }
 .lk-fit.lk-close { color: var(--ink); border-color: var(--ink); }
-.lk-add { flex: none; font: 600 12px var(--font-ui); min-height: 26px; padding: 0 8px; border-radius: 6px; border: 1.5px solid var(--line); background: var(--field); color: var(--ink2); cursor: pointer; }
-.lk-add:hover { border-color: var(--ink); color: var(--ink); }
-.lk-add[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--field); }
 .lk-acts { display: flex; flex-wrap: wrap; gap: 6px; }
 .ctaclose { flex: none; width: 32px; height: 32px; margin: -2px -4px 0 0; border: 0; border-radius: var(--r); background: none; color: var(--ink2); font: 400 22px/1 var(--font-ui); cursor: pointer; }
 .ctaclose:hover { background: var(--wash); color: var(--ink); }
@@ -1317,7 +1321,7 @@ tr.self td { font-weight: 600; background: none; }
           <div id="cbPool" role="group" aria-label="Lookalikes among which pitchers" hidden></div>
           <p class="lk-help" id="cbHelp"></p>
           <ol class="lk-list" id="cbList"></ol>
-          <div class="lk-acts"><button type="button" class="savebtn" id="cbSave" title="Keep him and his lookalikes as a named group">Save as group</button><button type="button" class="savebtn" id="cbTable" aria-pressed="false" title="A table of him and his lookalikes on every measure, in the map's place">Compare in table</button></div>
+          <div class="lk-acts"><button type="button" class="savebtn" id="cbSave" title="Keep him and his lookalikes as a named group">Save as group</button><button type="button" class="savebtn" id="cbTable" aria-pressed="false" title="A table of him and his lookalikes on every measure, in the map's place">Compare in table</button><button type="button" class="savebtn" id="cbSim" title="Fly his pitch in full colour with each lookalike's as a dashed ghost">Compare Pitch Simulation</button></div>
         </section>
       </div>
       </div>
@@ -1327,6 +1331,7 @@ tr.self td { font-weight: 600; background: none; }
       <div class="railtabs" role="tablist">
         <button type="button" class="railtab" role="tab" id="tabPitchers" data-tab="pitchers" aria-selected="false" aria-controls="matchBox">Pitchers</button>
         <button type="button" class="railtab" role="tab" id="tabGroups" data-tab="groups" aria-selected="false" aria-controls="savedBox">Groups</button>
+        <select class="railsel" id="onlySel" aria-label="Show only one group's pitchers on the map" title="Show only one group's pitchers on the map"></select>
         <button type="button" class="railx" id="railClose" aria-label="Close the panel" title="Close">×</button>
       </div>
       <section class="railpane" id="matchBox" role="tabpanel" aria-label="Highlighted pitchers" hidden>
@@ -2205,10 +2210,17 @@ function syncRail() {
   $("#matchBox").hidden = !(open && state.rail.tab === "pitchers");
   $("#savedBox").hidden = !(open && state.rail.tab === "groups");
   $("#railPills").hidden = open;
+  syncOnlySel();
   $("#railPills").innerHTML = RAIL_TABS.filter(t => can[t]).map(t => `<button type="button" class="pill" data-tab="${t}">${label[t]}</button>`).join("");
   if (!$("#matchBox").hidden && state.mbDirty) renderMatchList();
 }
 function setRailTab(t) { state.rail.open = true; state.rail.tab = t; syncRail(); }
+function syncOnlySel() {
+  const sel = $("#onlySel"), og = state.onlyGroup && saved.some(e => e.id === state.onlyGroup) ? state.onlyGroup : "";
+  sel.innerHTML = `<option value="">${saved.length ? "Show Only Groups" : "Show Only Groups (none saved)"}</option>`
+    + saved.map(e => `<option value="${esc(e.id)}">${esc(e.name)}</option>`).join("");
+  sel.value = og; sel.disabled = !saved.length; sel.setAttribute("aria-pressed", String(!!og));
+}
 
 // ----------------------------------------------------------------- ellipses
 // Covariance ellipse of a group's map positions, scaled to cover ~p of a bivariate normal:
@@ -2474,7 +2486,7 @@ function regionListHTML(e) {
 function renderSaved() {
   $("#svCount").textContent = saved.length ? String(saved.length) : "";
   $("#svEmpty").hidden = saved.length > 0 || !!svDeleted;
-  syncGroupsHi();
+  syncGroupsHi(); syncOnlySel();
   $("#svList").innerHTML = saved.map(e => { const x = svExpanded.has(e.id), only = state.onlyGroup === e.id;
     const n = new Set(e.keys.map(k => k.split("|")[0])).size;
     return `<li data-id="${esc(e.id)}" class="${e.on ? "" : "off"}${x ? " open" : ""}">`
@@ -2560,6 +2572,7 @@ function wireSaved() {
   $("#svNewList").addEventListener("click", e => { const b = e.target.closest("[data-unpick]"); if (b) togglePick(+b.dataset.unpick); });
   document.addEventListener("click", e => { const b = e.target.closest("[data-pick]"); if (b) togglePick(+b.dataset.pick); });
   $("#svOnly").addEventListener("click", () => { state.groupsHi = !state.groupsHi; syncGroupsHi(); render(); });
+  $("#onlySel").addEventListener("change", e => { state.onlyGroup = e.target.value || null; OG = null; renderSaved(); render(); });
   const list = $("#svList"), of = el => saved.find(e => e.id === (el.closest("li[data-id]") || {}).dataset?.id);
   list.addEventListener("click", ev => {
     const e = of(ev.target); if (!e) return;
@@ -3125,7 +3138,7 @@ function setCompPool(v) {
 }
 
 // ------------------------------------------------------------------ detail
-const fitOf = q => q < 0.5 ? ["close", "Close"] : q < 0.9 ? ["fair", "Fair"] : ["loose", "Loose"];
+const fitOf = q => q < 0.5 ? ["close", "Close Fit"] : q < 0.9 ? ["fair", "Loose Fit"] : ["loose", "Very Loose Fit"];
 
 function tile(k, v, sub) { return `<div><dt>${k}</dt><dd class="v">${v}</dd>${sub ? `<dd class="pc">${sub}</dd>` : ""}</div>`; }
 // Free-agent swatch colors match the map's free-agent coloring
@@ -3285,7 +3298,7 @@ function heatTable(view, j, comps) {
   const row = o => {
     const r = o.r, fa = faOf(r), self = o.k === null;
     const tag = fa ? ` <span class="fa-tag${fa[1] ? " signed" : ""}" title="${fa[1] ? "Free agent, signed with " + esc(fa[1]) : "Free agent, unsigned"}"><i class="sw" style="background:${faSwatch(r, pal)}"></i>FA</span>` : "";
-    const meta = `${T.season[r]} · ${esc(teamStr(r))}${T.level[r] === "mlb" ? "" : " · Triple-A"}${o.q === undefined ? "" : ` · ${fitOf(o.q)[1]} fit`}`;
+    const meta = `${T.season[r]} · ${esc(teamStr(r))}${T.level[r] === "mlb" ? "" : " · Triple-A"}${o.q === undefined ? "" : ` · ${fitOf(o.q)[1]}`}`;
     const name = `<td class="hm-name">${self ? `<span class="badge self"></span>` : `<span class="badge">${o.k + 1}</span>`} ${esc(T.name[r])}${tag}<span class="tm">${meta}</span></td>`;
     const cells = o.items.map(({ v, x, p, note }) => cell(x, p, v.dec ?? 2, `${mName(v)}: ${fmt(x, v.dec, v.unit)} · ${isNum(p) && p >= 0 ? ord(p) + " percentile" : ""}${note || ""}`));
     return `<tr${self ? ' class="self"' : ` class="click" data-go="${view}:${r}"`}>${name}${cell(o.xe, o.xp, 2, `xERA ${fmt(o.xe, 2)}${isNum(o.xp) ? " · " + ord(o.xp) + " percentile among MLB pitchers (lower is better)" : ""}`)}${cells.join("")}</tr>`;
@@ -3835,8 +3848,9 @@ function labPaths(j, S) {
   const paths = [], F = labFocus(S), avgOf = [];
   S.items.forEach(it => {
     if (!it.on) return;
-    const c = SAVANT_PITCH[it.t]; avgOf.push(it.r);
+    const c = SAVANT_PITCH[it.t]; if (it.kind !== "ghost") avgOf.push(it.r);
     if (it.kind === "own") paths.push({ type: it.t, row: it.r, color: c, ...flightPath(trajOf(it.r)) });
+    else if (it.kind === "ghost") { paths.push({ type: it.t, row: it.r, ghost: true, color: c, ...flightPath(trajOf(it.r)) }); }   // a lookalike's real pitch, dashed
     else paths.push({ type: it.t, row: it.r, alt: true, fade: true, color: c, ...labFly(it.r, it.d) });   // added: see-through
   });
   let design = null, base = null;
@@ -3925,6 +3939,7 @@ function renderSim() {
   const chip = it => {
     const c = SAVANT_PITCH[it.t], lbl = esc(labLabel(j, it));
     if (it.kind === "own") return `<button type="button" class="simtype" data-simon="${it.id}" aria-pressed="${it.on}"><i class="psw" style="background:${c}"></i>${lbl} <span class="tm">${fmt(T.velo[it.r], 1)}</span></button>`;
+    if (it.kind === "ghost") return `<span class="simpair"><button type="button" class="simtype added" data-simon="${it.id}" aria-pressed="${it.on}" title="${esc(`${T.name[it.r]}’s ${T.season[it.r]} ${PTN[it.t].toLowerCase()}, a lookalike, flying as a dashed ghost`)}"><i class="psw dash" style="background:none;border-color:${c}"></i>${lbl}</button><button type="button" class="simx" data-simrm="${it.id}" aria-label="Remove ${lbl}" title="Remove">×</button></span>`;
     const tip = it.kind === "lack" ? `Built from ${T.name[it.r]}’s ${T.season[it.r]} ${PTN[it.t].toLowerCase()}, thrown from his release point` : `${T.name[it.r]}’s ${T.season[it.r]} ${PTN[it.t].toLowerCase()}`;
     return `<span class="simpair"><button type="button" class="simtype added" data-simon="${it.id}" aria-pressed="${it.on}" title="${esc(tip)}${it.edited ? " (edited)" : ""}"><i class="psw fade" style="background:${c}"></i>${lbl} <span class="tm">${it.d.mph.toFixed(1)}</span></button><button type="button" class="simx" data-simrm="${it.id}" aria-label="Remove ${lbl}" title="Remove">×</button></span>`;
   };
@@ -4161,7 +4176,7 @@ function measureItems(vars, r, poolName, rows) {
 const mName = v => SHORT[baseKey(v.key)] || v.label;
 // hover text for a measure anywhere on the page: its full name, then its plain-language meaning
 const tipFor = v => { const e = EXPLAIN[v.key] || EXPLAIN[baseKey(v.key)]; return v.label + (e ? ". " + e : ""); };
-const FIT_TIP = "Fit: how near this comp sits to him in the measure space, ranked against every pitcher's nearest comp of this pitch type. Close: nearer than half of those. Fair: a usual distance. Loose: farther than nine in ten.";
+const FIT_TIP = "Fit: how near this comp sits to him in the measure space, ranked against every pitcher's nearest comp of this pitch type. Close Fit: nearer than half of those. Loose Fit: a usual distance. Very Loose Fit: farther than nine in ten.";
 function mRow({ v, x, p, note }) {
   const bar = p < 0 ? `<span></span>` : (() => { const w = Math.max(0, Math.min(100, p)).toFixed(0);
     return `<span class="pbar" title="${ord(p)} percentile${note || ""}"><span class="track"></span>`
@@ -4439,14 +4454,13 @@ function renderCompBox() {
   $("#cbHelp").textContent = comps.length
     ? `Same-handed ${who}pitchers ${tolTxt}, any season, closest first. The numbers match the map; click a name to go to him.`
     : "No lookalikes for this pitch.";
-  $("#cbSave").hidden = !comps.length; $("#cbTable").hidden = !comps.length; syncCompsSaveButtons();
+  $("#cbSave").hidden = !comps.length; $("#cbTable").hidden = !comps.length; $("#cbSim").hidden = !comps.length || flightData().none; syncCompsSaveButtons();
   const num = (v, d, u) => isNum(v) ? `${v.toFixed(d)}${u}` : "–";
   $("#cbList").innerHTML = comps.map(([c, q], k) => { const [fc, ft] = fitOf(q);
     return `<li><button type="button" class="lk-row" data-cbp="${c}"><span class="lk-n">${k + 1}</span>`
       + `<span class="lk-who"><span class="lk-name">${esc(T.name[c])} <span class="lk-yr">’${String(T.season[c]).slice(2)}${T.level[c] === "mlb" ? "" : " AAA"}</span></span>`
       + `<span class="lk-nums">${num(T.velo[c], 1, " mph")} · ${num(T.ivb[c], 1, "″ ride")} · ${num(T.hb[c], 1, "″ run")} · arm ${num(T.arm_angle[c], 0, "°")}</span></span>`
-      + `<span class="lk-fit lk-${fc}">${ft}</span></button>`
-      + `<button type="button" class="lk-add" data-pick="${c}" aria-pressed="${state.picks.has(c)}" title="Pick him for a new group">${state.picks.has(c) ? "Added" : "Add"}</button></li>`; }).join("");
+      + `<span class="lk-fit lk-${fc}">${ft}</span></button></li>`; }).join("");
 }
 function syncCta() {
   const r = state.sel, on = !!state.preview && r !== null && r !== undefined, box = $("#selCta");
@@ -4463,6 +4477,16 @@ function syncCta() {
   const fly = $("#ctaFly");
   fly.textContent = state.simOpen ? "Close Simulation" : "Simulate Pitches";
   fly.setAttribute("aria-pressed", String(!!state.simOpen));
+}
+// Compare Pitch Simulation (lookalike list): his pitch in full colour, each lookalike's same pitch as a dashed ghost
+function compareSim() {
+  const r = state.sel; if (r === null || r === undefined || flightData().none) return;
+  const S = simState(r), t = T.pitch_type[r];
+  S.items = S.items.filter(it => it.kind !== "ghost");
+  S.items.forEach(it => { if (it.kind === "own") it.on = it.t === t; else it.on = false; });
+  compsOf(state.view, r).forEach(([c]) => { if (trajOf(c)) S.items.push({ id: "cmp:" + c, kind: "ghost", t: T.pitch_type[c], r: c, on: true }); });
+  S.stage = null; S.edit = false; S.showAvg = false;   // the dashed MLB average would read like one more lookalike
+  if (state.simOpen) renderSim(); else toggleSim();
 }
 // The simulation is an overlay on the map: nothing else on the page moves, and × or Escape puts it away.
 function toggleSim() {
@@ -4697,7 +4721,7 @@ const TERMS = () => [
   ["Run value / 100", "Runs saved per 100 pitches, from the change in expected runs after each pitch. Positive is good for the pitcher."],
   ["Uniqueness", EXPLAIN.uniq_z],
   ["Comps, lookalikes, similar pitchers", "The ten other pitchers whose version of the pitch sits nearest his in the measure space: same hand, arm angle within 7.5° (widened only when too few qualify), any season."],
-  ["Fit (Close, Fair, Loose)", FIT_TIP.replace(/^Fit: /, "")],
+  ["Fit (Close, Loose, Very Loose)", FIT_TIP.replace(/^Fit: /, "")],
   ["Pitcher types", "Named groups under “Find a type of pitcher”; the definition of the chosen one shows under the box."],
 ];
 function glossaryHTML() {
@@ -5124,6 +5148,7 @@ function buildStatic() {
   $("#ctaFly").addEventListener("click", toggleSim);
   document.addEventListener("keydown", e => { if (e.key === "Escape" && state.simOpen) { e.preventDefault(); closeSim(); $("#ctaFly").focus({ preventScroll: true }); } });
   $("#ctaLook").addEventListener("click", () => setLook(true));
+  $("#cbSim").addEventListener("click", compareSim);
   $("#cbBack").addEventListener("click", () => setLook(false));
   $("#ctaFrom").addEventListener("click", () => { const f = state.lookFrom; if (f !== null && f !== undefined) preview(f, { look: true }); });
   $("#cbChips").addEventListener("click", e => { const b = e.target.closest("[data-cb]"); if (b) { state.sel = +b.dataset.cb; render(); } });
