@@ -68,13 +68,17 @@ button, input, select { font: inherit; color: inherit; }
   background: var(--panel); border-bottom: 1px solid var(--line);
   margin: 0 calc(-1 * var(--gr)) 0 calc(-1 * var(--gl)); padding-left: var(--gl); padding-right: var(--gr); }
 .head h1 { margin-top: 18px !important; white-space: nowrap; }
-.head > .universe, .head > .umobile { flex-basis: 100%; }
+.head > .urow, .head > .umobile { flex-basis: 100%; }
+/* the pitch-type row leads with the measure filter, label above its split button, a rule between them and the maps */
+.urow { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 20px; margin-top: 8px; }
+.urow .find-meas { flex: none; display: flex; flex-direction: column; gap: 6px; padding: 8px 20px 8px 0; border-right: 1.5px solid var(--line); }
+.urow .universe { flex: 1 1 auto; margin-top: 0 !important; }
 @media (max-width: 1000px) {
   .head h1 { margin-top: 0 !important; }
   .head > .finders { flex-basis: 100%; }
 }
 @media (max-width: 719px) { .finders { grid-template-columns: minmax(0, 1fr); } .find-lbl { font-size: 17px; } }
-.universe { margin-top: 8px !important; }
+.urow { margin-top: 8px !important; }
 .controls { grid-area: controls; padding-right: 12px; min-width: 0; }
 .map { grid-area: map; padding-right: 12px; min-height: 0; min-width: 0; position: relative; display: flex; flex-direction: column;
   --mi: 12px; --mx: 24px; --rw: min(300px, 42%); --gw: min(400px, 48%); container: map / inline-size; }
@@ -201,7 +205,8 @@ button, input, select { font: inherit; color: inherit; }
 .simlook .simrow { margin: 0 0 8px; }
 .simtab { width: 100%; border-collapse: collapse; font: 500 15px var(--font-ui); }
 .simtab th { text-align: left; font: 700 13px var(--font-ui); color: var(--ink2); padding: 4px 8px; border-bottom: 1.5px solid var(--rule); }
-.simtab td { padding: 7px 8px; border-bottom: 1px solid var(--line); }
+.simtab td { padding: 7px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.simtab td:nth-child(2) { white-space: normal; }
 .simtab .num { text-align: right; font-variant-numeric: tabular-nums; }
 .simtab tr.click { cursor: pointer; } .simtab tr.click:hover { background: var(--wash); }
 .simtab tr.on td { font-weight: 700; }
@@ -305,8 +310,8 @@ button, input, select { font: inherit; color: inherit; }
 .grp { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
 
 /* the two finders are the front door: big, stacked label over control, side by side */
-.finders { flex: 0 1 auto; display: grid; grid-template-columns: minmax(13rem, 16rem) minmax(15rem, 24rem) minmax(13rem, 19rem) minmax(16rem, 22rem); gap: 10px 32px; margin: 0 0 4px; }
-@media (max-width: 1300px) { .finders { grid-template-columns: minmax(12rem, 0.8fr) minmax(15rem, 1.3fr) minmax(12rem, 1fr) minmax(16rem, 1fr); column-gap: 24px; } }
+.finders { flex: 0 1 auto; display: grid; grid-template-columns: minmax(15rem, 24rem) minmax(13rem, 19rem) minmax(16rem, 22rem); gap: 10px 32px; margin: 0 0 4px; }
+@media (max-width: 1300px) { .finders { grid-template-columns: minmax(15rem, 1.3fr) minmax(12rem, 1fr) minmax(16rem, 1fr); column-gap: 24px; } }
 /* Four finders need ~1150px of header. The header's width depends on the layout (full page, half beside a
    player card, minus the measure drawer), so size them to the header itself: two by two, then one column.
    Declared after the viewport rules above so these win. */
@@ -317,7 +322,7 @@ button, input, select { font: inherit; color: inherit; }
   nav#universe { display: none; }
   .umobile { display: flex; gap: 8px; align-items: baseline; margin: 12px 0 4px; padding-top: 8px; border-top: 1px solid var(--rule); }
 }
-@container head (max-width: 560px) { .finders { flex-basis: 100%; grid-template-columns: minmax(0, 1fr); } .measseg { width: 100%; } }
+@container head (max-width: 560px) { .finders { flex-basis: 100%; grid-template-columns: minmax(0, 1fr); } .urow .find-meas { width: 100%; border-right: 0; padding-right: 0; } .measseg { width: 100%; } }
 /* "Filter by measures": the app's headline tool, first in the row. One control split in two: Choose... opens
    the drawer on the left (the arrow points where it opens); Reset clears every filter and stays grayed out until
    something is filtered, so the header never jumps. */
@@ -1122,14 +1127,6 @@ tr.self td { font-weight: 600; background: none; }
       <button type="button" data-v="mlb" aria-pressed="true" title="Major-league pitchers">MLB</button><button type="button" data-v="aaa" aria-pressed="false" title="Triple-A pitchers on the same maps, every number measured against big-league norms">AAA</button>
     </div>
     <div class="finders">
-      <div class="find find-meas">
-        <span class="find-lbl" id="measLabel">Filter by measures</span>
-        <div class="measseg" role="group" aria-labelledby="measLabel">
-          <button type="button" class="measbtn" id="slOpen" aria-expanded="false" aria-controls="sliders"><span class="measarr" aria-hidden="true">‹</span><span id="slOpenTxt">Choose…</span></button>
-          <button type="button" class="resetbtn" id="resetAll" disabled title="Reset filters: measures, pitcher type, free agents, the color-key range, season and hand">Reset</button>
-        </div>
-        <p class="help meas-help" id="measHelp">Opens a panel on the left: slide ranges, rank pitchers in a table</p>
-      </div>
       <form class="find" role="search" id="findForm">
         <label class="find-lbl" for="search">Find a pitcher</label>
         <div class="find-box">
@@ -1170,7 +1167,16 @@ tr.self td { font-weight: 600; background: none; }
     </div>
     <div class="umobile"><label class="lbl" for="universeSelect">Showing</label>
       <span class="sel"><select id="universeSelect"></select></span></div>
-    <nav class="universe" id="universe" aria-label="Choose a map"></nav>
+    <div class="urow">
+      <div class="find-meas" id="measWrap">
+        <span class="find-lbl" id="measLabel">Filter by measures</span>
+        <div class="measseg" role="group" aria-labelledby="measLabel">
+          <button type="button" class="measbtn" id="slOpen" aria-expanded="false" aria-controls="sliders"><span class="measarr" aria-hidden="true">‹</span><span id="slOpenTxt">Choose…</span></button>
+          <button type="button" class="resetbtn" id="resetAll" disabled title="Reset filters: measures, pitcher type, free agents, the color-key range, season and hand">Reset</button>
+        </div>
+      </div>
+      <nav class="universe" id="universe" aria-label="Choose a map"></nav>
+    </div>
   </header>
 
   <section class="controls" id="controls" aria-label="Map controls">
@@ -3337,7 +3343,7 @@ function simState(j) {
 function simLookalikes(j, t) {
   const r = tRow(T.pitcher[j], T.season[j], t, T.level[j]); if (r === undefined) return [];
   return (D.tcomps[r] || []).slice(0, K_SHOWN).map(([c, q]) => { const i = pRow(T.pitcher[c], T.season[c], T.level[c]);
-    return { c, q, i, era: i === undefined ? null : P.era[i], arm: T.arm_angle[c] }; })
+    return { c, q, i, era: i === undefined ? null : P.era[i], arm: T.arm_angle[c], relh: T.rel_height[c], rels: T.rel_side[c] }; })
     .sort((a, b) => (isNum(a.era) ? a.era : 99) - (isNum(b.era) ? b.era : 99));
 }
 function renderSim() {
@@ -3348,10 +3354,14 @@ function renderSim() {
   S.added = S.added.filter(r => trajOf(r));
   const looks = simLookalikes(j, S.compType), best = looks.findIndex(o => isNum(o.era)), cam = state.flightCam || "catcher";
   const i0 = pRow(pid, s, lvl), myArm = i0 === undefined ? null : P.arm_angle[i0];
-  const deg = v => isNum(v) ? `${Math.round(v)}°` : "—";
+  const deg = v => isNum(v) ? `${Math.round(v)}°` : "—", ft = v => isNum(v) ? `${v.toFixed(1)} ft` : "—";
+  // release point of the pitch the lookalikes are for (his own version of it): the table shows each lookalike's
+  // against it, so a pitch from the same slot and the same spot is easy to pick
+  const mineRow = tRow(pid, s, S.compType, lvl), myRelH = mineRow === undefined ? null : T.rel_height[mineRow], myRelS = mineRow === undefined ? null : T.rel_side[mineRow];
+  const delta = (v, mine, dec) => isNum(v) && isNum(mine) ? `<div class="tm">${v - mine >= 0 ? "+" : ""}${(v - mine).toFixed(dec)}</div>` : "";
   // head row: name level with "Pitch Universe", as on the player card
   $("#dHead").innerHTML = `<div class="sv-bar"><h2 class="cname">${esc(T.name[j])}</h2>
-    <div class="sv-barr"><span class="simsub">Pitch simulation · ${s}${lvl === "mlb" ? "" : " · Triple-A"} · ${esc(teamStr(j))}${isNum(myArm) ? ` · arm angle ${deg(myArm)}` : ""}</span>
+    <div class="sv-barr"><span class="simsub">Pitch simulation · ${s}${lvl === "mlb" ? "" : " · Triple-A"} · ${esc(teamStr(j))}${isNum(myArm) ? ` · arm angle ${deg(myArm)}` : ""}${isNum(myRelH) ? ` · releases ${ft(myRelH)} high, ${ft(Math.abs(myRelS))} ${myRelS >= 0 ? "arm side" : "across"}` : ""}</span>
       <button type="button" class="bigbtn" id="simCard">See full player info</button>
       <button type="button" class="bigbtn" id="simClose">Close</button></div></div>`;
   // controls row, level with "Color pitchers by": what is in the air, the camera, replay
@@ -3367,8 +3377,9 @@ function renderSim() {
     <p class="flkey simkey" id="simKey"></p>
     <section class="sec simlook"><h3>Add a pitch to the animation</h3>
       <div class="simrow"><span class="flbl">Lookalikes for his</span><div class="simtypes">${mine.map(([t]) => `<button type="button" class="simtype" data-simcomp="${t}" aria-pressed="${S.compType === t}"><i class="psw" style="background:${SAVANT_PITCH[t]}"></i>${PTN[t]}</button>`).join("")}</div></div>
-      <div class="tablewrap"><table class="simtab"><thead><tr><th></th><th>Pitcher</th><th class="num" title="His own: ${deg(myArm)}">Arm angle</th><th class="num">MPH</th><th class="num">ERA</th><th></th></tr></thead><tbody>
-      ${looks.map((o, k) => `<tr${addedSet.has(o.c) ? ' class="on"' : ""}><td><span class="badge">${k + 1}</span></td><td>${esc(T.name[o.c])}${k === best ? ` <span class="simbest">Best ERA</span>` : ""}${T.level[o.c] === "mlb" ? "" : ` <span class="lv">AAA</span>`}<div class="tm">${T.season[o.c]} · ${esc(teamStr(o.c))}</div></td><td class="num">${deg(o.arm)}${isNum(o.arm) && isNum(myArm) ? `<div class="tm">${o.arm - myArm >= 0 ? "+" : ""}${Math.round(o.arm - myArm)}</div>` : ""}</td><td class="num">${fmt(T.velo[o.c], 1)}</td><td class="num">${fmt(o.era, 2)}</td><td class="num"><button type="button" class="simadd" data-simadd="${o.c}"${addedSet.has(o.c) ? " disabled" : ""}>${addedSet.has(o.c) ? "Added" : "+ Add"}</button></td></tr>`).join("")}
+      <p class="help">Arm angle and release point against his own ${PTN[S.compType].toLowerCase()} (${deg(myArm)}, ${ft(myRelH)} high, ${ft(myRelS)} to the arm side): the small number is the difference. Every pitch flies from its own release point.</p>
+      <div class="tablewrap"><table class="simtab"><thead><tr><th></th><th>Pitcher</th><th class="num">Arm angle</th><th class="num" title="Release height, feet above the ground">Rel. height</th><th class="num" title="Release side, feet toward the arm side (negative = across the body)">Rel. side</th><th class="num">MPH</th><th class="num">ERA</th><th></th></tr></thead><tbody>
+      ${looks.map((o, k) => `<tr${addedSet.has(o.c) ? ' class="on"' : ""}><td><span class="badge">${k + 1}</span></td><td>${esc(T.name[o.c])}${k === best ? ` <span class="simbest">Best ERA</span>` : ""}${T.level[o.c] === "mlb" ? "" : ` <span class="lv">AAA</span>`}<div class="tm">${T.season[o.c]} · ${esc(teamStr(o.c))}</div></td><td class="num">${deg(o.arm)}${delta(o.arm, myArm, 0)}</td><td class="num">${ft(o.relh)}${delta(o.relh, myRelH, 1)}</td><td class="num">${ft(o.rels)}${delta(o.rels, myRelS, 1)}</td><td class="num">${fmt(T.velo[o.c], 1)}</td><td class="num">${fmt(o.era, 2)}</td><td class="num"><button type="button" class="simadd" data-simadd="${o.c}"${addedSet.has(o.c) ? " disabled" : ""}>${addedSet.has(o.c) ? "Added" : "+ Add"}</button></td></tr>`).join("")}
       </tbody></table></div>
       <div class="simrow simmoderow"><span class="flbl">Draw added pitches as</span><div class="mseg simmode" role="group" aria-label="How added pitches are drawn">${SIM_MODES.map(([m, l]) => `<button type="button" data-simmode="${m}" aria-pressed="${S.mode === m}">${l}</button>`).join("")}</div></div>
     </section></div>`;
@@ -4495,7 +4506,6 @@ function buildStatic() {
   // Sliders panel
   $("#slOpen").addEventListener("click", () => setSlidersOpen(!state.slidersOpen));
   $("#slClose").addEventListener("click", () => { setSlidersOpen(false); $("#slOpen").focus({ preventScroll: true }); });
-  $("#measHelp").textContent = `Opens a panel on the left: ${sliderVars().length} measures to slide, and a table to rank pitchers`;
   const resetSliders = () => { state.ranges = {}; buildSliders(); render(); };
   $("#slReset").addEventListener("click", resetSliders);
   $("#slClear").addEventListener("click", resetSliders);
@@ -4582,7 +4592,7 @@ function buildStatic() {
   });
 
   const yy = String(D.fa_season + 1).slice(2);
-  $("#source").textContent = `Data: Statcast via Baseball Savant · rosters, heights and ${D.fa_season}–${yy} free agents from the MLB Stats API · map layout: UMAP of 32 measures per pitch`
+  $("#source").textContent = `Data: Statcast via Baseball Savant · rosters, heights and ${D.fa_season}–${yy} free agents from the MLB Stats API · map layout: UMAP of 27 measures per pitch (usage left out, so a pitch sits by what it is, not how often it is thrown)`
     + (LEVELS.includes("aaa") ? ` · Triple-A pitches (Savant's minor-league search) are placed beside their 15 nearest MLB pitches and measured against MLB baselines, comps and percentiles` : "");
 
   // Keep the map sized when the drawer, team row or caption change height
