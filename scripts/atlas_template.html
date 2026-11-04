@@ -248,21 +248,22 @@ button, input, select { font: inherit; color: inherit; }
 .sv-undo .link { color: var(--map-ink); font-weight: 700; }
 .sv-undo[hidden] { display: none; }
 /* the selected pitcher's name bar: docked to the bottom edge of the plot */
-.selcta { position: absolute; z-index: 7; left: 0; right: 0; bottom: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 12px;
-  background: var(--field); color: var(--ink); border-top: 1.5px solid var(--map-line); }
+/* the selected pitcher: a small card at the map's top left, his name and the three things to do next */
+.selcta { position: absolute; z-index: 7; top: var(--mi); left: var(--mi); width: min(280px, calc(100% - 2 * var(--mi))); display: flex; flex-direction: column; gap: 8px;
+  padding: 10px 12px 12px; border-radius: var(--r-lg); background: var(--field); color: var(--ink); box-shadow: var(--shmap); }
 .selcta[hidden] { display: none; }
 .selcta :focus-visible { outline-color: var(--focus); }
-.cta-name { display: flex; flex-direction: column; min-width: 0; flex: 1 1 200px; }
-.cta-name b { font: 600 20px/1.1 var(--font-serif); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cta-name span { font: 400 13px var(--font-ui); color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ctabtn { flex: none; display: inline-flex; align-items: center; gap: 8px; min-height: var(--ctl); padding: 0 14px; border: 1.5px solid var(--ink); border-radius: var(--r);
+.cta-head { display: flex; align-items: flex-start; gap: 8px; }
+.cta-name { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.cta-name b { font: 600 22px/1.15 var(--font-serif); color: var(--ink); text-wrap: balance; }
+.cta-name span { font: 400 13px var(--font-ui); color: var(--ink2); }
+.ctabtn { display: flex; align-items: center; justify-content: center; width: 100%; min-height: var(--ctl); padding: 0 12px; border: 1.5px solid var(--ink); border-radius: var(--r);
   background: var(--field); color: var(--ink); font: 600 14px var(--font-ui); cursor: pointer; }
 .ctabtn:hover { background: var(--wash); }
 .ctabtn[aria-pressed="true"] { background: var(--ink); color: var(--field); }
 .ctabtn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-.ctabtn.primary:hover { background: #244e72; }
-.ctabtn .arr { font-size: 18px; line-height: 1; }
-.ctaclose { flex: none; width: var(--ctl); height: var(--ctl); border: 0; border-radius: var(--r); background: none; color: var(--ink2); font: 400 22px/1 var(--font-ui); cursor: pointer; }
+.ctabtn.primary:hover { background: #244e72; border-color: #244e72; }
+.ctaclose { flex: none; width: 32px; height: 32px; margin: -2px -4px 0 0; border: 0; border-radius: var(--r); background: none; color: var(--ink2); font: 400 22px/1 var(--font-ui); cursor: pointer; }
 .ctaclose:hover { background: var(--wash); color: var(--ink); }
 /* pitch flight: a full-viewport modal over a scrim; × or Escape puts it away */
 .simscrim { position: fixed; inset: 0; z-index: 79; background: rgba(0, 0, 0, 0.45); }
@@ -940,7 +941,7 @@ tr.self td { font-weight: 600; background: none; }
 .cm-opt:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 .cm-none { padding: 12px 14px; font: italic 400 15px var(--font-serif); color: var(--ink2); }
 /* colour key: bottom left, docked (a hairline, no shadow); it rises above the name bar when that is up */
-.mapkey { position: absolute; z-index: 6; left: var(--mi); bottom: calc(var(--mi) + var(--ctah, 0px)); max-width: min(420px, calc(100% - 2 * var(--mi))); padding: 10px 14px;
+.mapkey { position: absolute; z-index: 6; left: var(--mi); bottom: var(--mi); max-width: min(420px, calc(100% - 2 * var(--mi))); padding: 10px 14px;
   border-radius: var(--r-lg); background: var(--map-chrome); border: 1px solid var(--map-line); color: var(--map-ink); }
 .mapkey[hidden] { display: none; }
 .mk-title { font: 700 15px/1.2 var(--font-ui); color: var(--map-ink); }
@@ -998,7 +999,7 @@ tr.self td { font-weight: 600; background: none; }
   .maptoast { top: 8px; }
   .mapkey { position: static; max-width: none; margin: 8px; padding: 8px 10px 10px; }
   .mk-title { font-size: 15px; } .mk-dual, .mk-ticks { width: 240px; }
-  .selcta { position: static; }
+  .selcta { position: static; width: auto; margin: 8px; box-shadow: none; border: 1px solid var(--line); }
   .plotarea { flex: none; }
   .mapbody { flex-direction: column; gap: 8px; }
   .typecol { width: auto; flex-direction: row; flex-wrap: wrap; align-items: center; overflow: visible; }
@@ -1170,11 +1171,11 @@ tr.self td { font-weight: 600; background: none; }
       <div class="mapkey" id="mapKey" hidden></div>
       <p class="maptoast" id="mapnote" role="status" aria-live="polite" hidden></p>
       <div class="selcta" id="selCta" role="region" aria-label="Selected pitcher" hidden>
-        <div class="cta-name"><b id="ctaName"></b><span id="ctaSub"></span></div>
-        <button type="button" class="ctabtn primary" id="ctaOpen">See full player info <span class="arr" aria-hidden="true">→</span></button>
-        <button type="button" class="ctabtn" id="ctaSim" aria-pressed="false">Show similar pitchers</button>
-        <button type="button" class="ctabtn" id="ctaFly" aria-pressed="false">Fly his pitches against a comp’s</button>
-        <button type="button" class="ctaclose" id="ctaClose" aria-label="Clear the selection" title="Clear">×</button>
+        <div class="cta-head"><div class="cta-name"><b id="ctaName"></b><span id="ctaSub"></span></div>
+          <button type="button" class="ctaclose" id="ctaClose" aria-label="Clear the selection" title="Clear">×</button></div>
+        <button type="button" class="ctabtn primary" id="ctaOpen">Show Complete Profile</button>
+        <button type="button" class="ctabtn" id="ctaSim">Create Lookalike Group</button>
+        <button type="button" class="ctabtn" id="ctaFly" aria-pressed="false">Simulate Pitches</button>
       </div>
       </div>
       </div>
@@ -3960,11 +3961,12 @@ function syncCta() {
   const n = TYPES.filter(t => { const x = tRow(T.pitcher[r], T.season[r], t, T.level[r]); return x !== undefined && T.n[x] >= state.minN; }).length;
   $("#ctaName").textContent = T.name[r];
   $("#ctaSub").textContent = `${T.season[r]} · ${teamStr(r)} · ${n} pitch${n === 1 ? "" : "es"}`;
-  const sim = $("#ctaSim");
-  sim.textContent = state.showComps ? "Hide similar pitchers" : "Show similar pitchers";
-  sim.setAttribute("aria-pressed", String(!!state.showComps));
+  const grp = $("#ctaSim"), made = !!compsSavedId(r);
+  grp.textContent = made ? "See Lookalike Group" : "Create Lookalike Group";
+  grp.title = made ? "Open the group of him and his lookalikes in the Groups panel"
+    : `Save him and his ${K_SHOWN} closest lookalikes (his ${PTN[T.pitch_type[r]].toLowerCase()}, same hand, similar arm angle) as a group`;
   const fly = $("#ctaFly");
-  fly.textContent = state.simOpen ? "Close the flight" : "Fly his pitches against a comp’s";
+  fly.textContent = state.simOpen ? "Close Simulation" : "Simulate Pitches";
   fly.setAttribute("aria-pressed", String(!!state.simOpen));
 }
 // The simulation is an overlay on the map: nothing else on the page moves, and × or Escape puts it away.
@@ -4598,11 +4600,12 @@ function buildStatic() {
   // download: shown once this view can save files (framed in claude.ai), or always on a standalone copy
   $("#dlBtn").addEventListener("click", downloadCSV);
   wireSaved();
-  // the colour key rises above the docked name bar by the bar's height
-  { const bar = $("#selCta"), wrap = $("#plotWrap");
-    new ResizeObserver(() => wrap.style.setProperty("--ctah", (bar.hidden ? 0 : bar.offsetHeight) + "px")).observe(bar); }
   $("#ctaOpen").addEventListener("click", openCard);
-  $("#ctaSim").addEventListener("click", toggleComps);
+  $("#ctaSim").addEventListener("click", () => {   // Create Lookalike Group: him + his closest comps, shown in the Groups panel
+    const r = state.sel; if (r === null || r === undefined) return;
+    if (compsSavedId(r)) railOpen("groups"); else saveCompsGroup(r);
+    syncCta();
+  });
   $("#ctaFly").addEventListener("click", toggleSim);
   document.addEventListener("keydown", e => { if (e.key === "Escape" && state.simOpen) { e.preventDefault(); closeSim(); $("#ctaFly").focus({ preventScroll: true }); } });
   $("#cbChips").addEventListener("click", e => { const b = e.target.closest("[data-cb]"); if (b) { state.sel = +b.dataset.cb; render(); } });
@@ -4771,7 +4774,7 @@ function buildStatic() {
     }
     cands.sort((a, b) => tab.season[b] - tab.season[a]);
     $("#searchMsg").textContent = "";
-    openPitcher(cands[0]);   // straight to his card
+    preview(cands[0]);   // on the map first, with Show Complete Profile / Create Lookalike Group / Simulate Pitches
     e.target.value = "";
   });
 
