@@ -144,6 +144,9 @@ button, input, select { font: inherit; color: inherit; }
 .sv-del { font: 400 24px/1 var(--font-ui); color: var(--map-ink); background: none; border: 0; border-radius: 6px; min-width: 32px; min-height: 32px; cursor: pointer; }
 .sv-del:hover { background: var(--map-hover); }
 .sv-meta { grid-column: 2 / -1; font: 400 13px var(--font-ui); color: var(--map-ink2); padding-left: 4px; }
+.sv-gowrap { grid-column: 2 / -1; padding-left: 4px; }
+.sv-gowrap:empty { display: none; }
+.sv-go { border: 0; background: none; padding: 2px 0; cursor: pointer; font: 700 14px var(--font-ui); color: #ffd75e; text-decoration: underline; text-underline-offset: 3px; }
 /* "What they share": a readout under a saved ellipse's row */
 .mb-acts { display: inline-flex; gap: 12px; }
 .sv-why { grid-column: 2 / -1; justify-self: start; border: 0; background: none; padding: 2px 4px; cursor: pointer;
@@ -157,7 +160,19 @@ button, input, select { font: inherit; color: inherit; }
 .sv-tr b { font-weight: 700; }
 .sv-tr .tm { color: var(--map-ink2); }
 .sv-tr-note { margin: 4px 0 0; color: var(--map-ink2); }
-/* the big "Keep similar pitchers as a group" buttons: light on the dark comps box, ink-filled on the card */
+/* SAVE Group: gold and pulsing until pressed, wherever it appears (pitcher list, comps box on the map, card) */
+.savebtn { display: block; width: auto; margin: 4px 12px 8px; padding: 12px 16px; min-height: 46px; border: 2px solid #8a6a00; border-radius: var(--r);
+  background: linear-gradient(180deg, #ffd75e, #e6b422); color: #1f242b; font: 800 18px var(--font-ui); letter-spacing: 0.02em; text-align: center;
+  cursor: pointer; animation: savepulse 1.6s ease-in-out infinite; }
+.savebtn:hover:not(:disabled) { background: linear-gradient(180deg, #ffe07f, #f0c02e); }
+.savebtn:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.savebtn[hidden] { display: none; }
+.savebtn:disabled { animation: none; background: var(--map-hover); border-color: transparent; color: var(--map-ink2); cursor: default; }
+.savebtn.oncard { width: 100%; margin: 2px 0 8px; min-height: 52px; font-size: 20px; }
+.savebtn.oncard:disabled { background: var(--wash); color: var(--muted); border-color: var(--line); }
+@keyframes savepulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(230, 180, 34, 0.75); transform: scale(1); }
+  50% { box-shadow: 0 0 0 9px rgba(230, 180, 34, 0); transform: scale(1.025); } }
+@media (prefers-reduced-motion: reduce) { .savebtn { animation: none; } }
 .keepbtn[hidden] { display: none; }
 .keepbtn:disabled { background: var(--map-hover); color: var(--map-ink2); cursor: default; }
 .keepcard { display: block; width: 100%; min-height: 52px; font-size: 20px; margin: 2px 0 6px; }
@@ -1180,7 +1195,7 @@ tr.self td { font-weight: 600; background: none; }
       <div class="mb-head"><b id="mbTitle"></b><button type="button" class="link" id="mbHide">Hide</button></div>
       <button type="button" class="dlbtn" id="dlBtn" hidden>Download CSV</button>
       <p class="dlmsg" id="dlMsg" role="status" aria-live="polite"></p>
-      <button type="button" class="svbtn" id="svBtn" hidden title="Keep these pitchers as a named group, circled on every map whatever you filter next">Keep as a group</button>
+      <button type="button" class="savebtn" id="svBtn" hidden title="Save these pitchers as a named group, circled on every map whatever you filter next">SAVE Group</button>
       <input id="mbSearch" type="search" placeholder="Filter names" autocomplete="off" aria-label="Filter the list by name">
       <ol id="mbList"></ol>
     </aside>
@@ -1190,7 +1205,7 @@ tr.self td { font-weight: 600; background: none; }
       <div class="cbchips" id="cbChips" role="group" aria-label="Comps for which of his pitches"></div>
       <div class="cbchips" id="cbPool" role="group" aria-label="Comps among which pitchers" hidden></div>
       <p class="cbhelp" id="cbHelp"></p>
-      <button type="button" class="dlbtn keepbtn" id="cbSave" title="Keep him and these comps as a named group, circled on every map, with what they share">Keep similar pitchers as a group</button>
+      <button type="button" class="savebtn" id="cbSave" title="Save him and these comps as a named group, circled on every map, with what they share">SAVE Group</button>
       <ol id="cbList"></ol>
     </aside>
     <aside class="savedbox" id="savedBox" aria-label="Groups" hidden>
@@ -1953,7 +1968,7 @@ function ellipseTraces(view, cg, on, match, pal) {
   });
 }
 // ------------------------------------------------------- saved ellipses
-// "Keep as a group" (in the highlighted-pitcher list) freezes the current group as a set of pitcher-seasons.
+// "SAVE Group" (in the highlighted-pitcher list) freezes the current group as a set of pitcher-seasons, each with its level.
 // A saved ellipse follows those pitchers onto every map (one per pitch type in All pitches, an ellipsoid
 // in 3D), ignores later filters and the season/hand toggles, and is kept in this browser's storage.
 const SAVED_STORE = "atlas.savedEllipses.v1";
@@ -1972,7 +1987,10 @@ const svOpen = new Set();   // ids whose "What they share" readout is open
 let GK = null;   // pitcher|season keys of every shown group; rebuilt after any change to the groups
 const persistSaved = () => { GK = null; try { localStorage.setItem(SAVED_STORE, JSON.stringify(saved)); } catch (e) {} };
 const groupsOn = () => saved.some(e => e.on);
-const inGroups = r => (GK || (GK = new Set(saved.filter(e => e.on).flatMap(e => e.keys)))).has(T.pitcher[r] + "|" + T.season[r]);
+// group keys are pitcher|season|level; a key without a level (saved before levels) matches either level
+const rowInKeys = (ks, r) => ks.has(T.pitcher[r] + "|" + T.season[r] + "|" + T.level[r]) || ks.has(T.pitcher[r] + "|" + T.season[r]);
+const keyLevel = k => k.split("|")[2] || null;
+const inGroups = r => rowInKeys(GK || (GK = new Set(saved.filter(e => e.on).flatMap(e => e.keys))), r);
 // "Show only my groups" button in the Groups panel: pressed = everyone else leaves the map; the pitcher list,
 // the measure filters and their table then work on the groups alone
 function syncOnlyGroups() {
@@ -1984,7 +2002,7 @@ function syncOnlyGroups() {
 const svRowCache = new Map();   // id|view -> rows; a saved group never changes, so this never goes stale
 function savedRows(e, view) {
   const ck = e.id + "|" + view + "|" + state.level;
-  if (!svRowCache.has(ck)) { const ks = new Set(e.keys); svRowCache.set(ck, viewRows(view).filter(r => T.level[r] === state.level && ks.has(T.pitcher[r] + "|" + T.season[r]))); }
+  if (!svRowCache.has(ck)) { const ks = new Set(e.keys); svRowCache.set(ck, viewRows(view).filter(r => T.level[r] === state.level && rowInKeys(ks, r))); }
   return svRowCache.get(ck);
 }
 function savedPieces(e, view) {
@@ -2016,7 +2034,7 @@ function savedTraces(view, pal) {
 }
 function saveGroup(rows, base, comps) {
   if (!rows.length) return null;
-  const keys = [...new Set(rows.map(r => T.pitcher[r] + "|" + T.season[r]))];
+  const keys = [...new Set(rows.map(r => T.pitcher[r] + "|" + T.season[r] + "|" + T.level[r]))];
   base = String(base || "Highlighted").slice(0, 48); let name = base, n = 2;
   while (saved.some(e => e.name === name)) name = `${base} ${n++}`;
   const used = new Set(saved.map(e => e.color.toLowerCase()));
@@ -2031,7 +2049,7 @@ function saveGroup(rows, base, comps) {
 function saveCurrentGroup() {
   const e = saveGroup(state.dlRows || [], state.mbTitle || "Highlighted"); if (!e) return;
   const pitchers = new Set(e.keys.map(k => k.split("|")[0])).size;
-  $("#dlMsg").textContent = `Kept “${e.name}” (${pitchers.toLocaleString()} pitcher${pitchers === 1 ? "" : "s"}) as a group, circled on every map. Rename, recolor or hide it in the Groups panel.`;
+  $("#dlMsg").textContent = `Saved “${e.name}” (${pitchers.toLocaleString()} pitcher${pitchers === 1 ? "" : "s"}), circled on every map. Rename, recolor or hide it in the Groups panel.`;
 }
 // Him + his closest comps as one ellipse (once per pitcher-season-pitch); both save buttons then read "Saved"
 const compsKey = r => T.pitcher[r] + "|" + T.season[r] + "|" + T.pitch_type[r] + (compPoolOf(r) === "aaa" ? "|aaa" : "");
@@ -2039,15 +2057,15 @@ const compsSavedId = r => { const k = compsKey(r), e = saved.find(x => x.comps &
 function saveCompsGroup(r) {
   if (r === null || r === undefined || compsSavedId(r)) return;
   const comps = compsOf(state.view, r); if (!comps.length) return;
-  const t = T.pitch_type[r], tol = T.comp_tol[r];
+  const t = T.pitch_type[r], tol = compTolOf(r);
   saveGroup([r, ...comps.map(x => x[0])], `Like ${T.name[r]} (${PTN[t].toLowerCase()}${compPoolOf(r) === "aaa" ? ", Triple-A" : ""})`,
     { key: compsKey(r), of: T.name[r], pt: t, tol: isNum(tol) && isFinite(tol) ? tol : null });
   syncCompsSaveButtons();
 }
 function syncCompsSaveButtons() {
-  document.querySelectorAll("[data-svcomps]").forEach(b => { const done = !!compsSavedId(+b.dataset.svcomps); b.disabled = done; b.textContent = done ? "Kept as a group" : b.dataset.label; });
+  document.querySelectorAll("[data-svcomps]").forEach(b => { const done = !!compsSavedId(+b.dataset.svcomps); b.disabled = done; b.textContent = done ? "Group saved" : b.dataset.label; });
   const sb = $("#cbSave"), r = state.sel;
-  if (sb && r !== null && r !== undefined) { const done = !!compsSavedId(r); sb.disabled = done; sb.textContent = done ? "Kept as a group" : "Keep similar pitchers as a group"; }
+  if (sb && r !== null && r !== undefined) { const done = !!compsSavedId(r); sb.disabled = done; sb.textContent = done ? "Group saved" : "SAVE Group"; }
 }
 
 // What a saved group shares: the map measures on which its pitches are both tight (their spread well
@@ -2092,7 +2110,16 @@ function savedMeta(e, view) {
   const pitchers = new Set(e.keys.map(k => k.split("|")[0])).size;
   const seasons = [...new Set(e.keys.map(k => k.split("|")[1]))].sort().join(", ");
   const drawn = savedPieces(e, view).length;
-  return `${pitchers.toLocaleString()} pitcher${pitchers === 1 ? "" : "s"} · ${seasons}` + (drawn ? "" : ` · too few on this map (needs ${MIN_ELL} pitches)`);
+  // how many members sit at each level, when the group spans both (an MLB arm and his Triple-A lookalikes)
+  const byLvl = {}; e.keys.forEach(k => { const l = keyLevel(k); if (l) byLvl[l] = (byLvl[l] || 0) + 1; });
+  const mix = Object.keys(byLvl).length > 1 ? " · " + LEVELS.filter(l => byLvl[l]).map(l => `${byLvl[l]} ${l === "mlb" ? "MLB" : "AAA"}`).join(", ") : "";
+  return `${pitchers.toLocaleString()} pitcher${pitchers === 1 ? "" : "s"} · ${seasons}${mix}` + (drawn ? "" : ` · too few on this map (needs ${MIN_ELL} pitches)`);
+}
+// "See them on the AAA map": offered when most of a group sits at the other level
+function savedElsewhere(e) {
+  const n = {}; e.keys.forEach(k => { const l = keyLevel(k); if (l) n[l] = (n[l] || 0) + 1; });
+  const other = LEVELS.find(l => l !== state.level && (n[l] || 0) > 0 && (n[l] || 0) >= (n[state.level] || 0));
+  return other ? `<button type="button" class="sv-go" data-golvl="${other}">See them on the ${other === "mlb" ? "MLB" : "AAA"} map →</button>` : "";
 }
 // Structure only on save / delete / undo / fold; render() refreshes the per-map notes in place.
 function renderSaved() {
@@ -2107,7 +2134,7 @@ function renderSaved() {
     + `<input class="sv-name" type="text" value="${esc(e.name)}" maxlength="60" data-name aria-label="Name" title="Click to rename">`
     + `<button type="button" class="sv-tog" data-tog aria-pressed="${e.on}">${e.on ? "Hide" : "Show"}</button>`
     + `<button type="button" class="sv-del" data-del aria-label="Delete ${esc(e.name)}" title="Delete">×</button>`
-    + `<span class="sv-meta">${esc(savedMeta(e, state.view))}</span>`
+    + `<span class="sv-meta">${esc(savedMeta(e, state.view))}</span><span class="sv-gowrap">${savedElsewhere(e)}</span>`
     + `<button type="button" class="sv-why" data-why aria-expanded="${svOpen.has(e.id)}">${svOpen.has(e.id) ? "Hide what they share" : "What they share"}</button>`
     + `<div class="sv-traits" data-traits${svOpen.has(e.id) ? "" : " hidden"}>${svOpen.has(e.id) ? sharedTraitsHTML(e, state.view) : ""}</div></li>`).join("");
   const u = $("#svUndo");
@@ -2123,6 +2150,7 @@ function refreshSavedMeta() {
   $("#svList").querySelectorAll("li[data-id]").forEach(li => {
     const e = saved.find(x => x.id === li.dataset.id), m = li.querySelector(".sv-meta"), tb = li.querySelector("[data-traits]");
     if (e && m) m.textContent = savedMeta(e, state.view);
+    const gw = li.querySelector(".sv-gowrap"); if (e && gw) gw.innerHTML = savedElsewhere(e);
     if (e && tb && svOpen.has(e.id)) tb.innerHTML = sharedTraitsHTML(e, state.view);   // the readout follows the map's pitch type
   });
 }
@@ -2133,6 +2161,8 @@ function wireSaved() {
   const list = $("#svList"), of = el => saved.find(e => e.id === (el.closest("li[data-id]") || {}).dataset?.id);
   list.addEventListener("click", ev => {
     const e = of(ev.target); if (!e) return;
+    const go = ev.target.closest("[data-golvl]");
+    if (go) { if (!e.on) { e.on = true; persistSaved(); renderSaved(); } setLevel(go.dataset.golvl); refreshSavedMeta(); return; }
     if (ev.target.closest("[data-tog]")) { e.on = !e.on; persistSaved(); renderSaved(); render(); }
     else if (ev.target.closest("[data-why]")) { if (svOpen.has(e.id)) svOpen.delete(e.id); else svOpen.add(e.id); renderSaved(); }
     else if (ev.target.closest("[data-del]")) {
@@ -2668,12 +2698,13 @@ function wrapTitle(t, n = 22) {
 const K_SHOWN = 10;   // displayed comps; D.tcomps holds a 30-pitcher neighbourhood
 // Which pool a pitch's comps come from: MLB always for an MLB pitch; a Triple-A pitch can switch to
 // its lookalikes among Triple-A pitchers (D.tcomps_aaa). Lookalike xERA and the 30-neighbourhood stay MLB.
-const compPoolOf = r => state.compPool === "aaa" && T.level[r] === "aaa" && D.tcomps_aaa ? "aaa" : "mlb";
+const hasAaaComps = r => !!(D.tcomps_aaa && D.tcomps_aaa[r] && D.tcomps_aaa[r].length);
+const compPoolOf = r => state.compPool === "aaa" && hasAaaComps(r) ? "aaa" : "mlb";
 const compsOf = (view, r) => ((compPoolOf(r) === "aaa" ? D.tcomps_aaa : D.tcomps)[r] || []).slice(0, K_SHOWN);
 const compTolOf = r => compPoolOf(r) === "aaa" ? T.comp_tol_aaa[r] : T.comp_tol[r];
 const nbhdOf = r => D.tcomps[r] || [];
 const POOL_LABEL = { mlb: "MLB similar", aaa: "AAA similar" };
-const poolSegHTML = r => T.level[r] !== "aaa" || !D.tcomps_aaa ? "" : ["mlb", "aaa"].map(v =>
+const poolSegHTML = r => !hasAaaComps(r) ? "" : ["mlb", "aaa"].map(v =>
   `<button type="button" data-pool="${v}" aria-pressed="${compPoolOf(r) === v}" title="${v === "mlb" ? "The big-league pitchers his pitch most resembles" : "The Triple-A pitchers his pitch most resembles"}">${POOL_LABEL[v]}</button>`).join("");
 function setCompPool(v) {
   if (v !== "mlb" && v !== "aaa" || v === state.compPool) return;
@@ -2807,7 +2838,7 @@ function compsPanel(view, j) {
     <p class="cmprow"><label class="flbl" for="cmpSel">Compare with</label><span class="sel"><select id="cmpSel">${opts}</select></span></p>
     <div class="cmpkey" id="cmpKey"></div>
     <div id="cmpPlot" class="moveplot" role="img" aria-label="Pitch movement of ${esc(T.name[j])} compared with a comp"></div></section>` : ""}
-    <section class="sec"><h3>Closest ${PTN[t].toLowerCase()} comps</h3>${poolSegHTML(j) ? `<div class="poolseg" role="group" aria-label="Comps among which pitchers">${poolSegHTML(j)}</div>` : ""}${comps.length ? `<button type="button" class="bigbtn primary keepcard" data-svcomps="${j}" data-label="Keep similar pitchers as a group"${compsSavedId(j) ? " disabled" : ""} title="Keep him and these ${comps.length} as a named group, circled on every map, with what they share">${compsSavedId(j) ? "Kept as a group" : "Keep similar pitchers as a group"}</button>` : ""}<p class="help">Nearest ${T.level[j] === "mlb" ? "other" : compPoolOf(j) === "aaa" ? "Triple-A" : "big-league"} pitchers' ${PTN[t].toLowerCase()}s on shape, angles, delivery, command, consistency and usage, any season. Only ${T.p_throws[j] === "R" ? "right" : "left"}-handers with an arm angle within ±${isNum(compTolOf(j)) && isFinite(compTolOf(j)) ? compTolOf(j) : "any"}° of his${isNum(compTolOf(j)) && compTolOf(j) > 7.5 ? " (window widened: too few pitchers within ±7.5°)" : ""}. Whiff% is on this pitch; xERA is the comp's whole season.</p>
+    <section class="sec"><h3>Closest ${PTN[t].toLowerCase()} comps</h3>${poolSegHTML(j) ? `<div class="poolseg" role="group" aria-label="Comps among which pitchers">${poolSegHTML(j)}</div>` : ""}${comps.length ? `<button type="button" class="savebtn oncard" data-svcomps="${j}" data-label="SAVE Group"${compsSavedId(j) ? " disabled" : ""} title="Save him and these ${comps.length} as a named group, circled on every map, with what they share">${compsSavedId(j) ? "Group saved" : "SAVE Group"}</button>` : ""}<p class="help">Nearest ${compPoolOf(j) === "aaa" ? "Triple-A" : T.level[j] === "mlb" ? "other" : "big-league"} pitchers' ${PTN[t].toLowerCase()}s on shape, angles, delivery, command, consistency and usage, any season. Only ${T.p_throws[j] === "R" ? "right" : "left"}-handers with an arm angle within ±${isNum(compTolOf(j)) && isFinite(compTolOf(j)) ? compTolOf(j) : "any"}° of his${isNum(compTolOf(j)) && compTolOf(j) > 7.5 ? " (window widened: too few pitchers within ±7.5°)" : ""}. Whiff% is on this pitch; xERA is the comp's whole season.</p>
     <div class="tablewrap"><table><thead><tr><th></th><th>Pitcher</th><th>Season</th><th title="${FIT_TIP}">Fit</th><th class="num" title="${esc(EXPLAIN.whiff)}">Whiff%</th><th class="num" title="${esc(EXPLAIN["P:xera"])}">xERA</th></tr></thead><tbody>
     <tr class="self"><td><span class="badge self"></span></td><td>${esc(T.name[j])}</td><td>${T.season[j]} <span class="tm">${esc(teamStr(j))}</span></td><td></td><td class="num">${fmt(T.whiff[j], 1)}</td><td class="num">${i === undefined ? "—" : fmt(P.xera[i], 2)}</td></tr>`;
   comps.forEach(([c, q], k) => {
@@ -2860,7 +2891,7 @@ function updateMatchBox(view, rows, match, cg) {
     title = [...state.teamPick].map(t => TEAM_NAMES[t] || t).join(", ");
   }
   state.dlRows = lit;   // "Download CSV" exports every highlighted dot
-  state.mbTitle = title;   // default name for "Keep as a group"
+  state.mbTitle = title;   // default name for "SAVE Group"
   $("#svBtn").hidden = !lit || !lit.length;
   if (!lit) { box.hidden = true; show.hidden = true; $("#mbReshow").hidden = true; state.mbRows = null; return; }
   // one entry per pitcher: his most recent highlighted season (his pitches that season); earlier seasons are noted
@@ -3578,7 +3609,13 @@ function goBack() {
   try { if (prev.view !== state.view) setView(prev.view, prev.sel); else select(prev.sel); }
   finally { goingBack = false; }
 }
+// a comp or a group member can sit at the other level: follow him there (selection kept)
+function followLevel(r) {
+  if (r === null || r === undefined || T.level[r] === state.level) return;
+  state.level = T.level[r]; syncLevel(); writeHash(state.view); svRowCache.clear();
+}
 function select(r) {
+  followLevel(r);
   // while a searched pitcher is previewed, clicking any of his own dots opens his card
   const s0 = state.sel;
   if (state.preview && r !== null && r !== undefined && s0 !== null && s0 !== undefined
@@ -3591,6 +3628,7 @@ function select(r) {
 // Search shows the pitcher on the map first: his whole arsenal ringed and named, card closed, and a large
 // "See full player info" button. That opens the card on his most-used pitch, in that pitch's universe.
 function preview(r) {
+  followLevel(r);
   if (r !== state.sel) remember(state.view, state.sel, r);
   state.preview = true; state.showComps = false; state.sel = r;
   render(); renderDetail();
@@ -3627,7 +3665,7 @@ function renderCompBox() {
   const poolSeg = poolSegHTML(r);
   $("#cbPool").hidden = !poolSeg; $("#cbPool").innerHTML = poolSeg;
   const tol = compTolOf(r), tolTxt = isNum(tol) && isFinite(tol) ? `within ±${tol}° of his arm angle` : "any arm angle";
-  const who = T.level[r] !== "aaa" ? "" : compPoolOf(r) === "aaa" ? "Triple-A " : "Big-league ";
+  const who = compPoolOf(r) === "aaa" ? "Triple-A " : T.level[r] === "aaa" ? "Big-league " : "";
   $("#cbHelp").textContent = comps.length
     ? `${who}${who ? (T.p_throws[r] === "R" ? "right" : "left") : (T.p_throws[r] === "R" ? "Right" : "Left")}-handers ${tolTxt}, any season. Click a name to show him.`
     : "No comps for this pitch.";

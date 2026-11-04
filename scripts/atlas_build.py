@@ -418,7 +418,7 @@ def type_comps(types, query_level=None, cand_level="mlb"):
     `types` may hold several levels (column `level`). The space is always fitted on MLB rows.
     `cand_level` picks the candidates and `query_level` the rows that get comps (None = every row):
       type_comps(t)                              every pitch's comps among MLB pitchers (the default)
-      type_comps(t, "aaa", "aaa")                a Triple-A pitch's lookalikes among Triple-A pitchers
+      type_comps(t, None, "aaa")                 every pitch's lookalikes among Triple-A pitchers
     A pitcher never comps to himself, at either level. Rows that are not queries get no comps."""
     from scipy.spatial.distance import cdist
     from sklearn.decomposition import PCA
@@ -486,7 +486,7 @@ def type_comps(types, query_level=None, cand_level="mlb"):
                 tol_out[g[a]] = tol
     # fit percentile against the reference distribution of nearest-comp distances: MLB pitches among
     # MLB candidates, or the queried level among its own
-    ref = is_query if cand_level != "mlb" else (lvl == "mlb")
+    ref = lvl == cand_level   # MLB pitches among MLB candidates, or Triple-A pitches among Triple-A
     first = np.sort(dist_out[ref, 0][~np.isnan(dist_out[ref, 0])])
     pct = np.searchsorted(first, np.nan_to_num(dist_out, nan=np.inf)) / len(first)
     widened = np.nanmean(tol_out[is_query] > ARM_TOLS[0])
@@ -693,7 +693,7 @@ def export(types, pitchers, t_space, lead, fa, spin, mv, tj, teams, levels, team
         "pitchers": columnar(p_out),
         "types": columnar(t_out),
         "tcomps": comps_columnar(types.comp_rows, types.comp_pct),
-        # Triple-A lookalikes among Triple-A pitchers; empty for every MLB row
+        # every pitch's lookalikes among Triple-A pitchers
         **({"tcomps_aaa": comps_columnar(types.comp_rows_aaa, types.comp_pct_aaa)} if "comp_rows_aaa" in types else {}),
         "movement": movement_blob(types, mv),
         "flight": trajectory_blob(types, tj),
@@ -753,9 +753,10 @@ def main():
     # comps are cheap and rule-driven (same hand, similar arm angle): always recompute
     cr, cp, ctol = type_comps(types)
     t_space["comp_rows"], t_space["comp_pct"], t_space["comp_tol"] = list(cr), list(cp), ctol
-    # a Triple-A pitch also gets its lookalikes among Triple-A pitchers (the page offers both)
+    # every pitch, MLB or Triple-A, also gets its lookalikes among Triple-A pitchers (the page offers both:
+    # "MLB similar | AAA similar"), so an MLB arm's Triple-A doppelgangers can be saved and followed to that map
     if "aaa" in levels:
-        cr, cp, ctol = type_comps(types, "aaa", "aaa")
+        cr, cp, ctol = type_comps(types, None, "aaa")
         t_space["comp_rows_aaa"], t_space["comp_pct_aaa"], t_space["comp_tol_aaa"] = list(cr), list(cp), ctol
     t_space.to_parquet(ATLAS, index=False)
     spin = pd.concat([active_spin(s, a.refetch_leaders) for s in SEASONS], ignore_index=True)
