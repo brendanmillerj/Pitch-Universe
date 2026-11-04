@@ -187,7 +187,7 @@ button, input, select { font: inherit; color: inherit; }
 .sim-x { flex: none; width: 44px; height: 44px; border: 1.5px solid var(--map-muted); border-radius: var(--r); background: var(--map-chrome); color: var(--map-ink); font: 400 28px/1 var(--font-ui); cursor: pointer; }
 .sim-x:hover { background: var(--map-hover); }
 .simrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
-.simrow .flbl { font: 700 15px var(--font-ui); color: var(--map-ink); }
+.simrow .flbl { font: 500 15px var(--font-ui); color: var(--map-ink2); }
 .simtypes { display: flex; flex-wrap: wrap; gap: 6px; }
 .simtype { display: inline-flex; align-items: center; gap: 8px; font: 700 15px var(--font-ui); padding: 7px 12px; border-radius: 999px;
   border: 1.5px solid var(--map-muted); background: none; color: var(--map-ink2); cursor: pointer; }
@@ -198,7 +198,7 @@ button, input, select { font: inherit; color: inherit; }
 .simtype.added { border-style: dashed; }
 .simtype .x { margin-left: 2px; font-weight: 400; color: var(--map-ink2); }
 .sim-ctl .simcam { margin-left: auto; }
-.sim-replay { font: 700 15px/1 var(--font-ui); padding: 10px 14px; border-radius: var(--r); border: 1.5px solid var(--map-muted); background: var(--map-chrome); color: var(--map-ink); cursor: pointer; }
+.sim-replay { font: 600 15px/1 var(--font-ui); padding: 10px 14px; border-radius: var(--r); border: 1.5px solid var(--map-muted); background: none; color: var(--map-ink); cursor: pointer; }
 .sim-replay:hover { background: var(--map-hover); }
 .simcv { display: block; width: 100%; border-radius: var(--r); background: var(--map); border: 1px solid var(--map-line); }
 .simkey { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; font: 500 15px var(--font-ui); color: var(--map-ink); }
@@ -206,7 +206,7 @@ button, input, select { font: inherit; color: inherit; }
 .simkey .psw.fade { opacity: 0.4; }
 .simkey .psw.ring { box-shadow: 0 0 0 2px #ffffff, 0 0 0 3px var(--map-panel); }
 .simlook { padding-top: 8px; border-top: 1px solid var(--map-hair); }
-.simlook h3 { margin: 0 0 8px; font: 700 20px var(--font-ui); color: var(--map-ink); }
+.simlook h3 { margin: 0 0 6px; font: 600 22px var(--font-serif); color: var(--map-ink); }
 .simlook .simrow { margin: 0 0 8px; }
 .sim-help { margin: 0 0 8px; font: 400 14px/1.4 var(--font-ui); color: var(--map-ink2); }
 .simtab { width: 100%; border-collapse: collapse; font: 500 15px var(--font-ui); color: var(--map-ink); }
@@ -216,26 +216,21 @@ button, input, select { font: inherit; color: inherit; }
 .simtab td .tm { display: block; font-size: 13px; color: var(--map-ink2); font-weight: 400; }
 .simtab .num { text-align: right; font-variant-numeric: tabular-nums; }
 .simtab tr.on td { font-weight: 700; }
-.simtab .badge { background: var(--map-ink); color: var(--map-panel); }
+.simtab .badge { background: none; color: var(--map-ink2); box-shadow: none; font-weight: 600; }
 .simadd { font: 700 14px var(--font-ui); padding: 6px 12px; border-radius: 999px; border: 1.5px solid var(--map-ink); background: none; color: var(--map-ink); cursor: pointer; white-space: nowrap; }
 .simadd:hover:not(:disabled) { background: var(--map-ink); color: var(--map-panel); }
 .simadd:disabled { border-color: var(--map-muted); color: var(--map-muted); cursor: default; }
-.simbest { font: 800 11px var(--font-ui); letter-spacing: 0.04em; color: #1f242b; background: linear-gradient(180deg, #ffd75e, #e6b422); padding: 2px 6px; border-radius: 4px; }
-.simtab .lv { font: 800 11px var(--font-ui); color: #1f242b; background: #ffd75e; padding: 1px 5px; border-radius: 4px; }
 .simmoderow { margin-top: 10px; }
+.dlt { display: inline-block; min-width: 3.2em; padding: 1px 6px; border-radius: 4px; font: 600 13px var(--font-ui); text-align: center; }
 /* a lookalike's pitches: one button each; gold = a type the selected pitcher does not throw */
 .pchs { display: flex; flex-wrap: wrap; gap: 5px; }
 .pch { display: inline-flex; align-items: center; gap: 6px; font: 700 14px var(--font-ui); padding: 5px 10px 5px 8px; border-radius: 999px;
   border: 1.5px solid var(--map-muted); background: none; color: var(--map-ink); cursor: pointer; white-space: nowrap; }
 .pch .tm { font-weight: 500; color: var(--map-ink2); }
 .pch:hover { background: var(--map-hover); }
-.pch::before { content: "+"; font-weight: 700; color: var(--map-ink2); }
 .pch[aria-pressed="true"] { background: var(--map-ink); color: var(--map-panel); border-color: var(--map-ink); }
 .pch[aria-pressed="true"] .tm { color: var(--map-panel); }
-.pch[aria-pressed="true"]::before { content: "✓"; color: var(--map-panel); }
-.pch.new { border-color: #e6b422; box-shadow: inset 0 0 0 1px #e6b422; }
-.pch.new.demo { font-size: 13px; padding: 1px 8px; cursor: default; pointer-events: none; }
-.pch.new.demo::before { content: none; }
+.pch.new { border-style: dashed; }
 .simtab td:last-child { white-space: normal; min-width: 14rem; }
 @media (max-width: 719px) { .simbox { position: fixed; inset: 0; transform: none; width: auto; max-height: none; border-radius: 0; z-index: 70; } .sim-name { font-size: 24px; } }
 /* the name bar holds three actions: let it wrap rather than run off a narrow map */
@@ -3385,7 +3380,14 @@ function renderSim() {
   // his slot and release point (pitch-weighted over his arsenal): the table shows each lookalike's against them
   const myRelH = i0 === undefined ? null : P.rel_height[i0], myRelS = i0 === undefined ? null : P.rel_side[i0];
   const myTypes = new Set(mine.map(([t]) => t));
-  const delta = (v, mine, dec) => isNum(v) && isNum(mine) ? `<div class="tm">${v - mine >= 0 ? "+" : ""}${(v - mine).toFixed(dec)}</div>` : "";
+  // the difference from his own, tinted blue (lower) through white (the same) to red (higher); full colour at
+  // `span` (12° of arm angle, a foot of release), so white means "release like his"
+  const delta = (v, mine, dec, span) => {
+    if (!isNum(v) || !isNum(mine)) return "";
+    const d = v - mine, t = Math.max(-1, Math.min(1, d / span)), a = Math.abs(t);
+    const bg = t < 0 ? mixHex("#1c5cab", "#e6e5e0", a) : mixHex("#c23a3a", "#e6e5e0", a);
+    return `<span class="dlt" style="background:${bg};color:${a > 0.55 ? "#ffffff" : "#1f242b"}">${d >= 0 ? "+" : "−"}${Math.abs(d).toFixed(dec)}</span>`;
+  };
   const his = mine.map(([t, r]) => `<button type="button" class="simtype" data-simtype="${t}" aria-pressed="${S.types.has(t)}" title="${S.types.has(t) ? "Take" : "Put"} his ${PTN[t].toLowerCase()} ${S.types.has(t) ? "out of" : "in"} the animation"><i class="psw" style="background:${SAVANT_PITCH[t]}"></i>${PTN[t]} <span class="tm">${fmt(T.velo[r], 1)}</span></button>`);
   const extra = S.added.map(r => `<button type="button" class="simtype added" data-simdrop="${r}" aria-pressed="true" title="Take this pitch out of the animation"><i class="psw" style="background:${SAVANT_PITCH[T.pitch_type[r]]}"></i>${esc(lastName(T.name[r]))} ${PTN[T.pitch_type[r]].toLowerCase()} <span class="tm">${fmt(T.velo[r], 1)}</span><span class="x" aria-hidden="true">×</span></button>`);
   const addedSet = new Set(S.added);
@@ -3395,14 +3397,14 @@ function renderSim() {
       <button type="button" class="sim-x" id="simClose" aria-label="Close the pitch simulation" title="Close (Esc)">×</button></div>
     <div class="simrow sim-ctl"><span class="flbl">In the air</span><div class="simtypes">${his.join("")}${extra.join("")}</div>
       <div class="mseg simcam" role="group" aria-label="Camera">${["catcher", "pitcher"].map(c => `<button type="button" data-simcam="${c}" aria-pressed="${cam === c}">${c === "catcher" ? "Catcher view" : "Pitcher view"}</button>`).join("")}</div>
-      <button type="button" class="sim-replay" id="simReplay">↻ Replay</button></div>
+      <button type="button" class="sim-replay" id="simReplay">Replay</button></div>
     <canvas id="simCv" class="simcv" role="img" aria-label="Animated flight of ${esc(T.name[j])}'s pitches"></canvas>
     <p class="flkey simkey" id="simKey"></p>
-    <section class="simlook"><h3>Add a pitch to the animation</h3>
+    <section class="simlook"><h3>His lookalikes, and their pitches</h3>
       <div class="simrow"><span class="flbl">Lookalikes for his</span><div class="simtypes">${mine.map(([t]) => `<button type="button" class="simtype" data-simcomp="${t}" aria-pressed="${S.compType === t}"><i class="psw" style="background:${SAVANT_PITCH[t]}"></i>${PTN[t]}</button>`).join("")}</div></div>
-      <p class="sim-help">Each lookalike's whole arsenal, one button per pitch: press one and that pitch flies beside his. <span class="pch new demo">Gold</span> marks a pitch type he does not throw. Slot and release are against his own (${deg(myArm)}, ${ft(myRelH)} high, ${ft(myRelS)} to the arm side); the small number is the difference.</p>
+      <p class="sim-help">Every pitch each of them throws is a button; press one and it flies beside his. A dashed button is a pitch type he does not throw. The tinted numbers are how far each man's slot and release sit from his (${deg(myArm)}, ${ft(myRelH)} high, ${ft(myRelS)} to the arm side): white is the same, blue lower, red higher.</p>
       <div class="tablewrap"><table class="simtab"><thead><tr><th></th><th>Pitcher</th><th class="num">Arm angle</th><th class="num" title="Release height, feet above the ground">Rel. height</th><th class="num" title="Release side, feet toward the arm side (negative = across the body)">Rel. side</th><th class="num">ERA</th><th>His pitches</th></tr></thead><tbody>
-      ${looks.map((o, k) => `<tr><td><span class="badge">${k + 1}</span></td><td>${esc(T.name[o.c])}${k === best ? ` <span class="simbest">Best ERA</span>` : ""}${T.level[o.c] === "mlb" ? "" : ` <span class="lv">AAA</span>`}<div class="tm">${T.season[o.c]} · ${esc(teamStr(o.c))}</div></td><td class="num">${deg(o.arm)}${delta(o.arm, myArm, 0)}</td><td class="num">${ft(o.relh)}${delta(o.relh, myRelH, 1)}</td><td class="num">${ft(o.rels)}${delta(o.rels, myRelS, 1)}</td><td class="num">${fmt(o.era, 2)}</td><td><div class="pchs">${o.arsenal.map(x => `<button type="button" class="pch${myTypes.has(T.pitch_type[x]) ? "" : " new"}" data-simadd="${x}" aria-pressed="${addedSet.has(x)}" title="${addedSet.has(x) ? "In the animation; press to take it out" : `Add his ${PTN[T.pitch_type[x]].toLowerCase()} to the animation`}${myTypes.has(T.pitch_type[x]) ? "" : ` (${esc(lastName(T.name[j]))} throws no ${PTN[T.pitch_type[x]].toLowerCase()})`}"><i class="psw" style="background:${SAVANT_PITCH[T.pitch_type[x]]}"></i>${PTN[T.pitch_type[x]]} <span class="tm">${fmt(T.velo[x], 1)}</span></button>`).join("")}</div></td></tr>`).join("")}
+      ${looks.map((o, k) => `<tr><td><span class="badge">${k + 1}</span></td><td>${esc(T.name[o.c])}${T.level[o.c] === "mlb" ? "" : `, Triple-A`}<div class="tm">${T.season[o.c]} · ${esc(teamStr(o.c))}${k === best ? " · best ERA of the ten" : ""}</div></td><td class="num">${deg(o.arm)} ${delta(o.arm, myArm, 0, 12)}</td><td class="num">${ft(o.relh)} ${delta(o.relh, myRelH, 1, 1)}</td><td class="num">${ft(o.rels)} ${delta(o.rels, myRelS, 1, 1)}</td><td class="num">${fmt(o.era, 2)}</td><td><div class="pchs">${o.arsenal.map(x => `<button type="button" class="pch${myTypes.has(T.pitch_type[x]) ? "" : " new"}" data-simadd="${x}" aria-pressed="${addedSet.has(x)}" title="${addedSet.has(x) ? "In the animation; press to take it out" : `Add his ${PTN[T.pitch_type[x]].toLowerCase()} to the animation`}${myTypes.has(T.pitch_type[x]) ? "" : ` (${esc(lastName(T.name[j]))} throws no ${PTN[T.pitch_type[x]].toLowerCase()})`}"><i class="psw" style="background:${SAVANT_PITCH[T.pitch_type[x]]}"></i>${PTN[T.pitch_type[x]]} <span class="tm">${fmt(T.velo[x], 1)}</span></button>`).join("")}</div></td></tr>`).join("")}
       </tbody></table></div>
       <div class="simrow simmoderow"><span class="flbl">Draw added pitches as</span><div class="mseg simmode" role="group" aria-label="How added pitches are drawn">${SIM_MODES.map(([m, l]) => `<button type="button" data-simmode="${m}" aria-pressed="${S.mode === m}">${l}</button>`).join("")}</div></div>
     </section>`;
