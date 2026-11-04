@@ -83,8 +83,6 @@ button, input, select { font: inherit; color: inherit; }
 .hdrow { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 20px; min-width: 0; }
 .brand { display: flex; flex-direction: column; gap: 2px; }
 .head h1 { font: 600 40px/1.02 var(--font-serif); font-optical-sizing: auto; letter-spacing: -0.01em; margin: 0; color: var(--ink); white-space: nowrap; }
-.datathru { font: 400 13px var(--font-ui); color: var(--muted); }
-.datathru:empty { display: none; }
 .controls { grid-area: controls; min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 6px 0; }
 
 /* ----------------------------------------------------------------------- map
@@ -114,18 +112,22 @@ button, input, select { font: inherit; color: inherit; }
 .maptool .resetbtn { color: var(--map-ink); border-left-color: var(--map-ink); }
 .maptool .resetbtn:hover:not(:disabled) { background: var(--map-hover); }
 .maptool .resetbtn:disabled { color: var(--map-muted); }
-.maptool .ubtn { background: transparent; color: var(--map-ink); border-color: var(--map-muted); }
-.maptool .ubtn:hover { background: var(--map-hover); }
-.maptool .ubtn[aria-pressed="true"] { background: var(--field); color: var(--ink); border-color: var(--field); }
-.maptool .udiv { background: var(--map-line); }
-.maptool #colorAWrap, .maptool .mselect, .maptool .umobile .sel { background: transparent; color: var(--map-ink); border: 1.5px solid var(--map-muted); border-radius: var(--r); }
+/* under the toolbar: the pitch types down the left edge, then the plot */
+.mapbody { flex: 1 1 auto; min-height: 0; display: flex; }
+.typecol { flex: none; width: 148px; display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: var(--mi);
+  overflow-y: auto; overscroll-behavior: contain; background: var(--map-panel); border-right: 1px solid var(--map-line); }
+.typecol .ubtn { width: 100%; justify-content: flex-start; background: transparent; color: var(--map-ink); border-color: var(--map-muted); }
+.typecol .ubtn:hover { background: var(--map-hover); }
+.typecol .ubtn[aria-pressed="true"] { background: var(--field); color: var(--ink); border-color: var(--field); }
+.typecol .udiv { width: 100%; height: 1px; margin: 2px 0; background: var(--map-line); }
+.maptool #colorAWrap, .maptool .mselect { background: transparent; color: var(--map-ink); border: 1.5px solid var(--map-muted); border-radius: var(--r); }
 .maptool #colorAWrap:hover, .maptool .mselect:hover { background: var(--map-hover); }
-.maptool #colorAWrap::after, .maptool .mselect::after, .maptool .umobile .sel::after { border-color: var(--map-ink); }
+.maptool #colorAWrap::after, .maptool .mselect::after { border-color: var(--map-ink); }
 .maptool #colorAWrap.on { background: var(--field); color: var(--ink); border-color: var(--field); }
 .maptool #colorAWrap.on::after { border-color: var(--ink); }
-.maptool .mselect select, .maptool .umobile select { font: 600 14px var(--font-ui); color: var(--map-ink); background: transparent; border: 0; min-height: calc(var(--ctl) - 3px);
+.maptool .mselect select { font: 600 14px var(--font-ui); color: var(--map-ink); background: transparent; border: 0; min-height: calc(var(--ctl) - 3px);
   padding: 0 32px 0 12px; max-width: min(28ch, 100%); }
-.maptool .mselect select option, .maptool .umobile select option { color: var(--ink); background: var(--field); }
+.maptool .mselect select option { color: var(--ink); background: var(--field); }
 .maptool .explbtn, .maptool .resetcolor, .maptool #opWrap select, .maptool #colorBWrap select { background: transparent; color: var(--map-ink); border-color: var(--map-muted); }
 .maptool .explbtn:hover, .maptool .resetcolor:hover:not(:disabled) { background: var(--map-hover); }
 .maptool .explbtn[aria-expanded="true"] { background: var(--field); color: var(--ink); border-color: var(--field); }
@@ -136,8 +138,6 @@ button, input, select { font: inherit; color: inherit; }
 .maptool .facount { font: 400 13px var(--font-ui); color: var(--map-ink2); }
 .maptool .facount:empty { display: none; }
 .grp-fa { display: flex; align-items: center; gap: 6px 8px; }
-/* the pitch-type strip needs ~820px of toolbar; narrower, a "Showing [select]" box replaces it */
-@container mtool (max-width: 820px) { nav#universe { display: none; } .umobile { display: flex; gap: 8px; align-items: center; } }
 .tgroup { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .ellrow { display: inline-flex; align-items: center; gap: 4px; }
 /* dark buttons on the map: outline, and the chosen one filled */
@@ -411,7 +411,6 @@ button, input, select { font: inherit; color: inherit; }
 .resetbtn:disabled { color: var(--muted); cursor: default; }
 .measbtn:focus-visible, .resetbtn:focus-visible { outline: 2px solid var(--focus); outline-offset: -4px; }
 .universe { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.umobile { display: none; }
 /* pitch-type switch: outline buttons, the current universe filled */
 .ubtn { display: inline-flex; align-items: center; cursor: pointer; padding: 0 12px; min-height: var(--ctl); white-space: nowrap;
   font: 600 14px var(--font-ui); color: var(--ink); background: var(--field); border: 1.5px solid var(--ink); border-radius: var(--r); }
@@ -1006,6 +1005,10 @@ tr.self td { font-weight: 600; background: none; }
   .mk-title { font-size: 15px; } .mk-dual, .mk-ticks { width: 240px; }
   .selcta { position: static; }
   .plotarea { flex: none; }
+  .mapbody { flex-direction: column; }
+  .typecol { width: auto; flex-direction: row; flex-wrap: wrap; overflow: visible; border-right: 0; border-bottom: 1px solid var(--map-line); }
+  .typecol .ubtn { width: auto; }
+  .typecol .udiv { width: 1px; height: 24px; margin: 0; align-self: center; }
   .mrail { width: auto; max-width: none; max-height: 44vh; border-left: 0; border-top: 1px solid var(--map-line); }
   /* a selected pitcher: the card is a sheet over the map */
   .app.has-sel { grid-template-areas: "head" "controls" "map" "caption"; grid-template-rows: auto auto auto auto; }
@@ -1046,7 +1049,7 @@ tr.self td { font-weight: 600; background: none; }
   </div></section>
   <header class="head">
     <div class="hdrow hdrow1">
-      <div class="brand"><h1>Pitch Universe</h1><span class="datathru" id="dataThru"></span></div>
+      <div class="brand"><h1>Pitch Universe</h1></div>
       <div class="lvlseg" id="lvlSeg" role="group" aria-label="Level shown" hidden>
         <button type="button" data-v="mlb" aria-pressed="true" title="Major-league pitchers">MLB</button><button type="button" data-v="aaa" aria-pressed="false" title="Triple-A pitchers on the same maps, every number measured against big-league norms">Triple-A</button>
       </div>
@@ -1078,7 +1081,6 @@ tr.self td { font-weight: 600; background: none; }
       <span class="teamacts"><button type="button" class="link" id="teamsAll">All 30</button><span class="dot" aria-hidden="true">·</span><button type="button" class="link" id="teamsReset">Just the Cubs</button></span>
     </div>
     <p class="hl" id="hlLine">
-      <span class="count" id="matchCount" aria-live="polite"></span>
       <button type="button" class="link" id="slClear" hidden>Clear measure filters</button>
     </p>
     <section class="howto" id="howto" aria-label="How to read the map">
@@ -1102,11 +1104,6 @@ tr.self td { font-weight: 600; background: none; }
         <button type="button" class="measbtn" id="slOpen" aria-expanded="false" aria-controls="sliders"><span class="measarr" aria-hidden="true">‹</span><span id="slOpenTxt">Filter by measures</span></button>
         <button type="button" class="resetbtn" id="resetAll" disabled title="Reset filters: measures, pitcher type, free agents, the color-key range, season and hand">Reset</button>
       </div>
-      <nav class="universe" id="universe" aria-label="Choose a map"></nav>
-      <div class="umobile"><label class="lbl" for="universeSelect">Showing</label>
-        <span class="sel"><select id="universeSelect"></select></span></div>
-        </div>
-        <div class="tline">
       <div class="grp grp-color">
         <label class="colorlbl" id="colorLbl" for="colorBtn">Color pitchers by</label>
         <span class="sel" id="colorAWrap">
@@ -1165,6 +1162,8 @@ tr.self td { font-weight: 600; background: none; }
           </div>
         </div>
       </div>
+      <div class="mapbody">
+      <nav class="universe typecol" id="universe" aria-label="Choose a map: all pitches or one pitch type"></nav>
       <div class="plotarea" id="plotArea">
         <div id="plot"></div>
       <div class="pills" id="railPills" hidden></div>
@@ -1176,6 +1175,7 @@ tr.self td { font-weight: 600; background: none; }
         <button type="button" class="ctabtn" id="ctaSim" aria-pressed="false">Show similar pitchers</button>
         <button type="button" class="ctabtn" id="ctaFly" aria-pressed="false">Fly his pitches against a comp’s</button>
         <button type="button" class="ctaclose" id="ctaClose" aria-label="Clear the selection" title="Clear">×</button>
+      </div>
       </div>
       </div>
     </div>
@@ -1974,7 +1974,6 @@ function render() {
   const unitW = (state.level === "mlb" ? "" : LVL_NAME[state.level] + " ") + "pitches";
   const countText = !match && !keyIn ? `${rows.length.toLocaleString()} ${unitW}` : `${nOn.toLocaleString()} of ${rows.length.toLocaleString()} ${unitW}`;
   // only touch the live region when the text changes, so screen readers don't repeat it on every drag
-  if ($("#matchCount").textContent !== countText) $("#matchCount").textContent = countText;
   $("#slCount").textContent = countText;
   $("#slOpenTxt").textContent = nR ? `${nR} filter${nR > 1 ? "s" : ""} on` : "Filter by measures";
   $("#resetAll").disabled = !anyFilter();
@@ -4052,8 +4051,6 @@ function syncLevel(loading) {
     b.disabled = b.dataset.v === loading;
     b.textContent = b.dataset.v === loading ? "Loading…" : LVL_NAME[b.dataset.v] || b.dataset.v;
   });
-  const dt = D.data_through && D.data_through[state.level];
-  $("#dataThru").textContent = dt ? `Data through ${longDate(dt)}` : "";
 }
 // The address: "#FF", "#aaa/FF", and with a card open "#FF/tarik-skubal-2026", which reopens that card when shared
 const slugOf = r => fold(T.name[r]).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + "-" + T.season[r];
@@ -4100,7 +4097,6 @@ function buildUniverse() {
   const btn = (key, label) => `<button type="button" class="ubtn" data-view="${key}" data-label="${esc(label)}"${key !== "all" ? ` title="${key}"` : ""} aria-pressed="${v === key}"><span class="ul">${SAVANT_PITCH[key] ? `<i class="psw" style="background:${SAVANT_PITCH[key]}"></i>` : ""}${label}</span></button>`;
   nav.innerHTML = btn("all", "All pitches") + `<span class="udiv" aria-hidden="true"></span>` + TYPES.map(t => btn(t, PTN[t])).join("");
   nav.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => setView(b.dataset.view)));
-  $("#universeSelect").value = v;
 }
 
 // "Color pitchers by": the drawer's categories as headed sections (Groups, Shape, Dynamic Dead Zone, Angles,
@@ -4580,8 +4576,6 @@ function buildStatic() {
   $("#lvlSeg").querySelectorAll("button").forEach(b => b.addEventListener("click", () => setLevel(b.dataset.v)));
   syncLevel();
 
-  $("#universeSelect").innerHTML = `<option value="all">All pitches</option>` + TYPES.map(t => `<option value="${t}">${PTN[t]}</option>`).join("");
-  $("#universeSelect").addEventListener("change", e => setView(e.target.value));
 
   setFATitle();
   $("#fa").addEventListener("change", e => { state.fa = e.target.value; syncFA(); render(); });
