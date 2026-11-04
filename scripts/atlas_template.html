@@ -590,12 +590,19 @@ button, input, select { font: inherit; color: inherit; }
 .compsin { margin-top: 8px; padding-top: 8px; border-top: 2px solid var(--rule); scroll-margin-top: 8px; }
 .compsin .card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: start; }
 .compsin .card > section { background: var(--field); border: 1px solid var(--line); border-radius: var(--r); padding: 8px 10px; margin: 0; }
-.compsin .card > section.best, .compsin .card > section.heat { grid-column: 1 / -1; }
+.compsin .card > section.best { grid-column: 1 / -1; }
+.compsin .card > section.heat { min-width: 0; }
 /* the comps heat table: compact, scrolls sideways, the pitcher column pinned */
 .hmwrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); }
 .hm { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font: 500 13px var(--font-ui); font-variant-numeric: tabular-nums lining-nums; }
 .hm th, .hm td { padding: 3px 5px; text-align: center; white-space: nowrap; border-bottom: 1px solid var(--field); border-right: 1px solid var(--field); }
-.hm thead th { font: 600 12px/1.15 var(--font-ui); color: var(--ink2); background: var(--panel); white-space: normal; min-width: 46px; max-width: 66px; vertical-align: bottom; }
+.hm thead th { font: 600 12px/1.15 var(--font-ui); color: var(--ink2); background: var(--panel); white-space: normal; min-width: 46px; max-width: 66px; vertical-align: bottom; padding: 0; }
+.hm thead th button { display: flex; align-items: flex-end; justify-content: center; gap: 2px; width: 100%; padding: 4px 5px; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; }
+.hm thead th.hm-name button { justify-content: flex-start; }
+.hm thead th button:hover { background: var(--wash); color: var(--ink); }
+.hm thead th[aria-sort] button { color: var(--ink); }
+.hm thead th button .ar { flex: none; width: 9px; font-size: 10px; }
+.hm thead tr.hm-g th { padding: 3px 5px; }
 .hm thead tr.hm-g th { font: 700 12px var(--font-ui); color: var(--ink); text-align: left; max-width: none; border-bottom: 1.5px solid var(--rule); }
 .hm .hm-name { position: sticky; left: 0; z-index: 1; background: var(--field); text-align: left; min-width: 160px; max-width: 200px; white-space: normal; box-shadow: 1px 0 0 var(--line); }
 .hm thead .hm-name { background: var(--panel); z-index: 2; }
@@ -3127,21 +3134,51 @@ function heatTable(view, j, comps) {
   const hv = VARS.t.filter(v => !v.cat && v.key.startsWith("t:"));
   const groups = [...new Set(hv.map(v => v.group))], cols = groups.flatMap(g => hv.filter(v => v.group === g));
   const xeraPool = poolSorted("P", ALL_P, { key: "xera", get: k => P.xera[k] });
+  // one record per row: its xERA and every measure (value, percentile, note)
+  const rec = (r, k, q) => {
+    const i = pRow(T.pitcher[r], T.season[r], T.level[r]), xe = i === undefined ? null : P.xera[i];
+    return { r, k, q, xe, xp: pctOf(xeraPool, xe, true), items: measureItems(cols, r, pName, pool) };
+  };
+  const me = rec(j, null), rows = comps.map(([c, q], k) => rec(c, k, q));
+  // sort the comps (he stays on top): by closeness, xERA or any measure, on raw values; blanks last
+  const S = state.hmSort || { key: "rank", dir: 1 };
+  const valOf = o => S.key === "rank" ? o.k : S.key === "xera" ? o.xe : (o.items[cols.findIndex(v => v.key === S.key)] || {}).x;
+  rows.sort((a, b) => { const x = valOf(a), y = valOf(b);
+    if (!isNum(x)) return isNum(y) ? 1 : 0; if (!isNum(y)) return -1; return S.dir * (x - y) || a.k - b.k; });
   const cell = (x, p, dec, tip) => !isNum(x) ? `<td class="hm-na">—</td>`
     : `<td style="background:${savantColor(p)};color:${savantInk(p)}" title="${esc(tip)}">${x.toFixed(dec)}</td>`;
-  const row = (r, k, q) => {
-    const i = pRow(T.pitcher[r], T.season[r], T.level[r]), xe = i === undefined ? null : P.xera[i], fa = faOf(r);
+  const row = o => {
+    const r = o.r, fa = faOf(r), self = o.k === null;
     const tag = fa ? ` <span class="fa-tag${fa[1] ? " signed" : ""}" title="${fa[1] ? "Free agent, signed with " + esc(fa[1]) : "Free agent, unsigned"}"><i class="sw" style="background:${faSwatch(r, pal)}"></i>FA</span>` : "";
-    const meta = `${T.season[r]} · ${esc(teamStr(r))}${T.level[r] === "mlb" ? "" : " · Triple-A"}${q === undefined ? "" : ` · ${fitOf(q)[1]} fit`}`;
-    const name = `<td class="hm-name">${k === null ? `<span class="badge self"></span>` : `<span class="badge">${k + 1}</span>`} ${esc(T.name[r])}${tag}<span class="tm">${meta}</span></td>`;
-    const xp = pctOf(xeraPool, xe, true);
-    const cells = measureItems(cols, r, pName, pool).map(({ v, x, p, note }) => cell(x, p, v.dec ?? 2, `${mName(v)}: ${fmt(x, v.dec, v.unit)} · ${isNum(p) && p >= 0 ? ord(p) + " percentile" : ""}${note || ""}`));
-    return `<tr${k === null ? ' class="self"' : ` class="click" data-go="${view}:${r}"`}>${name}${cell(xe, xp, 2, `xERA ${fmt(xe, 2)}${isNum(xp) ? " · " + ord(xp) + " percentile among MLB pitchers (lower is better)" : ""}`)}${cells.join("")}</tr>`;
+    const meta = `${T.season[r]} · ${esc(teamStr(r))}${T.level[r] === "mlb" ? "" : " · Triple-A"}${o.q === undefined ? "" : ` · ${fitOf(o.q)[1]} fit`}`;
+    const name = `<td class="hm-name">${self ? `<span class="badge self"></span>` : `<span class="badge">${o.k + 1}</span>`} ${esc(T.name[r])}${tag}<span class="tm">${meta}</span></td>`;
+    const cells = o.items.map(({ v, x, p, note }) => cell(x, p, v.dec ?? 2, `${mName(v)}: ${fmt(x, v.dec, v.unit)} · ${isNum(p) && p >= 0 ? ord(p) + " percentile" : ""}${note || ""}`));
+    return `<tr${self ? ' class="self"' : ` class="click" data-go="${view}:${r}"`}>${name}${cell(o.xe, o.xp, 2, `xERA ${fmt(o.xe, 2)}${isNum(o.xp) ? " · " + ord(o.xp) + " percentile among MLB pitchers (lower is better)" : ""}`)}${cells.join("")}</tr>`;
   };
-  const ghead = `<tr class="hm-g"><th class="hm-name" rowspan="2">Pitcher</th><th rowspan="2" title="${esc(EXPLAIN["P:xera"])}">xERA</th>`
+  const sortTh = (key, label, title, extra = "") => {
+    const on = S.key === key, ar = on ? (S.dir < 0 ? "▼" : "▲") : "";
+    return `<th${extra}${on ? ` aria-sort="${S.dir < 0 ? "descending" : "ascending"}"` : ""}><button type="button" data-hk="${esc(key)}" title="${esc(title)}">${esc(label)}<span class="ar" aria-hidden="true">${ar}</span></button></th>`;
+  };
+  const ghead = `<tr class="hm-g">${sortTh("rank", "Pitcher", "Sort by closeness (nearest first)", ' class="hm-name" rowspan="2"')}${sortTh("xera", "xERA", EXPLAIN["P:xera"], ' rowspan="2"')}`
     + groups.map(g => `<th colspan="${cols.filter(v => v.group === g).length}">${esc(g)}</th>`).join("") + `</tr>`;
-  const chead = `<tr>${cols.map(v => `<th title="${esc(tipFor(v))}">${esc(shortLabel(v))}</th>`).join("")}</tr>`;
-  return `<div class="hmwrap"><table class="hm"><thead>${ghead}${chead}</thead><tbody>${row(j, null)}${comps.map(([c, q], k) => row(c, k, q)).join("")}</tbody></table></div>`;
+  const chead = `<tr>${cols.map(v => sortTh(v.key, shortLabel(v), tipFor(v))).join("")}</tr>`;
+  return `<div class="hmwrap" data-hmj="${j}" data-hmview="${esc(view)}"><table class="hm"><thead>${ghead}${chead}</thead><tbody>${row(me)}${rows.map(row).join("")}</tbody></table></div>`;
+}
+// header clicks: sort that column (the better end first; again to flip); the table redraws in place
+function sortHeat(btn) {
+  const wrap = btn.closest(".hmwrap"); if (!wrap) return;
+  const key = btn.dataset.hk, cur = state.hmSort || { key: "rank", dir: 1 };
+  const v = VMAP.t[key], firstDir = key === "rank" || key === "xera" || lowGoodVar(v) ? 1 : -1;
+  state.hmSort = { key, dir: cur.key === key ? -cur.dir : firstDir };
+  const j = +wrap.dataset.hmj, view = wrap.dataset.hmview, x = wrap.scrollLeft;
+  wrap.outerHTML = heatTable(view, j, compsOf(view, j));
+  const nw = document.querySelector(`.hmwrap[data-hmj="${j}"]`);
+  if (nw) { nw.scrollLeft = x; const b = nw.querySelector(`[data-hk="${CSS.escape(key)}"]`); if (b) b.focus({ preventScroll: true });
+    nw.querySelectorAll("[data-go]").forEach(tr => {   // rows open the comp, by click or Enter / Space, as before the sort
+      const go = () => { const [vv, rr] = tr.dataset.go.split(":"); if (vv !== state.view) setView(vv, +rr); else select(+rr); };
+      tr.tabIndex = 0; tr.addEventListener("click", go);
+      tr.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+    }); }
 }
 
 // ------------------------------------------------- best-xERA comp, and how they differ
@@ -4802,6 +4839,7 @@ function buildStatic() {
     $("#colorBtn").focus({ preventScroll: true });
   });
   $("#lassoOn").addEventListener("click", () => setLasso(!state.lasso));
+  document.addEventListener("click", e => { const b = e.target.closest(".hm [data-hk]"); if (b) sortHeat(b); });
   document.addEventListener("keydown", e => { if (e.key === "Escape" && state.lasso) { e.preventDefault(); setLasso(false); } });
   $("#teamOn").addEventListener("click", () => {   // Team colors on/off; off returns to pitch type
     const kind = varKind(state.view);
