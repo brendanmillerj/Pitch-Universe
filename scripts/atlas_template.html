@@ -1164,7 +1164,7 @@ tr.self td { font-weight: 600; background: none; }
           <label class="find-lbl" for="search">Search for pitcher by name</label>
           <div class="find-box">
             <svg class="find-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-            <input id="search" type="search" placeholder="Start with a pitcher, or pick a type" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sugg">
+            <input id="search" type="search" placeholder="Type a pitcher’s name, e.g. Tarik Skubal" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sugg">
             <ul class="sugg" id="sugg" role="listbox" aria-label="Matching pitchers" hidden></ul>
           </div>
           <span class="help" id="searchMsg" role="status" aria-live="polite"></span>
@@ -5121,6 +5121,13 @@ function buildStatic() {
   // Suggestions as you type: every pitcher whose name contains the typed letters (accents ignored),
   // with his hand and latest season; arrows move, Enter or a click picks, Escape closes.
   const sInp = $("#search"), sList = $("#sugg");
+  // the box says you can type a name, with an example that changes every few seconds until you click in or type
+  { const ex = ["Tarik Skubal", "Paul Skenes", "Shota Imanaga", "Garrett Crochet", "Jacob Misiorowski", "Mason Miller", "Hunter Greene", "Yoshinobu Yamamoto"]
+      .filter(n => suggIndex().latest[n]);
+    let k = 0;
+    const show = () => { if (sInp.value || document.activeElement === sInp || !ex.length) return; sInp.placeholder = `Type a pitcher’s name, e.g. ${ex[k++ % ex.length]}`; };
+    show();
+    if (ex.length > 1 && !reduced() && typeof setInterval === "function") setInterval(show, 3000); }
   let sCur = -1;
   const suggClose = () => { sList.hidden = true; sList.innerHTML = ""; sInp.setAttribute("aria-expanded", "false"); sInp.removeAttribute("aria-activedescendant"); sCur = -1; };
   const suggMark = () => sList.querySelectorAll("li[data-n]").forEach((li, k) => { li.setAttribute("aria-selected", String(k === sCur)); if (k === sCur) { sInp.setAttribute("aria-activedescendant", li.id); if (li.scrollIntoView) li.scrollIntoView({ block: "nearest" }); } });
