@@ -1266,7 +1266,7 @@ tr.self td { font-weight: 600; background: none; }
 // files loaded just above (the Hub turns a >10 MB page into an LFS object that is no longer served inline).
 const D = /*__ATLAS_DATA__*/null || window.__ATLAS_DATA__;
 const P = D.pitchers, T = D.types;
-const NP = P.pitcher.length, NT = T.pitcher.length;
+let NP = P.pitcher.length, NT = T.pitcher.length;   // a level loaded later appends rows (mergeLevel)
 // Levels. MLB is the reference: the maps, comps, percentiles and baselines are all big-league. Triple-A
 // rows ("aaa") sit on the same maps, placed beside their nearest MLB pitches, and rank against MLB pools.
 const LEVELS = D.levels || ["mlb"];
@@ -1287,13 +1287,12 @@ let tIP = [];   // innings per type row (its pitcher-season); filled once P is i
 const NOT_IN_LIST = new Set(["cat:pitch_type", "cat:team", "cat:fa"]);   // pitch type leads the list; team is the map button
 
 // ------------------------------------------------------------------ indexes
+// Everything computed row by row from T and P is built by indexData() (see after the views), at boot and again
+// when a level shipped in its own file is appended.
 const tKey = new Map(), pKey = new Map();
 // A call-up has a row at both levels in one season, so every key carries the level.
-for (let j = 0; j < NT; j++) tKey.set(T.pitcher[j] + "|" + T.season[j] + "|" + T.pitch_type[j] + "|" + T.level[j], j);
-for (let i = 0; i < NP; i++) pKey.set(P.pitcher[i] + "|" + P.season[i] + "|" + P.level[i], i);
 const tRow = (pid, s, pt, lvl = "mlb") => tKey.get(pid + "|" + s + "|" + pt + "|" + lvl);
 const pRow = (pid, s, lvl = "mlb") => pKey.get(pid + "|" + s + "|" + lvl);
-tIP = T.pitcher.map((pid, j) => { const i = pRow(pid, T.season[j], T.level[j]); return i === undefined || !isNum(P.ip[i]) ? 0 : P.ip[i]; });
 // Lookalike ERA / xERA: for each of his pitches, the median value among its closest comps (20+ IP
 // only, at least 5 of them), averaged over his pitches weighted by usage. Gap = his value minus
 // that: + means pitchers whose stuff looks like his got better results than he did.
@@ -1311,10 +1310,6 @@ function lookalike(stat) {
   for (let i = 0; i < NP; i++) if (wt[i] > 0) out[i] = sum[i] / wt[i];
   return out;
 }
-P.look_xera = lookalike("xera");
-P.look_era = lookalike("era");
-P.look_gap = P.look_xera.map((v, i) => isNum(v) && isNum(P.xera[i]) ? P.xera[i] - v : null);
-P.look_era_gap = P.look_era.map((v, i) => isNum(v) && isNum(P.era[i]) ? P.era[i] - v : null);
 const TEAM_NAMES = {
   ATH: "Athletics", ATL: "Atlanta Braves", AZ: "Arizona Diamondbacks", BAL: "Baltimore Orioles",
   BOS: "Boston Red Sox", CHC: "Chicago Cubs", CIN: "Cincinnati Reds", CLE: "Cleveland Guardians",
@@ -1326,18 +1321,18 @@ const TEAM_NAMES = {
   TOR: "Toronto Blue Jays", WSH: "Washington Nationals",
 };
 // Team list per type row (via its pitcher-season); traded pitchers belong to each team
-const tTeams = T.pitcher.map((pid, j) => { const i = pRow(pid, T.season[j], T.level[j]); return i === undefined || !P.teams[i] ? [] : P.teams[i].split(","); });
+let tTeams = [];   // filled by indexData
 // Triple-A clubs: code -> [club name, parent MLB code]. A Triple-A pitcher filters and colours by his organisation.
 const AAA_TEAMS = D.teams_aaa || {};
 const orgOf = c => AAA_TEAMS[c] ? AAA_TEAMS[c][1] || c : c;
 const teamName = c => TEAM_NAMES[c] || (AAA_TEAMS[c] ? AAA_TEAMS[c][0] : c);
-const tOrgs = tTeams.map(a => a.map(orgOf));
+let tOrgs = [];   // filled by indexData
 // Free agents of the coming offseason, keyed by MLBAM id: [from, to, signed, declared, notes]
 const FA = D.fa || {};
 const faOf = j => FA[T.pitcher[j]];
 const FA_LABEL = `${D.fa_season}–${String(D.fa_season + 1).slice(2)} free agent`;
 const shortDate = d => d ? new Date(d + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "";
-const tMain = T.pitcher.map((pid, j) => { const i = pRow(pid, T.season[j], T.level[j]); return i === undefined ? null : orgOf(P.team_main[i]); });
+let tMain = [];   // filled by indexData
 // Club colours (primary, or the secondary where it is the better-known identity)
 const TEAM_COLORS = {
   ATH: "#0b6b4f", ATL: "#ce1141", AZ: "#a71930", BAL: "#df4601", BOS: "#bd3039", CHC: "#0e3386",
@@ -1365,7 +1360,6 @@ const teamTitle = j => tTeams[j].map(teamName).join(" / ") || "";
 // whatever level is on screen. typeRowsAll: every level, what a type's map can draw.
 const typeRows = Object.fromEntries(TYPES.map(t => [t, []]));
 const typeRowsAll = Object.fromEntries(TYPES.map(t => [t, []]));
-for (let j = 0; j < NT; j++) { typeRowsAll[T.pitch_type[j]].push(j); if (T.level[j] === "mlb") typeRows[T.pitch_type[j]].push(j); }
 
 // ---------------------------------------------------------------- variables
 // [key, label, unit, decimals, group, diverging]
@@ -1453,7 +1447,7 @@ const VMAP = { all: varMap("all"), t: varMap("t") };
 const VIEWS = { all: { label: "All pitches", kind: "all" } };
 TYPES.forEach(t => VIEWS[t] = { label: PTN[t], kind: "t", pt: t });
 const varKind = view => VIEWS[view].kind;
-const ALL_ROWS = Array.from({ length: NT }, (_, j) => j);
+let ALL_ROWS = [];   // filled by indexData
 const viewRows = view => view === "all" ? ALL_ROWS : typeRowsAll[view];
 const xy = (view, r) => view === "all" ? [T.gx[r], T.gy[r]] : [T.tx[r], T.ty[r]];
 const mixHex = (fg, bg, a) => {
@@ -1464,6 +1458,95 @@ const mixHex = (fg, bg, a) => {
 };
 const xyz = (view, r) => view === "all" ? [T.gx3[r], T.gy3[r], T.gz3[r]] : [T.tx3[r], T.ty3[r], T.tz3[r]];
 const is3D = () => state.dim === 3 && !!T.gx3;
+
+// ----------------------------------------------------------- row indexes
+function indexData() {
+  NP = P.pitcher.length; NT = T.pitcher.length;
+  tKey.clear(); pKey.clear();
+  for (let j = 0; j < NT; j++) tKey.set(T.pitcher[j] + "|" + T.season[j] + "|" + T.pitch_type[j] + "|" + T.level[j], j);
+  for (let i = 0; i < NP; i++) pKey.set(P.pitcher[i] + "|" + P.season[i] + "|" + P.level[i], i);
+  tIP = T.pitcher.map((pid, j) => { const i = pRow(pid, T.season[j], T.level[j]); return i === undefined || !isNum(P.ip[i]) ? 0 : P.ip[i]; });
+  P.look_xera = lookalike("xera");
+  P.look_era = lookalike("era");
+  P.look_gap = P.look_xera.map((v, i) => isNum(v) && isNum(P.xera[i]) ? P.xera[i] - v : null);
+  P.look_era_gap = P.look_era.map((v, i) => isNum(v) && isNum(P.era[i]) ? P.era[i] - v : null);
+  pooledGaps();
+  // Team list per type row (via its pitcher-season); traded pitchers belong to each team
+  tTeams = T.pitcher.map((pid, j) => { const i = pRow(pid, T.season[j], T.level[j]); return i === undefined || !P.teams[i] ? [] : P.teams[i].split(","); });
+  tOrgs = tTeams.map(a => a.map(orgOf));
+  tMain = T.pitcher.map((pid, j) => { const i = pRow(pid, T.season[j], T.level[j]); return i === undefined ? null : orgOf(P.team_main[i]); });
+  TYPES.forEach(t => { typeRows[t].length = 0; typeRowsAll[t].length = 0; });
+  for (let j = 0; j < NT; j++) { typeRowsAll[T.pitch_type[j]].push(j); if (T.level[j] === "mlb") typeRows[T.pitch_type[j]].push(j); }
+  ALL_ROWS = Array.from({ length: NT }, (_, j) => j);
+  ALL_P = Array.from({ length: NP }, (_, k) => k).filter(k => P.level[k] === "mlb");
+  // caches built from the rows (the MLB pools never change, but clearing them is cheap and safe)
+  poolCache.clear(); sdCache.clear(); svRowCache.clear(); archCache.clear(); rawBoundsCache.clear();
+  for (const k of Object.keys(groupRVCache)) delete groupRVCache[k];
+  for (const k of Object.keys(fullSpan)) delete fullSpan[k];
+  VAL = null; UNI = null; GK = null; MV = null; TJ = null; SUG = null;
+}
+
+// ------------------------------------------------- a level that loads later
+// The deployed page ships Triple-A in its own gzipped file (D.lazy = {aaa: [base]}) so the map appears after the MLB
+// file alone; Triple-A is then fetched in the background right after boot. Anything that needs it before it has
+// arrived (the AAA switch, an AAA-only name in search, "AAA similar", a group's "See them on the AAA map") waits for it.
+// D.lazy_names lists that level's pitchers ([id, name, season, throws]) so search and the free-agent refresh
+// know them before the rows arrive. The self-contained page has every level inline and none of this runs.
+const LAZY = D.lazy || {}, LAZY_NAMES = D.lazy_names || {};
+const MV_PARTS = [D.movement].filter(Boolean), TJ_PARTS = [D.flight].filter(Boolean);   // one blob per loaded part, in row order
+const loadedLevels = new Set(["mlb"]);
+const levelLoaded = l => !LAZY[l] || loadedLevels.has(l);
+let levelLoading = null;
+async function fetchData(url) {
+  const res = await fetch(url); if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+  const buf = new Uint8Array(await res.arrayBuffer());
+  if (buf[0] === 0x1f && buf[1] === 0x8b) {   // gzip, unless a server already undid it
+    if (typeof DecompressionStream !== "function") throw new Error("this browser cannot decompress gzip");
+    return JSON.parse(await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip"))).text());
+  }
+  return JSON.parse(new TextDecoder().decode(buf));
+}
+function ensureLevel(l) {
+  if (levelLoaded(l)) return Promise.resolve(true);
+  if (levelLoading) return levelLoading;
+  syncLevel(l);
+  levelLoading = (async () => {
+    try {
+      const ext = typeof DecompressionStream === "function" ? ".json.gz" : ".json";   // the deploy ships both
+      const part = {};
+      for (const got of await Promise.all(LAZY[l].map(u => fetchData(u + ext)))) Object.assign(part, got);
+      mergeLevel(part); loadedLevels.add(l); return true;
+    } catch (e) { console.warn(`${l} data could not be loaded`, e); return false; }
+    finally { levelLoading = null; syncLevel(); }
+  })();
+  return levelLoading;
+}
+function mergeLevel(part) {
+  // append the part's rows column by column; a column one side lacks is padded with nulls (the page's own
+  // computed columns, such as P.look_xera, are recomputed for every row by indexData)
+  const app = (dst, src, n0) => {
+    const n1 = src.pitcher.length;
+    new Set([...Object.keys(dst), ...Object.keys(src)]).forEach(k => {
+      if (!dst[k]) dst[k] = new Array(n0).fill(null);
+      const col = src[k] || new Array(n1).fill(null);
+      for (let i = 0; i < n1; i++) dst[k].push(col[i]);
+    });
+  };
+  app(T, part.types, NT); app(P, part.pitchers, NP);
+  (part.tcomps || []).forEach(c => D.tcomps.push(c));
+  if (part.tcomps_aaa) D.tcomps_aaa = part.tcomps_aaa;
+  if (part.movement) MV_PARTS.push(part.movement);
+  if (part.flight) TJ_PARTS.push(part.flight);
+  indexData();
+  // things already on screen that count rows or can show the new level's pitches (a selected pitcher's other-seasons
+  // path); an open card is redrawn only if its pitcher types changed, keeping its scroll position
+  const cardOpen = state.sel !== null && state.sel !== undefined && !state.preview;
+  const typesBefore = cardOpen ? typesLine(state.sel) : "";
+  syncArchetype(); renderSaved();
+  if (state.slidersOpen) buildSliders();
+  render();
+  if (cardOpen && typesLine(state.sel) !== typesBefore) { const el = $("#detail"), top = el.scrollTop; renderDetail(); el.scrollTop = top; }
+}
 const MIN_N = [40, 100, 200, 400, 800];
 // the wheel scrolls the page; zooming the map takes this key (or a trackpad pinch, which browsers send as Ctrl+wheel)
 const ZOOM_KEY = /Mac|iPhone|iPad/.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "") ? "⌘" : "Ctrl";
@@ -2207,16 +2290,16 @@ const VALUE_MIN_IP = 20, VALUE_TOP = 0.10, VALUE_SHRINK_IP = 50;
 const BEST_VALUE = { id: "best-value", name: "Best value", special: "value", all: [],
   def: `${VALUE_MIN_IP}+ innings across ${Math.min(...D.seasons)}–${String(Math.max(...D.seasons)).slice(2)} and in the top ${VALUE_TOP * 100}% for trailing his lookalikes' xERA, with more innings counting for more: similar stuff, better results elsewhere.` };
 ARCH.splice(1, 0, BEST_VALUE);
-// pooled gap per pitcher, copied onto each of his seasons so it can be shown and slid
-P.look_gap_3y = new Array(NP).fill(null); P.ip_3y = new Array(NP).fill(null);
-(() => {
+// pooled gap per pitcher, copied onto each of his seasons so it can be shown and slid (run by indexData)
+function pooledGaps() {
+  P.look_gap_3y = new Array(NP).fill(null); P.ip_3y = new Array(NP).fill(null);
   const acc = new Map();
   for (let i = 0; i < NP; i++) {
     if (!isNum(P.look_gap[i]) || !isNum(P.ip[i]) || P.ip[i] <= 0) continue;
     const a = acc.get(P.pitcher[i]) || { s: 0, ip: 0 }; a.s += P.look_gap[i] * P.ip[i]; a.ip += P.ip[i]; acc.set(P.pitcher[i], a);
   }
   for (let i = 0; i < NP; i++) { const a = acc.get(P.pitcher[i]); if (a) { P.look_gap_3y[i] = a.s / a.ip; P.ip_3y[i] = a.ip; } }
-})();
+}
 let VAL = null;
 function valueHits() {
   if (VAL) return VAL;
@@ -2699,7 +2782,7 @@ function wrapTitle(t, n = 22) {
 const K_SHOWN = 10;   // displayed comps; D.tcomps holds a 30-pitcher neighbourhood
 // Which pool a pitch's comps come from: MLB always for an MLB pitch; a Triple-A pitch can switch to
 // its lookalikes among Triple-A pitchers (D.tcomps_aaa). Lookalike xERA and the 30-neighbourhood stay MLB.
-const hasAaaComps = r => !!(D.tcomps_aaa && D.tcomps_aaa[r] && D.tcomps_aaa[r].length);
+const hasAaaComps = r => !levelLoaded("aaa") ? LEVELS.includes("aaa") : !!(D.tcomps_aaa && D.tcomps_aaa[r] && D.tcomps_aaa[r].length);
 const compPoolOf = r => state.compPool === "aaa" && hasAaaComps(r) ? "aaa" : "mlb";
 const compsOf = (view, r) => ((compPoolOf(r) === "aaa" ? D.tcomps_aaa : D.tcomps)[r] || []).slice(0, K_SHOWN);
 const compTolOf = r => compPoolOf(r) === "aaa" ? T.comp_tol_aaa[r] : T.comp_tol[r];
@@ -2709,6 +2792,7 @@ const poolSegHTML = r => !hasAaaComps(r) ? "" : ["mlb", "aaa"].map(v =>
   `<button type="button" data-pool="${v}" aria-pressed="${compPoolOf(r) === v}" title="${v === "mlb" ? "The big-league pitchers his pitch most resembles" : "The Triple-A pitchers his pitch most resembles"}">${POOL_LABEL[v]}</button>`).join("");
 function setCompPool(v) {
   if (v !== "mlb" && v !== "aaa" || v === state.compPool) return;
+  if (v === "aaa" && !levelLoaded("aaa")) { ensureLevel("aaa").then(ok => { if (ok) setCompPool(v); }); return; }
   state.compPool = v; render(); renderDetail();
 }
 
@@ -2924,7 +3008,7 @@ function renderMatchList() {
 }
 
 const lastName = n => { const w = String(n).split(" "); return w.length > 1 ? w.slice(1).join(" ") : n; };
-const ALL_P = Array.from({ length: NP }, (_, k) => k).filter(k => P.level[k] === "mlb");   // pitcher-level pools: MLB
+let ALL_P = [];   // pitcher-level pools: MLB (filled by indexData)
 const SHAPE_DIFFS = [
   ["velo", 1, "mph", d => d > 0 ? "is harder" : "is softer"],
   // wording follows which side of zero the pitch lives on: a curve's "ride" is drop, a sweeper's break is glove-side
@@ -3087,11 +3171,15 @@ const FL = { Y_REF: 50, PLATE_Y: 1.417, BALL_R: 0.12, FPS: 30, SLOW: 6, HOLD0: 0
 let TJ = null, FLS = null;   // decoded trajectories; the running animation
 function flightData() {
   if (TJ) return TJ;
-  const f = D.flight;
+  const f = TJ_PARTS[0];
   if (!f || !f.b64) return (TJ = { none: true });
-  const bin = atob(f.b64), n = bin.length / 2, a = new Int16Array(n);
-  for (let k = 0; k < n; k++) a[k] = bin.charCodeAt(2 * k) | (bin.charCodeAt(2 * k + 1) << 8);   // little-endian; the store wraps to signed
-  return (TJ = { a, nc: f.cols.length, scale: f.scale, na: f.na, league: f.league, zone: f.zone });
+  const parts = TJ_PARTS.map(p => {
+    const bin = atob(p.b64 || ""), n = bin.length / 2, a = new Int16Array(n);
+    for (let k = 0; k < n; k++) a[k] = bin.charCodeAt(2 * k) | (bin.charCodeAt(2 * k + 1) << 8);   // little-endian; the store wraps to signed
+    return a;
+  });
+  const a = new Int16Array(parts.reduce((n, p) => n + p.length, 0)); let o = 0; parts.forEach(p => { a.set(p, o); o += p.length; });
+  return (TJ = { a, nc: f.cols.length, scale: f.scale, na: f.na, league: f.league, zone: f.zone });   // league paths and zone: MLB's, in the first part
 }
 // the nine parameters of type row j (release x, y, z, vx0, vy0, vz0, ax, ay, az), or null without a trajectory
 function trajOf(j) {
@@ -3270,11 +3358,16 @@ const SAVANT_LIGHT = new Set(["SL", "ST", "CU", "SI", "CH", "FS"]);   // pitch c
 let MV = null;   // decoded on first use: int8 half-inches, stored in the catcher's view (raw pfx_x); charts negate x
 function movementData() {
   if (MV) return MV;
-  const m = D.movement || { counts: [], b64: "" }, bin = atob(m.b64), n = bin.length, a = new Int8Array(n);
-  for (let k = 0; k < n; k++) { const c = bin.charCodeAt(k); a[k] = c > 127 ? c - 256 : c; }
-  const off = new Int32Array(m.counts.length + 1);
-  m.counts.forEach((c, k) => { off[k + 1] = off[k] + c; });
-  MV = { x: a.subarray(0, n / 2), z: a.subarray(n / 2), off };
+  const counts = [], xs = [], zs = [];
+  for (const m of (MV_PARTS.length ? MV_PARTS : [{ counts: [], b64: "" }])) {   // each part: its counts, then all x, then all z
+    const bin = atob(m.b64 || ""), n = bin.length, a = new Int8Array(n);
+    for (let k = 0; k < n; k++) { const c = bin.charCodeAt(k); a[k] = c > 127 ? c - 256 : c; }
+    (m.counts || []).forEach(c => counts.push(c)); xs.push(a.subarray(0, n / 2)); zs.push(a.subarray(n / 2));
+  }
+  const cat = ps => { if (ps.length === 1) return ps[0]; const out = new Int8Array(ps.reduce((n, p) => n + p.length, 0)); let o = 0; ps.forEach(p => { out.set(p, o); o += p.length; }); return out; };
+  const off = new Int32Array(counts.length + 1);
+  counts.forEach((c, k) => { off[k + 1] = off[k] + c; });
+  MV = { x: cat(xs), z: cat(zs), off };
   return MV;
 }
 const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
@@ -3724,15 +3817,20 @@ function onZoom(e) {
 
 function setLevel(level, keepSel) {
   if (!LEVELS.includes(level) || level === state.level) return;
+  if (!levelLoaded(level)) { ensureLevel(level).then(ok => { if (ok) setLevel(level, keepSel); }); return; }
   state.level = level;
   if (!keepSel) { state.sel = null; state.preview = false; state.showComps = false; }
   syncLevel(); writeHash(state.view);
   render(); renderDetail();
 }
-function syncLevel() {
+function syncLevel(loading) {
   const seg = $("#lvlSeg"); if (!seg) return;
   seg.hidden = LEVELS.length < 2;
-  seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === state.level)));
+  seg.querySelectorAll("button").forEach(b => {
+    b.setAttribute("aria-pressed", String(b.dataset.v === state.level));
+    if (!b.dataset.label) b.dataset.label = b.textContent;
+    b.disabled = b.dataset.v === loading; b.textContent = b.dataset.v === loading ? "Loading…" : b.dataset.label;
+  });
 }
 const writeHash = view => { const h = (state.level === LEVELS[0] ? "" : state.level + "/") + view; try { history.replaceState(null, "", "#" + h); } catch (e) { location.hash = h; } };
 // "#FF" or "#aaa/FF": the view, with the level in front when it is not the first one
@@ -4375,23 +4473,18 @@ function buildStatic() {
 
   // Suggestions as you type: every pitcher whose name contains the typed letters (accents ignored),
   // with his hand and latest season; arrows move, Enter or a click picks, Escape closes.
-  const fold = s => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-  const latest = {};   // name -> newest pitcher-season row
-  for (let i = 0; i < P.name.length; i++) { const k = latest[P.name[i]];
-    if (k === undefined || P.season[i] > P.season[k] || (P.season[i] === P.season[k] && P.level[i] === "mlb" && P.level[k] !== "mlb")) latest[P.name[i]] = i; }
-  const names = Object.keys(latest).sort((a, b) => a.localeCompare(b)), folded = names.map(fold);
   const sInp = $("#search"), sList = $("#sugg");
   let sCur = -1;
   const suggClose = () => { sList.hidden = true; sList.innerHTML = ""; sInp.setAttribute("aria-expanded", "false"); sInp.removeAttribute("aria-activedescendant"); sCur = -1; };
   const suggMark = () => sList.querySelectorAll("li[data-n]").forEach((li, k) => { li.setAttribute("aria-selected", String(k === sCur)); if (k === sCur) { sInp.setAttribute("aria-activedescendant", li.id); if (li.scrollIntoView) li.scrollIntoView({ block: "nearest" }); } });
   const suggest = () => {
     const q = fold(sInp.value.trim()); if (!q) { suggClose(); return; }
-    const hits = [];
+    const { names, folded, latest } = suggIndex(), hits = [];
     for (let k = 0; k < names.length && hits.length < 10; k++) if (folded[k].includes(q)) hits.push(k);
     hits.sort((a, b) => (folded[a].startsWith(q) ? 0 : 1) - (folded[b].startsWith(q) ? 0 : 1));   // name-start matches first
     sList.innerHTML = hits.length ? hits.map((k, m) => {
       const n = names[k], at = folded[k].indexOf(q), i = latest[n];
-      const sub = `${P.p_throws ? P.p_throws[i] + "HP · " : ""}${P.season[i]}${P.level[i] === "mlb" ? "" : " " + (LVL_NAME[P.level[i]] || P.level[i])}`;
+      const sub = `${i.throws ? i.throws + "HP · " : ""}${i.season}${i.level === "mlb" ? "" : " " + (LVL_NAME[i.level] || i.level)}`;
       return `<li id="sugg-${m}" role="option" data-n="${esc(n)}" aria-selected="false">${esc(n.slice(0, at))}<mark>${esc(n.slice(at, at + q.length))}</mark>${esc(n.slice(at + q.length))}<span class="sg-sub">${esc(sub)}</span></li>`;
     }).join("") : `<li class="none">No pitcher named “${esc(sInp.value.trim())}”</li>`;
     sList.hidden = false; sInp.setAttribute("aria-expanded", "true"); sCur = -1;
@@ -4415,6 +4508,11 @@ function buildStatic() {
     const view = state.view, tab = T;
     let cands = viewRows(view).filter(r => fold(tab.name[r]) === n);
     if (!cands.length) cands = viewRows(view).filter(r => fold(tab.name[r]).includes(n));
+    // a name only at a level that has not loaded yet: load it, then look again
+    if (!cands.length) {
+      const lv = Object.keys(LAZY_NAMES).find(l => !levelLoaded(l) && LAZY_NAMES[l].some(x => fold(x[1]).includes(n)));
+      if (lv) { ensureLevel(lv).then(ok => { if (ok) { e.target.value = q; e.target.dispatchEvent(new Event("change")); } }); return; }
+    }
     // the level on screen first; a name only found at the other level switches the maps there
     const here = cands.filter(r => T.level[r] === state.level);
     if (here.length) cands = here; else if (cands.length) setLevel(T.level[cands[0]], true);
@@ -4468,6 +4566,19 @@ function buildStatic() {
 
   window.addEventListener("hashchange", () => { const { level, view: v } = parseHash(); if (level !== state.level) setLevel(level); if (VIEWS[v] && v !== state.view) setView(v); });
 }
+// the search index: every pitcher once with his newest season (MLB first on a tie), including the pitchers of a
+// level that has not loaded yet; rebuilt after a level loads
+let SUG = null;
+function suggIndex() {
+  if (SUG) return SUG;
+  const latest = {};   // name -> { season, throws, level }
+  const take = (name, season, throws, level) => { const k = latest[name];
+    if (!k || season > k.season || (season === k.season && level === "mlb" && k.level !== "mlb")) latest[name] = { season, throws, level }; };
+  for (let i = 0; i < P.name.length; i++) take(P.name[i], P.season[i], P.p_throws ? P.p_throws[i] : null, P.level[i]);
+  for (const l of Object.keys(LAZY_NAMES)) if (!levelLoaded(l)) for (const [, name, season, throws] of LAZY_NAMES[l]) take(name, season, throws, l);
+  const names = Object.keys(latest).sort((a, b) => a.localeCompare(b));
+  return (SUG = { latest, names, folded: names.map(fold) });
+}
 
 // ------------------------------------------------------ live free agents
 // The list baked in at build time goes stale as players sign. MLB's Stats API allows
@@ -4488,6 +4599,7 @@ async function refreshFreeAgents() {
     const rows = (await res.json()).freeAgents;
     if (!Array.isArray(rows) || !rows.length) throw new Error("empty list");
     const onMap = new Set(T.pitcher.map(String)), next = {};
+    for (const l of Object.keys(LAZY_NAMES)) if (!levelLoaded(l)) LAZY_NAMES[l].forEach(x => onMap.add(String(x[0])));
     for (const r of rows) {
       const id = r.player && String(r.player.id);
       if (!id || !onMap.has(id)) continue;
@@ -4506,12 +4618,15 @@ async function refreshFreeAgents() {
 
 // -------------------------------------------------------------------- boot
 (function boot() {
+  indexData();
   buildStatic();
   // Open on the map alone: the card and comps columns appear once a pitcher is clicked
   state.sel = null;
   const { level, view: h } = parseHash();
-  state.level = level; syncLevel();
+  state.level = levelLoaded(level) ? level : LEVELS[0]; syncLevel();
   setView(VIEWS[h] ? h : "all", null);
+  if (level !== state.level) setLevel(level);
   refreshFreeAgents();
+  Object.keys(LAZY).forEach(l => ensureLevel(l));   // Triple-A in the background, now that the map is up
 })();
 </script>
