@@ -193,8 +193,14 @@ button, input, select { font: inherit; color: inherit; }
 .mbadd { flex: none; margin-right: 10px; font: 600 13px var(--font-ui); min-height: 28px; padding: 0 10px; border-radius: 6px; border: 1.5px solid var(--map-muted); background: none; color: var(--map-ink); cursor: pointer; }
 .mbadd:hover { background: var(--map-hover); }
 .mbadd[aria-pressed="true"] { background: var(--field); color: var(--ink); border-color: var(--field); }
-#mbList button[data-mb], #cbList button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 0; background: none; padding: 5px 12px; cursor: pointer; border-top: 1px solid var(--map-hair); color: inherit; }
-#mbList button[data-mb]:hover, #cbList button:hover { background: var(--map-hover); }
+#cbList li { display: flex; align-items: center; border-top: 1px solid var(--map-hair); }
+#cbList button[data-cbp] { flex: 1 1 auto; min-width: 0; border-top: 0 !important; }
+#savedBox { overflow-y: auto; overscroll-behavior: contain; }
+#savedBox .rp-list, #savedBox #svList { overflow: visible; flex: none; }
+.svlook { flex: none; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--map-line); }
+.svlook[hidden] { display: none; }
+#mbList button[data-mb], #cbList button[data-cbp] { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 0; background: none; padding: 5px 12px; cursor: pointer; border-top: 1px solid var(--map-hair); color: inherit; }
+#mbList button[data-mb]:hover, #cbList button[data-cbp]:hover { background: var(--map-hover); }
 #mbList button[data-mb].on { background: var(--field); }
 #mbList button[data-mb].on .mbn, #mbList button[data-mb].on .mbm { color: var(--ink); }
 .mbn { display: block; font: 600 14px var(--font-ui); color: var(--map-ink); }
@@ -1203,7 +1209,6 @@ tr.self td { font-weight: 600; background: none; }
     <aside class="mrail" id="rail" aria-label="Pitchers, comps and groups" hidden>
       <div class="railtabs" role="tablist">
         <button type="button" class="railtab" role="tab" id="tabPitchers" data-tab="pitchers" aria-selected="false" aria-controls="matchBox">Pitchers</button>
-        <button type="button" class="railtab" role="tab" id="tabComps" data-tab="comps" aria-selected="false" aria-controls="compBox">Comps</button>
         <button type="button" class="railtab" role="tab" id="tabGroups" data-tab="groups" aria-selected="false" aria-controls="savedBox">Groups</button>
         <button type="button" class="railx" id="railClose" aria-label="Close the panel" title="Close">×</button>
       </div>
@@ -1218,24 +1223,24 @@ tr.self td { font-weight: 600; background: none; }
         <input id="mbSearch" type="search" placeholder="Filter names" autocomplete="off" aria-label="Filter the list by name">
         <ol class="rp-list" id="mbList"></ol>
       </section>
-      <section class="railpane" id="compBox" role="tabpanel" aria-label="Similar pitchers" hidden>
-        <div class="rp-head" id="cbTitle"></div>
-        <div class="cbchips" id="cbChips" role="group" aria-label="Comps for which of his pitches"></div>
-        <div class="cbchips" id="cbPool" role="group" aria-label="Comps among which pitchers" hidden></div>
-        <p class="rp-help" id="cbHelp"></p>
-        <div class="rp-acts"><button type="button" class="obtn" id="cbSave" title="Keep him and these comps as a named group: a region on the map, with everyone inside it listed">Save as group</button></div>
-        <ol class="rp-list" id="cbList"></ol>
-      </section>
       <section class="railpane" id="savedBox" role="tabpanel" aria-labelledby="svTitle" hidden>
-        <div class="rp-head"><span id="svTitle">Your groups</span> <span class="rp-n" id="svCount"></span></div>
-        <div class="rp-acts"><button type="button" class="obtn" id="svOnly" aria-pressed="false" title="Keep the pitchers in your groups in color and gray out everyone else">Highlight my groups</button></div>
+        <section class="svlook" id="compBox" aria-label="Lookalikes of the selected pitcher" hidden>
+          <div class="rp-head" id="cbTitle"></div>
+          <div class="cbchips" id="cbChips" role="group" aria-label="Lookalikes for which of his pitches"></div>
+          <div class="cbchips" id="cbPool" role="group" aria-label="Lookalikes among which pitchers" hidden></div>
+          <p class="rp-help" id="cbHelp"></p>
+          <div class="rp-acts"><button type="button" class="obtn" id="cbSave" title="Keep him and these lookalikes as a named group: a region on the map, with everyone inside it listed">Save as group</button></div>
+          <ol class="rp-list" id="cbList"></ol>
+        </section>
         <section class="svnew" id="svNew" aria-label="New group" hidden>
           <div class="svnew-head"><b>New group</b> <span class="rp-n" id="svNewN"></span></div>
           <ul class="svnew-list" id="svNewList"></ul>
           <div class="svnew-acts"><input type="text" class="svnew-name" id="svNewName" maxlength="60" aria-label="Name for the new group" placeholder="Name it">
             <button type="button" class="obtn" id="svNewSave">Save as group</button><button type="button" class="obtn" id="svNewClear">Clear</button></div>
         </section>
-        <p class="rp-help" id="svEmpty">No groups yet. Pick pitchers with Add (in the Pitchers list or on a pitcher’s profile) or Draw a group on the map, or save a pitcher list or a pitcher’s lookalikes. A group is a region of the map: it is circled on the pitch type it was built on, and this panel lists everyone inside it, at either level.</p>
+        <div class="rp-head"><span id="svTitle">Your groups</span> <span class="rp-n" id="svCount"></span></div>
+        <div class="rp-acts"><button type="button" class="obtn" id="svOnly" aria-pressed="false" title="Keep the pitchers in your groups in color and gray out everyone else">Highlight my groups</button></div>
+        <p class="rp-help" id="svEmpty">No groups yet. Select a pitcher and his lookalikes appear above, ready to save; or pick pitchers with Add (in the Pitchers list, on a profile or beside a lookalike) or Draw a group on the map; or save a highlighted pitcher list. A group is a region of the map: it is circled on the pitch type it was built on, and this panel lists everyone inside it, at either level.</p>
         <ul id="svList"></ul>
         <p class="sv-undo" id="svUndo" hidden></p>
       </section>
@@ -2035,31 +2040,31 @@ function hideToast() {
 // The rail docked on the map's right: Pitchers (the highlighted list), Comps (a previewed pitcher's lookalikes),
 // Groups. It opens by itself when a list appears, comps are asked for or a group is saved; × closes it and the
 // tabs stay available as pills under the toolbar.
-const RAIL_TABS = ["pitchers", "comps", "groups"];
+const RAIL_TABS = ["pitchers", "groups"];   // a pitcher's lookalikes live at the top of Groups
 function railOpen(tab) { state.rail.open = true; if (tab) state.rail.tab = tab; syncRail(); }
 function railClose() { state.rail.open = false; if (state.showComps && state.preview) { state.showComps = false; render(); } else syncRail(); }
 function syncRail() {
   const n = state.mbRows ? state.mbRows.length : 0, nG = saved.length;
-  const can = { pitchers: true, comps: true, groups: true };
+  const can = { pitchers: true, groups: true };
   const open = !!state.rail.open;
   $("#rail").hidden = !open;
-  const label = { pitchers: `Pitchers${n ? ` <b>${n.toLocaleString()}</b>` : ""}`, comps: "Comps", groups: `Groups${nG ? ` <b>${nG}</b>` : ""}` };
+  const label = { pitchers: `Pitchers${n ? ` <b>${n.toLocaleString()}</b>` : ""}`, groups: `Groups${nG ? ` <b>${nG}</b>` : ""}` };
   RAIL_TABS.forEach(t => {
     const b = $("#tab" + t[0].toUpperCase() + t.slice(1));
     b.disabled = !can[t]; b.innerHTML = label[t]; b.setAttribute("aria-selected", String(open && state.rail.tab === t));
   });
   $("#matchBox").hidden = !(open && state.rail.tab === "pitchers");
-  $("#compBox").hidden = !(open && state.rail.tab === "comps");
+  $("#compBox").hidden = !compsOnMap();   // his lookalikes, at the top of Groups, while a pitcher is selected
   $("#savedBox").hidden = !(open && state.rail.tab === "groups");
   $("#railPills").hidden = open;
   $("#railPills").innerHTML = RAIL_TABS.filter(t => can[t]).map(t => `<button type="button" class="pill" data-tab="${t}">${label[t]}</button>`).join("");
   if (!$("#matchBox").hidden && state.mbDirty) renderMatchList();
-  if (!$("#compBox").hidden) renderCompBox();
+  if (!$("#savedBox").hidden && !$("#compBox").hidden) renderCompBox();
 }
-// Opening a tab: Comps also numbers the selected pitcher's lookalikes on the map; leaving it takes them off.
+// Opening a tab: Groups also numbers the selected pitcher's lookalikes on the map; leaving it takes them off.
 function setRailTab(t) {
   state.rail.open = true; state.rail.tab = t;
-  const wantComps = t === "comps" && !!state.preview && state.sel !== null && state.sel !== undefined;
+  const wantComps = t === "groups" && !!state.preview && state.sel !== null && state.sel !== undefined;
   if (!!state.showComps !== wantComps && state.preview) { state.showComps = wantComps; render(); } else syncRail();
 }
 
@@ -4003,7 +4008,7 @@ function select(r) {
 function preview(r) {
   followLevel(r);
   if (r !== state.sel) remember(state.view, state.sel, r);
-  state.preview = true; state.showComps = !!(state.rail.open && state.rail.tab === "comps"); state.sel = r;
+  state.preview = true; state.showComps = !!(state.rail.open && state.rail.tab === "groups"); state.sel = r;
   render(); renderDetail();
   if (state.simOpen) { renderSim(); return; }
   const b = $("#ctaOpen"); if (b && !$("#selCta").hidden) b.focus({ preventScroll: true });
@@ -4035,7 +4040,7 @@ const compsOnMap = () => !!state.preview && !!state.showComps && state.sel !== n
 function toggleComps() {
   if (state.sel === null || state.sel === undefined) return;
   state.showComps = !state.showComps;
-  if (state.showComps) railOpen("comps");
+  if (state.showComps) railOpen("groups");
   render();
 }
 function renderCompBox() {
@@ -4061,7 +4066,8 @@ function renderCompBox() {
     : "No comps for this pitch.";
   $("#cbSave").hidden = !comps.length; syncCompsSaveButtons();
   $("#cbList").innerHTML = comps.map(([c, q], k) => `<li><button type="button" data-cbp="${c}"><span class="cbn">${k + 1}</span>`
-    + `<span><span class="mbn">${esc(T.name[c])}</span><span class="mbm">${T.season[c]} · ${esc(teamStr(c))} · ${fitOf(q)[1]} fit</span></span></button></li>`).join("");
+    + `<span><span class="mbn">${esc(T.name[c])}</span><span class="mbm">${T.season[c]} · ${esc(teamStr(c))} · ${fitOf(q)[1]} fit</span></span></button>`
+    + `<button type="button" class="mbadd" data-pick="${c}" aria-pressed="${state.picks.has(c)}" title="Pick him for a new group">${state.picks.has(c) ? "Added" : "Add"}</button></li>`).join("");
 }
 function syncCta() {
   const r = state.sel, on = !!state.preview && r !== null && r !== undefined, box = $("#selCta");
@@ -4711,8 +4717,8 @@ function buildStatic() {
   $("#ctaOpen").addEventListener("click", openCard);
   $("#ctaSim").addEventListener("click", () => {   // Create Lookalike Group: him + his closest comps, shown in the Groups panel
     const r = state.sel; if (r === null || r === undefined) return;
-    if (compsSavedId(r)) railOpen("groups"); else saveCompsGroup(r);
-    syncCta();
+    if (!compsSavedId(r)) saveCompsGroup(r);
+    setRailTab("groups"); syncCta();
   });
   $("#ctaFly").addEventListener("click", toggleSim);
   document.addEventListener("keydown", e => { if (e.key === "Escape" && state.simOpen) { e.preventDefault(); closeSim(); $("#ctaFly").focus({ preventScroll: true }); } });
