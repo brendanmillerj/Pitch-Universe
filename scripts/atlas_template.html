@@ -130,6 +130,10 @@ button, input, select { font: inherit; color: inherit; }
 .tcsub { margin-top: 8px; font: 600 13px var(--font-ui); color: var(--ink2); }
 .typecol .mseg { display: flex; }
 .typecol .mseg button { flex: 1 1 0; padding: 0 4px; }
+.typecol .tcsel { display: block; }
+.typecol .tcsel select { width: 100%; max-width: none; padding: 0 28px 0 10px; }
+.typecol .tcsel select:disabled { color: var(--muted); cursor: default; }
+.tcnote { font: 400 12px/1.35 var(--font-ui); color: var(--ink2); }
 /* map controls off the map: light outline buttons, the chosen one filled in ink */
 .maptool .dimseg, .maptool .ellp, .typecol .mseg { border-color: var(--ink); background: var(--field); }
 .maptool .dimseg button, .maptool .ellp button, .typecol .mseg button { color: var(--ink); }
@@ -1588,6 +1592,10 @@ tr.self td { font-weight: 600; background: none; }
           <button type="button" id="thR" data-v="R" aria-label="Right-handed pitchers">RHP</button>
           <button type="button" id="thL" data-v="L" aria-label="Left-handed pitchers">LHP</button>
         </div>
+        <label class="tcsub" for="minIP">Innings that season</label>
+        <span class="sel mselect tcsel"><select id="minIP" aria-describedby="ipNote" title="Keep only pitchers who threw at least this many innings in the season each dot is from">
+          <option value="0">Any</option><option value="10">10+ IP</option><option value="20">20+ IP</option><option value="40">40+ IP</option><option value="60">60+ IP</option><option value="100">100+ IP</option><option value="150">150+ IP</option></select></span>
+        <span class="tcnote" id="ipNote" hidden>No innings counts for Triple-A, so this applies to MLB only.</span>
       </div>
       <div class="plotarea" id="plotArea">
         <div id="plot"></div>
@@ -2079,7 +2087,7 @@ function visibleRows(view) {
   return viewRows(view).filter(r => T.level[r] === state.level && state.seasons.has(T.season[r])
     && (state.throws === "all" || T.p_throws[r] === state.throws) && T.n[r] >= state.minN
     && (state.team === "all" || tOrgs[r].includes(state.team))
-    && (state.minIP === 0 || tIP[r] >= state.minIP)
+    && (state.minIP === 0 || T.level[r] !== "mlb" || tIP[r] >= state.minIP)   // innings in that dot's own season; Triple-A has no counts
     && (!state.onlyGroup || inOnlyGroup(r)));
 }
 // "Only these" on a group: the map (and the lists) keep only that group's pitchers
@@ -3064,7 +3072,7 @@ function syncFA() {
 // Anything narrowing the map that "Reset filters" clears
 const anyFilter = () => Object.keys(state.ranges).length > 0 || !!state.archetype
   || state.fa !== "all" || !!(state.keyRange && (state.keyRange.lo > 0 || state.keyRange.hi < 1))
-  || state.seasons.size !== D.seasons.length || state.throws !== "all" || !!state.groupsHi || !!state.onlyGroup;
+  || state.seasons.size !== D.seasons.length || state.throws !== "all" || state.minIP > 0 || !!state.groupsHi || !!state.onlyGroup;
 const andMatch = (a, b) => a && b ? r => a(r) && b(r) : a || b;
 function typesLine(j) {
   const names = archNames(j);
@@ -5456,7 +5464,14 @@ function setLevel(level, keepSel) {
   syncLevel(); writeHash(state.view);
   render(); renderDetail();
 }
+// Innings that season: the left column's select; disabled on the Triple-A map, which has no innings counts
+function syncIPSel() {
+  const sel = $("#minIP"); if (!sel) return;
+  sel.value = String(state.minIP || 0);
+  const aaa = state.level !== "mlb"; sel.disabled = aaa; $("#ipNote").hidden = !aaa;
+}
 function syncLevel(loading) {
+  syncIPSel();
   const seg = $("#lvlSeg"); if (!seg) return;
   seg.hidden = LEVELS.length < 2;
   seg.querySelectorAll("button").forEach(b => {
@@ -6023,6 +6038,7 @@ function buildStatic() {
   $("#throwsSeg").querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
     state.throws = b.dataset.v; syncThrows(); render();
   }));
+  $("#minIP").addEventListener("change", e => { state.minIP = +e.target.value || 0; syncIPSel(); render(); });
   $("#lvlSeg").querySelectorAll("button").forEach(b => b.addEventListener("click", () => setLevel(b.dataset.v)));
   syncLevel();
 
@@ -6172,7 +6188,7 @@ function buildStatic() {
     state.archetype = ""; $("#ptype").value = ""; syncArchetype();
     state.fa = "all"; syncFA();
     if (state.keyRange) { state.keyRange.lo = 0; state.keyRange.hi = 1; }
-    state.seasons = new Set(D.seasons); state.throws = "all"; syncSeasons(); syncThrows();
+    state.seasons = new Set(D.seasons); state.throws = "all"; syncSeasons(); syncThrows(); state.minIP = 0; syncIPSel();
     state.groupsHi = false; syncGroupsHi(); state.onlyGroup = null; OG = null; renderSaved();
     if (state.slidersOpen) buildSliders();
     render(); renderDetail();
@@ -6183,7 +6199,7 @@ function buildStatic() {
     state.sel = null; state.preview = false; state.showComps = false; state.sim = null;
     state.ranges = {}; state.archetype = ""; $("#ptype").value = ""; syncArchetype();
     state.fa = "all"; syncFA(); state.keyRange = null;
-    state.seasons = new Set(D.seasons); state.throws = "all"; syncSeasons(); syncThrows();
+    state.seasons = new Set(D.seasons); state.throws = "all"; syncSeasons(); syncThrows(); state.minIP = 0; syncIPSel();
     state.groupsHi = false; syncGroupsHi(); state.onlyGroup = null; OG = null; state.lookTbl = null; syncTable(); renderSaved();
     state.color = { all: "cat:pitch_type", t: "cat:pitch_type" }; state.op = "none"; state.explainOpen = false;
     state.ellipses = false; state.lasso = false; hideToast();
