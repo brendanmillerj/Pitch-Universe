@@ -4271,6 +4271,15 @@ function simScoreCards(j, S) {
   const order = [...byT.keys()].sort((a, b) => (b === T.pitch_type[j]) - (a === T.pitch_type[j]));   // the pitch he was opened on first, then his usage order
   return order.map(t => { const cols = byT.get(t).slice().sort((a, b) => (b.who === j) - (a.who === j) || a.dashed - b.dashed); return { t, cols: cols.slice(0, 3), more: cols.length - 3 }; });
 }
+// Δ colour: the Savant scale, red where the second pitcher's value is higher and blue where it is lower, deeper for a
+// bigger gap measured in league spreads (SD among same-handed MLB pitchers' pitches of that type; full colour at 1.5)
+const SC_COL = { mph: "velo", ivb: "ivb", hb: "hb", relH: "rel_height", relS: "rel_side", ext: "extension", arm: "arm_angle", spin: "spin", vaa: "vaa" };
+const SC_FULL = 1.5;
+function scSD(t, hand, k) {
+  const c = SC_COL[k]; if (!c || !T[c] || !typeRows[t]) return null;
+  const rows = typeRows[t].filter(r => T.p_throws[r] === hand);
+  return leagueSD(`sc|${t}|${hand}|${k}`, rows, k === "relS" ? r => isNum(T[c][r]) ? Math.abs(T[c][r]) : null : r => T[c][r]);
+}
 function simScoreHTML(j, S) {
   const cards = simScoreCards(j, S);
   if (!cards.length) return `<p class="labnote">Nothing to show: turn on a pitch above.</p>`;
@@ -4281,15 +4290,21 @@ function simScoreHTML(j, S) {
     const two = cols.length === 2, a = cols[0], b = cols[1];
     const body = SC_ROWS.map(([k, l, d, u]) => {
       let dlt = "";
-      if (two && isNum(a.v[k]) && isNum(b.v[k])) dlt = (k === "relH" || k === "relS") && b.matched && normAxis(k) ? `<span class="dlt">matched</span>`
-        : `<span class="dlt">${b.v[k] - a.v[k] >= 0 ? "+" : "−"}${Math.abs(b.v[k] - a.v[k]).toFixed(d)}</span>`;
+      if (two && isNum(a.v[k]) && isNum(b.v[k])) {
+        if ((k === "relH" || k === "relS") && b.matched && normAxis(k)) dlt = `<span class="dlt">matched</span>`;
+        else {
+          const dv = b.v[k] - a.v[k], hand = T.p_throws[j], sd = scSD(t, hand, k), z = sd ? dv / sd : 0, pp = 50 + 50 * Math.max(-1, Math.min(1, z / SC_FULL));
+          const tip = `${lastName(T.name[b.who])} ${Math.abs(dv).toFixed(d)} ${u} ${dv >= 0 ? "higher" : "lower"} than ${lastName(T.name[a.who])}: ${Math.abs(z).toFixed(1)} league SD among ${hand}HP ${PTN[t].toLowerCase()}s`;
+          dlt = `<span class="dlt" style="background:${savantColor(pp)};color:${savantInk(pp)}" title="${esc(tip)}">${dv >= 0 ? "+" : "−"}${Math.abs(dv).toFixed(d)}</span>`;
+        }
+      }
       return `<tr><th scope="row">${l} <span class="tm">${u}</span></th>${cols.map(o => `<td class="num">${num(o.v[k], d)}</td>`).join("")}${two ? `<td class="num">${dlt}</td>` : ""}</tr>`;
     }).join("");
     let foot = "";
     if (more > 0) foot += `<p class="scfoot">${more} more ${PTN[t].toLowerCase()}${more > 1 ? "s" : ""} in the table below.</p>`;
     const widths = two ? [34, 24, 24, 18] : [40, ...cols.map(() => Math.floor(60 / cols.length))];   // percent: label, values, Δ
     const colg = `<colgroup>${widths.map(w => `<col style="width:${w}%">`).join("")}</colgroup>`;
-    return `<div class="simsc"><div class="schead"><i class="psw" style="background:${SAVANT_PITCH[t]}"></i><b>${PTN[t]}</b></div><table class="simtab sctab">${colg}<thead><tr><th scope="col"></th>${cols.map(head).join("")}${two ? `<th scope="col">Δ</th>` : ""}</tr></thead><tbody>${body}</tbody></table>${foot}</div>`;
+    return `<div class="simsc"><div class="schead"><i class="psw" style="background:${SAVANT_PITCH[t]}"></i><b>${PTN[t]}</b></div><table class="simtab sctab">${colg}<thead><tr><th scope="col"></th>${cols.map(head).join("")}${two ? `<th scope="col" title="The second minus the first. Red: higher; blue: lower; deeper colour: a bigger gap for this pitch type (in league spreads among same-handed pitchers)">Δ</th>` : ""}</tr></thead><tbody>${body}</tbody></table>${foot}</div>`;
   }).join("") + (cards.length > 3 ? `<p class="labnote">More pitch types are in the table below.</p>` : "");
 }
 function simLiveText(j, S) {   // the same comparison as one sentence, for screen readers
