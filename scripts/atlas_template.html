@@ -321,6 +321,13 @@ button, input, select { font: inherit; color: inherit; }
 .lk-chips button[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
 #cbPool .poolseg { margin: 0; }
 .lk-help { margin: 0; font: 400 13px/1.4 var(--font-ui); color: var(--ink2); }
+.lk-help:empty { display: none; }
+/* under the list: what he and his lookalikes share, like a saved group's read in the Groups panel (light card colours) */
+.lk-share { border-top: 1px solid var(--line); padding-top: 8px; font: 400 13px/1.45 var(--font-ui); color: var(--ink); }
+.lk-share:empty { display: none; }
+.lk-share .sv-tr-head { margin: 0 0 4px; font: 700 14px var(--font-ui); color: var(--ink); }
+.lk-share .sv-tr li { display: block; padding: 3px 0; border-top: 1px solid var(--line); }
+.lk-share .sv-tr .tm, .lk-share .sv-tr-note { color: var(--ink2); }
 .lk-list { list-style: none; margin: 0; padding: 0; }
 .lk-list li { display: flex; align-items: center; gap: 6px; border-top: 1px solid var(--line); }
 .lk-row { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 6px 4px; border: 0; background: none; color: var(--ink); text-align: left; cursor: pointer; border-radius: var(--r); }
@@ -422,7 +429,6 @@ button, input, select { font: inherit; color: inherit; }
 .simsel select { font: 600 14px var(--font-ui); color: var(--map-ink); background: var(--map-chrome); border: 1.5px solid var(--map-muted); border-radius: var(--r);
   min-height: var(--ctl); padding: 0 12px; max-width: min(56ch, 100%); }
 .simsel select option, .simsel select optgroup { color: var(--ink); background: var(--field); }
-.simover { position: absolute; top: 10px; right: 10px; z-index: 2; display: flex; gap: 6px; }
 .sim-replay { font: 600 14px/1 var(--font-ui); min-height: calc(var(--ctl) - 3px); padding: 0 12px; border-radius: var(--r); border: 1.5px solid var(--map-muted); background: var(--map-chrome); color: var(--map-ink); cursor: pointer; }
 .sim-replay:hover { background: var(--map-hover); }
 .simcv { display: block; width: 100%; border-radius: var(--r); background: var(--map); border: 1px solid var(--map-line); }
@@ -492,18 +498,13 @@ button, input, select { font: inherit; color: inherit; }
 /* the stage */
 .simcvwrap { position: relative; width: fit-content; max-width: 100%; margin: 0 auto; }
 .simcv { max-width: 100%; margin: 0 auto; }
-.simover-l { position: absolute; top: 10px; left: 10px; z-index: 2; display: flex; gap: 6px; }
 .simprimary { background: var(--map-ink); color: var(--map-panel); border-color: var(--map-ink); }
 .simprimary:hover:not(:disabled) { background: #ffffff; border-color: #ffffff; }
 .sim-replay[aria-pressed="true"] { background: var(--field); color: var(--ink); border-color: var(--field); }
-.simkeybox { position: absolute; left: 10px; bottom: 10px; z-index: 2; padding: 6px 10px; border-radius: var(--r); background: rgba(31, 36, 43, 0.84); font-size: 13px; gap: 4px 14px; max-width: calc(100% - 20px); }
-.simkeybox[hidden] { display: none; }
-.simkeybox span { display: inline-flex; align-items: center; gap: 6px; }
-.simkeybox .psw { width: 12px; height: 12px; }
 .simnote { margin: 6px 0 0; font: italic 400 13px/1.4 var(--font-ui); color: var(--map-ink2); }
 .simexports { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
 .recdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #d22d49; margin-right: 6px; }
-.simbox.recording .simrows, .simbox.recording .simpairs, .simbox.recording .simbuild, .simbox.recording .labsliders, .simbox.recording .simover, .simbox.recording .simover-l, .simbox.recording .simsw { pointer-events: none; opacity: 0.55; }
+.simbox.recording .simrows, .simbox.recording .simpairs, .simbox.recording .simbuild, .simbox.recording .labsliders, .simbox.recording .simbar, .simbox.recording .simsw { pointer-events: none; opacity: 0.55; }
 /* the scorecard and the view settings in the left column */
 .simsc { padding-bottom: 6px; }
 .schead { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font: 600 15px var(--font-ui); color: var(--map-ink); }
@@ -524,13 +525,106 @@ button, input, select { font: inherit; color: inherit; }
 @media (max-width: 900px) { .lab { display: flex; flex-direction: column; } .labstage { order: -1; } }
 @media (max-width: 719px) {
   .simh2h .sim-name { font-size: 20px; }
-  .simover, .simover-l, .simkeybox { position: static; flex-wrap: wrap; }
   .simcvwrap { display: flex; flex-direction: column; gap: 6px; width: 100%; }
   .simrows { grid-template-columns: minmax(0, 1fr); }
   .simrows .simtypes { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
   .simx { width: 32px; height: 32px; }
 }
 @media (pointer: coarse) { .simaddq { font-size: 16px; } .simx { width: 32px; height: 32px; } }
+/* ---- the Pitch Simulation Lab in the site's own look: pale chrome with ink-outlined controls, only the canvas dark
+   (like the profile card's flight panel). Scoped to #simBox so it outranks the older on-map rules above. */
+#simBox { background: var(--bg); color: var(--ink); border: 1px solid var(--rule); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35); }
+#simBox .sim-name { color: var(--ink); }
+#simBox .simsub, #simBox .simyr { color: var(--ink2); }
+#simBox .simvsword { color: var(--muted); }
+#simBox .simhint { color: var(--muted); }
+#simBox .labnote, #simBox .simnote, #simBox .scfoot { color: var(--ink2); }
+#simBox .srl, #simBox .simrow .flbl { font: 600 14px var(--font-ui); color: var(--ink2); }
+#simBox .simnone { color: var(--rule); justify-self: center; }
+#simBox .simh2h { align-items: center; }
+/* one button look: an ink outline on the field colour, ink-filled when on, wash on hover; Replay is the one accent */
+#simBox .sim-x, #simBox .sim-replay, #simBox .simtype, #simBox .simx, #simBox .simsel {
+  border: 1.5px solid var(--ink); background: var(--field); color: var(--ink); border-radius: var(--r); box-shadow: none; }
+#simBox .sim-x:hover, #simBox .sim-replay:hover:not(:disabled), #simBox .simx:hover, #simBox .simsel:hover { background: var(--wash); }
+#simBox .sim-replay:disabled, #simBox .simtype:disabled { color: var(--muted); border-color: var(--line); background: var(--field); opacity: 1; cursor: default; }
+#simBox .sim-replay[aria-pressed="true"], #simBox .simx[aria-pressed="true"] { background: var(--ink); color: var(--field); border-color: var(--ink); }
+#simBox .simprimary { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+#simBox .simprimary:hover:not(:disabled) { background: #244e72; border-color: #244e72; }
+#simBox .simprimary:disabled { background: var(--field); color: var(--muted); border-color: var(--line); }
+#simBox .simsel { font: 600 13px var(--font-ui); min-height: 32px; padding: 0 8px; }
+#simBox .simsel option { color: var(--ink); background: var(--field); }
+#simBox .simx { width: 30px; height: 30px; border-color: var(--rule); color: var(--ink2); font-size: 15px; margin-left: 4px; }
+/* show/hide chips: on = ink with a check and a solid swatch; off = outline, softer text, a hollow swatch in the pitch colour */
+#simBox .simtype { font: 600 14px var(--font-ui); }
+#simBox .simtype[aria-pressed="true"] { background: var(--ink); color: var(--field); border-color: var(--ink); }
+#simBox .simtype[aria-pressed="true"]:hover { background: var(--ink2); border-color: var(--ink2); }
+#simBox .simtype[aria-pressed="true"] .tm { color: var(--field); opacity: 0.75; }
+#simBox .simtype[aria-pressed="true"] .psw { box-shadow: 0 0 0 1.5px var(--field); }
+#simBox .simtype[aria-pressed="false"] { color: var(--ink2); border-color: var(--rule); }
+#simBox .simtype[aria-pressed="false"]:hover { border-color: var(--ink); color: var(--ink); background: var(--field); }
+#simBox .simtype .tm { color: var(--muted); font-weight: 500; }
+#simBox .simpairs .simtype { width: 100%; justify-content: flex-start; }
+/* actions that add something: a plus and a dot, hairline outline, so they never read as show/hide chips */
+#simBox .simact { border: 1px solid var(--rule); background: var(--field); color: var(--ink2); border-radius: var(--r); }
+#simBox .simact:hover:not(:disabled) { border-color: var(--ink); color: var(--ink); background: var(--field); }
+#simBox .simact:disabled { color: var(--muted); border-color: var(--line); opacity: 1; }
+/* swatches: solid, hollow (off), dashed (a lookalike), dotted (the MLB average), ringed (a donor's real pitch) */
+#simBox .psw { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15); }
+#simBox .psw.dash { background: transparent !important; border: 2px dashed; box-sizing: border-box; box-shadow: none; }
+#simBox .psw.dot { background: transparent !important; border: 2px dotted; box-sizing: border-box; box-shadow: none; }
+#simBox .psw.ring { box-shadow: inset 0 0 0 1.5px var(--ink); }
+#simBox .psw.fade { opacity: 0.5; }
+#simBox .simtype[aria-pressed="false"] .psw { background: transparent !important; border: 2px solid; box-sizing: border-box; box-shadow: none; opacity: 1; }
+#simBox .simtype[aria-pressed="false"] .psw.dash { border-style: dashed; }
+#simBox .simtype[aria-pressed="false"] .psw.dot { border-style: dotted; }
+#simBox .simtype[aria-pressed="false"] .psw.ring { border-color: var(--ink); }
+/* segmented controls: the header's MLB | AAA look */
+#simBox .simseg { display: inline-flex; flex: none; border: 1.5px solid var(--ink); border-radius: var(--r); overflow: hidden; background: var(--field); }
+#simBox .simseg button { font: 600 14px/1 var(--font-ui); min-height: calc(var(--ctl) - 3px); padding: 0 12px; border: 0; background: var(--field); color: var(--ink); cursor: pointer; white-space: nowrap; }
+#simBox .simseg button + button { border-left: 1.5px solid var(--ink); }
+#simBox .simseg button:hover:not([aria-pressed="true"]):not(:disabled) { background: var(--wash); }
+#simBox .simseg button[aria-pressed="true"] { background: var(--ink); color: var(--field); }
+#simBox .simseg button:disabled { color: var(--muted); cursor: default; }
+#simBox .simseg button:focus-visible { outline: 2px solid var(--focus); outline-offset: -3px; }
+#simBox .simnorm { display: flex; width: 100%; }
+#simBox .simnorm button { flex: 1 1 0; padding: 0 6px; font-size: 13px; }
+/* the search and its list */
+#simBox .simaddq { border: 1.5px solid var(--ink); background: var(--field); color: var(--ink); border-radius: var(--r); }
+#simBox .simaddq::placeholder { color: var(--muted); }
+#simBox .simvslist { background: var(--field); border: 1px solid var(--rule); box-shadow: var(--sh2); }
+#simBox .simvslist button { color: var(--ink); }
+#simBox .simvslist button:hover, #simBox .simvslist button:focus-visible { background: var(--wash); }
+#simBox .simvslist .tm { color: var(--muted); }
+#simBox .simvslist li.none { color: var(--ink2); }
+/* disclosures, sliders, readout */
+#simBox .simbuild, #simBox .simtbl { border-top-color: var(--line); }
+#simBox .simbuild > summary, #simBox .simtbl > summary { color: var(--ink); }
+#simBox .simbuild > summary::before, #simBox .simtbl > summary::before { border-color: var(--ink); }
+#simBox .labrow, #simBox .labread, #simBox .labhead { color: var(--ink); }
+#simBox .labr { color: var(--muted); }
+#simBox .labrow input[type=range] { accent-color: var(--ink); }
+/* the scorecard and the table: ink on the page colour, headers sitting over their numbers */
+#simBox .simtab { color: var(--ink); }
+#simBox .simtab th { color: var(--ink2); border-bottom-color: var(--rule); }
+#simBox .simtab td { border-bottom-color: var(--line); }
+#simBox .simtab .tm, #simBox .simtab td .tm { color: var(--muted); }
+#simBox .sctab th[scope=row] { color: var(--ink2); border-bottom-color: var(--line); }
+#simBox .sctab thead th:not(:first-child) { text-align: right; }
+#simBox .schead { color: var(--ink); }
+#simBox .dlt { background: var(--wash); color: var(--ink); }
+#simBox .simview { border-top-color: var(--line); }
+/* the stage: a light bar, the dark canvas, the key and note under it, all on one left edge and as wide as the canvas */
+#simBox .simfit { width: min-content; max-width: 100%; display: flex; flex-direction: column; gap: 8px; }
+#simBox .simbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+#simBox .simbar .simcam { margin-left: auto; }
+#simBox .simcv { display: block; max-width: none; margin: 0; border: 0; border-radius: var(--r-lg); background: var(--map); }
+#simBox .simkey { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; font: 400 14px var(--font-ui); color: var(--ink); }
+#simBox .simkey[hidden] { display: none; }
+#simBox .simkey span { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); }
+#simBox .simkey .psw { width: 12px; height: 12px; }
+#simBox .simnote { margin: 0; }
+#simBox .simexports { margin-top: 0; }
+@media (max-width: 719px) { #simBox .simfit { width: 100%; } #simBox .simbar .simcam { margin-left: 0; } }
 .g3-overlay { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .g3-label { position: absolute; left: 0; top: 0; white-space: nowrap; font: 600 13px var(--font-ui); color: var(--map-ink);
   text-shadow: 0 0 3px var(--map), 0 0 3px var(--map), 0 0 2px var(--map); will-change: transform; }
@@ -1409,10 +1503,10 @@ tr.self td { font-weight: 600; background: none; }
           <div class="lk-head"><button type="button" class="link" id="cbBack">← Back</button><b id="cbTitle"></b></div>
           <div class="lk-chips" id="cbChips" role="group" aria-label="Lookalikes for which of his pitches"></div>
           <div id="cbPool" role="group" aria-label="Lookalikes among which pitchers" hidden></div>
-          <div class="lk-acts"><button type="button" class="savebtn" id="cbTable" aria-pressed="false" title="A table of him and his lookalikes on every measure, in the map's place">Show table</button></div>
+          <div class="lk-acts"><button type="button" class="savebtn" id="cbTable" aria-pressed="false" title="A table of him and his lookalikes on every measure, in the map's place">Show table</button><button type="button" class="savebtn" id="cbSave" title="Keep him and his lookalikes as a named group">Save as group</button></div>
           <p class="lk-help" id="cbHelp"></p>
           <ol class="lk-list" id="cbList"></ol>
-          <div class="lk-acts"><button type="button" class="savebtn" id="cbSave" title="Keep him and his lookalikes as a named group">Save as group</button></div>
+          <div class="lk-share" id="cbShare" aria-label="What he and his lookalikes share"></div>
         </section>
       </div>
       </div>
@@ -4225,7 +4319,7 @@ function simKeyLines(j, S) {   // the key on the canvas: only what is in the air
   }
   return out;
 }
-const keySwatch = l => `<i class="psw${l.dash ? " dash" : ""}${l.dot ? " dot" : ""}${l.fade ? " fade" : ""}${l.ring ? " ring" : ""}" style="${l.dash || l.dot ? `background:none;border-color:${l.color}` : `background:${l.color}`}"></i>`;
+const keySwatch = l => `<i class="psw${l.dash ? " dash" : ""}${l.dot ? " dot" : ""}${l.fade ? " fade" : ""}${l.ring ? " ring" : ""}" style="background:${l.dash || l.dot ? "none" : l.color};border-color:${l.color}"></i>`;
 // fly (or redraw) what the controls say. play: from the start. hold: keep the current frame (a slider nudge, the
 // camera, the release point, the speed), so a coach studying the plate is not sent back to the wind-up.
 function labRun(play, hold, force) {
@@ -4333,7 +4427,7 @@ function renderSim(opt = {}) {
   const ae = document.activeElement, keepKeys = ["simon", "norm", "simcam", "labedit", "simrm", "labt", "addr", "speed", "lab"];
   const keep = opt.focus ? null : ae && box.contains && box.contains(ae)
     ? (ae.id ? "#" + ae.id : keepKeys.map(k => ae.dataset && ae.dataset[k] !== undefined ? `[data-${k}="${ae.dataset[k]}"]` : null).find(Boolean)) : null;
-  const sw = (color, style) => `<i class="psw${style ? " " + style : ""}" style="${style === "dash" || style === "dot" ? `background:none;border-color:${color}` : `background:${color}`}"></i>`;
+  const sw = (color, style) => `<i class="psw${style ? " " + style : ""}" style="background:${style === "dash" || style === "dot" ? "none" : color};border-color:${color}"></i>`;
   // ---- header
   const comps = labComps(j), myT = T.pitch_type[j], mine = own.find(it => it.t === myT) || own[0];
   const vsSel = (id, label) => `<select class="simsel" id="${id}" aria-label="${label}">${cmp ? "" : `<option value="">Compare with a lookalike…</option>`}${comps.map(([c, q], k) => `<option value="${c}"${cmp && c === S.vs ? " selected" : ""}>${k + 1}. ${esc(T.name[c])} ${yy(T.season[c])} · ${fitOf(q)[1]}</option>`).join("")}</select>`;
@@ -4371,7 +4465,7 @@ function renderSim(opt = {}) {
     const types = [...new Set([...own.map(it => it.t), ...ghosts.map(it => it.t)])];   // his usage order, then the lookalike's extra types
     const cellOf = (list, t) => { const it = list.find(x => x.t === t); return it ? chipOf(it) : `<span class="simnone" aria-hidden="true">—</span>`; };
     rows = `<div class="simpairs" style="grid-template-columns:max-content repeat(${types.length}, max-content)">
-      <span class="srl">${esc(me)}’s pitches${hint(own)}</span>${types.map(t => cellOf(own, t)).join("")}
+      <span class="srl">${sw(SAVANT_PITCH[mine ? mine.t : myT], "")}${esc(me)}’s pitches${hint(own)}</span>${types.map(t => cellOf(own, t)).join("")}
       <span class="srl">${sw(SAVANT_PITCH[T.pitch_type[S.vs]], "dash")}${esc(lastName(T.name[S.vs]))}’s pitches${hint(ghosts)}</span>${types.map(t => cellOf(ghosts, t)).join("")}</div>`
       + (added.length ? `<div class="simrows"><span class="srl">Added${hint(added)}</span><div class="simtypes">${added.map(chipOf).join("")}</div></div>` : "");
   } else {
@@ -4403,21 +4497,21 @@ function renderSim(opt = {}) {
       : st.kind === "lack" ? `<p class="labnote">Built from ${esc(T.name[st.r])}’s ${T.season[st.r]} ${PTN[st.t].toLowerCase()} (the closest same-hand pitcher by arm angle and release point), thrown from ${esc(me)}’s release. It flies see-through; the donor’s real pitch wears a white ring.</p>`
       : `<p class="labnote">${esc(T.name[st.r])}’s ${T.season[st.r]} ${PTN[st.t].toLowerCase()}, from his own release. The edit flies see-through; his real pitch wears a white ring.</p>`)
     + LAB_SLIDERS.map(slider).join("")
-    + `<div class="simrow"><button type="button" class="sim-replay" id="labReset">Reset</button>${F.own ? "" : `<button type="button" class="simtype simput" id="labDonor" aria-pressed="${S.showDonor}">${sw("#ffffff", "")}Real ${PTN[st.t].toLowerCase()}, white ring</button>`}<button type="button" class="sim-replay" id="labDone">Done</button></div><p class="labread" id="labRead"></p>`;
+    + `<div class="simrow"><button type="button" class="sim-replay" id="labReset">Reset</button>${F.own ? "" : `<button type="button" class="simtype simput" id="labDonor" aria-pressed="${S.showDonor}">${sw("#ffffff", "ring")}Real ${PTN[st.t].toLowerCase()}, white ring</button>`}<button type="button" class="sim-replay" id="labDone">Done</button></div><p class="labread" id="labRead"></p>`;
   const anyOther = S.items.some(it => it.kind !== "own");
-  const view = `<div class="simview"><div class="simrows"><span class="srl" id="normLbl">Release point</span><div class="mseg simnorm" role="group" aria-labelledby="normLbl">${NORM_OPTS.map(([v, l]) => `<button type="button" data-norm="${v}" aria-pressed="${(state.simNorm || "off") === v}"${anyOther ? "" : " disabled"}>${l}</button>`).join("")}</div>
+  const view = `<div class="simview"><div class="simrows"><span class="srl" id="normLbl">Release point</span><div class="simseg simnorm" role="group" aria-labelledby="normLbl">${NORM_OPTS.map(([v, l]) => `<button type="button" data-norm="${v}" aria-pressed="${(state.simNorm || "off") === v}"${anyOther ? "" : " disabled"}>${l}</button>`).join("")}</div>
       <span class="srl">Reference</span><div class="simtypes"><button type="button" class="simtype simput" id="labAvg" aria-pressed="${S.showAvg}">${sw("var(--map-ink2)", "dot")}MLB average</button></div></div>
       <p class="labnote">${anyOther ? `Match flies every pitch that is not ${esc(me)}’s from his release height, side or both, keeping its speed and movement, so the comparison is shape, not slot; arm-side run still breaks its thrower’s way.` : `Match moves another pitcher’s pitch to ${esc(me)}’s release; compare with a lookalike or add a pitch first.`}</p></div>`;
   const left = `<div class="labsliders">${sliders}${F ? "" : `<div id="simScore"></div>`}${view}<p class="vh" id="simLive" aria-live="polite"></p></div>`;
   // ---- the stage: camera top left, Replay / Loop / Speed top right, the key bottom left, then the note and exports
   const speeds = [[1, "Real"], [3, "3×"], [6, "6×"], [12, "12×"]], spd = state.simSpeed || FL.SLOW;
-  const stage = `<div class="simstage labstage"><div class="simcvwrap">
-      <div class="simover-l"><div class="mseg simcam" role="group" aria-label="Camera">${[["pitcher", "Behind the pitcher"], ["catcher", "Catcher’s view"]].map(([c, l]) => `<button type="button" data-simcam="${c}" aria-pressed="${cam === c}">${l}</button>`).join("")}</div></div>
-      <div class="simover"><button type="button" class="sim-replay simprimary" id="simReplay" title="Play the flight again">↻ Replay</button><button type="button" class="sim-replay" id="simLoop" aria-pressed="${!!state.simLoop}" title="Play again and again">Loop</button><div class="mseg simspeed" role="group" aria-label="Speed">${speeds.map(([v, l]) => `<button type="button" data-speed="${v}" aria-pressed="${spd === v}" title="${v === 1 ? "Real time" : `${v}× slow motion`}">${l}</button>`).join("")}</div></div>
+  const stage = `<div class="simstage labstage"><div class="simfit">
+      <div class="simbar"><button type="button" class="sim-replay simprimary" id="simReplay" title="Play the flight again">↻ Replay</button><button type="button" class="sim-replay" id="simLoop" aria-pressed="${!!state.simLoop}" title="Play again and again">Loop</button><div class="simseg simspeed" role="group" aria-label="Speed">${speeds.map(([v, l]) => `<button type="button" data-speed="${v}" aria-pressed="${spd === v}" title="${v === 1 ? "Real time" : `${v}× slow motion`}">${l}</button>`).join("")}</div>
+        <div class="simseg simcam" role="group" aria-label="Camera">${[["pitcher", "Behind the pitcher"], ["catcher", "Catcher’s view"]].map(([c, l]) => `<button type="button" data-simcam="${c}" aria-pressed="${cam === c}">${l}</button>`).join("")}</div></div>
       <canvas id="simCv" class="simcv" role="img" aria-label="Animated flight of the pitches shown" aria-describedby="simLive"></canvas>
-      <p class="simkey simkeybox" id="simKey" hidden></p></div>
+      <p class="simkey" id="simKey" hidden></p>
       <p class="simnote">${spd === 1 ? "Real time" : `${spd}× slow motion`} · season-average path per pitch type, not one thrown pitch · every pitch leaves the hand at the same instant, so the slower ones arrive later</p>
-      <div class="simexports">${canRecord() ? `<button type="button" class="sim-replay" id="simRec" title="The flight as a video, with the key and the Pitch Universe mark">${recLabel()}</button>` : ""}${canSave() ? `<button type="button" class="sim-replay" id="simCsv" title="Every pitch shown, as numbers">Download CSV</button>` : ""}<span class="labnote" id="simRecMsg" aria-live="polite"></span></div></div>`;
+      <div class="simexports">${canRecord() ? `<button type="button" class="sim-replay" id="simRec" title="The flight as a video, with the key and the Pitch Universe mark">${recLabel()}</button>` : ""}${canSave() ? `<button type="button" class="sim-replay" id="simCsv" title="Every pitch shown, as numbers">Download CSV</button>` : ""}<span class="labnote" id="simRecMsg" aria-live="polite"></span></div></div></div>`;
   const nAir = S.items.filter(it => it.on).length, tblOpen = S.tblOpen === null || S.tblOpen === undefined ? (!cmp && nAir > 2) : S.tblOpen;
   const table = `<details class="simtbl" id="simTbl"${tblOpen ? " open" : ""}><summary>Every pitch shown, as numbers</summary>
       <div class="simtblscroll"><table class="simtab"><thead><tr><th>Pitch</th><th>Pitcher</th>${SIM_COLS.map(([, l, u]) => `<th class="num">${esc(l)} <span class="tm">(${esc(u)})</span></th>`).join("")}</tr></thead><tbody id="simTbody"></tbody></table></div>
@@ -4920,6 +5014,17 @@ function setLook(on) {
   state.showComps = !!on; render();
   const f = $(on ? "#cbBack" : "#ctaLook"); if (f) f.focus({ preventScroll: true });
 }
+// What he and his lookalikes share: the same read the Groups panel gives a saved group (sharedTraitsHTML), for
+// him plus the lookalikes on screen, without saving them first
+const lookShareCache = new Map();
+function lookShareHTML(r, comps) {
+  const key = `${NT}|${r}|${compPoolOf(r)}|${comps.map(c => c[0]).join(",")}`;
+  if (lookShareCache.has(key)) return lookShareCache.get(key);
+  const tol = compTolOf(r), t = T.pitch_type[r];
+  const e = { keys: [...new Set([r, ...comps.map(c => c[0])].map(x => T.pitcher[x] + "|" + T.season[x] + "|" + T.level[x]))], pt: t,
+    comps: { pt: t, tol: isNum(tol) && isFinite(tol) ? tol : null } };
+  const h = sharedTraitsHTML(e); lookShareCache.set(key, h); return h;
+}
 function renderCompBox() {
   const r = state.sel, on = compsOnMap();
   $("#ctaActs").hidden = on; $("#compBox").hidden = !on; $("#selCta").classList.toggle("look", on);
@@ -4932,11 +5037,9 @@ function renderCompBox() {
   $("#cbChips").innerHTML = mine.length < 2 ? "" : mine.map(x => `<button type="button" data-cb="${x}" aria-pressed="${x === r}"><i class="psw" style="background:${SAVANT_PITCH[T.pitch_type[x]]}"></i>${PTN[T.pitch_type[x]]}</button>`).join("");
   const poolSeg = poolSegHTML(r);
   $("#cbPool").hidden = !poolSeg; $("#cbPool").innerHTML = poolSeg;
-  const tol = compTolOf(r), tolTxt = isNum(tol) && isFinite(tol) ? `within ${tol}° of his arm angle` : "any arm angle", canFly = !flightData().none && !!trajOf(r);
-  const who = compPoolOf(r) === "aaa" ? "Triple-A " : T.level[r] === "aaa" ? "big-league " : "";
-  $("#cbHelp").textContent = comps.length
-    ? `Same-handed ${who}pitchers ${tolTxt}, any season, closest first. The numbers match the map; click a name to go to him.${canFly ? " ▶ Simulate opens the Pitch Simulation Lab with his pitch flying beside theirs." : ""}`
-    : "No lookalikes for this pitch.";
+  const canFly = !flightData().none && !!trajOf(r);
+  $("#cbHelp").textContent = comps.length ? "" : "No lookalikes for this pitch.";
+  $("#cbShare").innerHTML = comps.length ? lookShareHTML(r, comps) : "";
   $("#cbSave").hidden = !comps.length; $("#cbTable").hidden = !comps.length; syncCompsSaveButtons();
   const num = (v, d, u) => isNum(v) ? `${v.toFixed(d)}${u}` : "–";
   $("#cbList").innerHTML = comps.map(([c, q], k) => { const [fc, ft] = fitOf(q);
