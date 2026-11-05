@@ -340,9 +340,9 @@ button, input, select { font: inherit; color: inherit; }
 /* pitch flight: a full-viewport modal over a scrim; × or Escape puts it away */
 .simscrim { position: fixed; inset: 0; z-index: 79; background: rgba(0, 0, 0, 0.45); }
 .simscrim[hidden] { display: none; }
-.simbox { position: fixed; z-index: 80; inset: 16px; overflow-y: auto; overscroll-behavior: contain; padding: 14px 18px 18px;
+.simbox { position: fixed; z-index: 80; inset: 16px max(16px, calc((100vw - 1680px) / 2)); overflow-y: auto; overscroll-behavior: contain; padding: 14px 18px 18px;
   display: flex; flex-direction: column; gap: 10px; border-radius: var(--r-lg); background: var(--map-panel); color: var(--map-ink);
-  border: 1.5px solid var(--map-muted); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55); }
+  border: 1px solid rgba(255, 255, 255, 0.14); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55); }
 .simbox[hidden] { display: none; }
 .sim-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
 .sim-name { margin: 0; font: 600 30px/1.05 var(--font-serif); color: var(--map-ink); }
@@ -365,9 +365,8 @@ button, input, select { font: inherit; color: inherit; }
 .simtype[aria-pressed="false"] .psw { background: transparent !important; border: 2px solid; box-sizing: border-box; box-shadow: none; }
 .simtype[aria-pressed="false"] .psw.dash { border-style: dashed; }
 .simtype[aria-pressed="false"] .psw.ring { border-color: #ffffff; }
-.simhint { font-weight: 400; font-size: 13px; color: var(--map-muted); }
+.simhint { font-weight: 500; font-size: 13px; color: var(--map-muted); }
 .simmsg { margin-top: 6px; } .simmsg:empty { display: none; }
-.simtblwrap { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--map-hair); }
 .simtblscroll { overflow-x: auto; }
 .simtab td .psw { display: inline-block; }
 .sim-replay:disabled { opacity: 0.6; cursor: default; }
@@ -390,8 +389,6 @@ button, input, select { font: inherit; color: inherit; }
 .labshow { margin-top: 4px; }
 .labnote { margin: 0; font: 400 13px/1.45 var(--font-ui); color: var(--map-ink2); }
 .simtype .psw.fade { opacity: 0.45; }
-.labadd { background: var(--map-ink); color: var(--map-panel); border-color: var(--map-ink); }
-.labadd:hover { background: #ffffff; color: var(--map-panel); }
 .simpair { display: inline-flex; align-items: center; }
 .simtype:disabled { opacity: 0.45; cursor: default; }
 .labedit[aria-pressed="true"] { background: var(--map-ink); color: var(--map-panel); border-color: var(--map-ink); }
@@ -448,7 +445,7 @@ button, input, select { font: inherit; color: inherit; }
 .simtab tr.on td { font-weight: 700; }
 .simtab .badge { background: none; color: var(--map-ink2); box-shadow: none; font-weight: 600; }
 .simmoderow { margin-top: 10px; }
-.dlt { display: inline-block; min-width: 3.2em; padding: 1px 6px; border-radius: 4px; font: 600 13px var(--font-ui); text-align: center; }
+.dlt { display: inline-block; min-width: 3.2em; padding: 1px 6px; border-radius: 4px; font: 600 13px var(--font-ui); text-align: center; background: var(--map-hover); color: var(--map-ink); font-variant-numeric: tabular-nums; }
 /* a lookalike's pitches: one button each; dashed = a type the selected pitcher does not throw */
 .pchs { display: flex; flex-wrap: wrap; gap: 5px; }
 .pch { display: inline-flex; align-items: center; gap: 6px; font: 600 14px var(--font-ui); min-height: 30px; padding: 0 10px 0 8px; border-radius: 999px;
@@ -460,6 +457,75 @@ button, input, select { font: inherit; color: inherit; }
 .pch.new { border-style: dashed; }
 .simtab td:last-child { white-space: normal; min-width: 14rem; }
 @media (max-width: 719px) { .simbox { inset: 0; border-radius: 0; } .sim-name { font-size: 24px; } }
+/* ---- pitch lab, redesigned 2026-11-04: aligned rows, a head-to-head header, the scorecard, the stage controls */
+.simh2h .sim-name { font-size: 26px; }
+.simside { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; align-items: center; }
+.simside > .psw { grid-row: span 2; width: 14px; height: 14px; }
+.simside .sim-name, .simside .simsub { margin: 0; min-width: 0; }
+.simyr { font: 400 0.7em var(--font-ui); color: var(--map-ink2); }
+.simhr { display: flex; align-items: center; gap: 8px; flex: none; }
+.simhr .simhint { white-space: nowrap; }
+.simsw { display: inline-flex; align-items: center; gap: 4px; }
+.simsel { font: 600 13px var(--font-ui); color: var(--map-ink); background: var(--map-chrome); border: 1.5px solid var(--map-muted); border-radius: var(--r); min-height: 32px; padding: 0 8px; max-width: min(34ch, 48vw); cursor: pointer; }
+.simsel option { color: var(--ink); background: var(--field); }
+.simrows { display: grid; grid-template-columns: minmax(150px, max-content) minmax(0, 1fr); column-gap: 16px; row-gap: 10px; align-items: center; }
+.srl { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; max-width: 260px; font: 500 14px var(--font-ui); color: var(--map-ink2); }
+.srl .psw { width: 12px; height: 12px; }
+.simpairs { display: grid; gap: 8px 6px; align-items: center; overflow-x: auto; padding-bottom: 2px; }
+.simpairs .srl { margin-right: 10px; }
+.simnone { color: var(--map-muted); text-align: center; }
+.simhint { font-weight: 500; }
+.simtype .psw.dot, .simkey .psw.dot { border: 2px dotted; box-sizing: border-box; }
+.simtype .psw.dash { background: transparent !important; }
+.simx[aria-pressed="true"] { background: var(--map-ink); color: var(--map-panel); }
+/* add or build: one disclosure; actions look like actions (a plus and a dot), not like the show/hide chips */
+.simbuild, .simtbl { border-top: 1px solid var(--map-hair); padding-top: 6px; }
+.simbuild > summary, .simtbl > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; padding: 4px 0 6px; font: 600 14px var(--font-ui); color: var(--map-ink); }
+.simbuild > summary::-webkit-details-marker, .simtbl > summary::-webkit-details-marker { display: none; }
+.simbuild > summary::before, .simtbl > summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--map-ink); border-bottom: 2px solid var(--map-ink); transform: rotate(-45deg); transition: transform 120ms; flex: none; }
+.simbuild[open] > summary::before, .simtbl[open] > summary::before { transform: rotate(45deg); }
+.simbuild[open] > summary { margin-bottom: 6px; }
+.simact { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 10px 0 8px; border: 1px solid var(--map-line); border-radius: 999px; font: 500 13px var(--font-ui); color: var(--map-ink2); background: none; cursor: pointer; }
+.simact .plus { font-weight: 700; } .simact .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+.simact:hover:not(:disabled) { border-color: var(--map-ink2); color: var(--map-ink); }
+.simact:disabled { opacity: 0.45; cursor: default; }
+/* the stage */
+.simcvwrap { position: relative; width: fit-content; max-width: 100%; margin: 0 auto; }
+.simcv { max-width: 100%; margin: 0 auto; }
+.simover-l { position: absolute; top: 10px; left: 10px; z-index: 2; display: flex; gap: 6px; }
+.simprimary { background: var(--map-ink); color: var(--map-panel); border-color: var(--map-ink); }
+.simprimary:hover:not(:disabled) { background: #ffffff; border-color: #ffffff; }
+.sim-replay[aria-pressed="true"] { background: var(--field); color: var(--ink); border-color: var(--field); }
+.simkeybox { position: absolute; left: 10px; bottom: 10px; z-index: 2; padding: 6px 10px; border-radius: var(--r); background: rgba(31, 36, 43, 0.84); font-size: 13px; gap: 4px 14px; max-width: calc(100% - 20px); }
+.simkeybox[hidden] { display: none; }
+.simkeybox span { display: inline-flex; align-items: center; gap: 6px; }
+.simkeybox .psw { width: 12px; height: 12px; }
+.simnote { margin: 6px 0 0; font: italic 400 13px/1.4 var(--font-ui); color: var(--map-ink2); }
+.simexports { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.recdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #d22d49; margin-right: 6px; }
+.simbox.recording .simrows, .simbox.recording .simpairs, .simbox.recording .simbuild, .simbox.recording .labsliders, .simbox.recording .simover, .simbox.recording .simover-l, .simbox.recording .simsw { pointer-events: none; opacity: 0.55; }
+/* the scorecard and the view settings in the left column */
+.simsc { padding-bottom: 6px; }
+.schead { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font: 600 15px var(--font-ui); color: var(--map-ink); }
+.sctab th[scope=row] { font: 500 13px var(--font-ui); color: var(--map-ink2); white-space: nowrap; padding: 5px 6px; border-bottom: 1px solid var(--map-hair); }
+.sctab thead th { white-space: nowrap; padding: 4px 6px; }
+.sctab thead th .psw { width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; }
+.sctab td { padding: 5px 6px; }
+.scfoot { margin: 6px 0 0; font: 400 13px/1.4 var(--font-ui); color: var(--map-ink2); }
+.scfoot b { color: var(--map-ink); }
+.simview { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--map-hair); }
+.labhead { font: 500 14px var(--font-ui); color: var(--map-ink); }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 900px) { .lab { display: flex; flex-direction: column; } .labstage { order: -1; } }
+@media (max-width: 719px) {
+  .simh2h .sim-name { font-size: 20px; }
+  .simover, .simover-l, .simkeybox { position: static; flex-wrap: wrap; }
+  .simcvwrap { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+  .simrows { grid-template-columns: minmax(0, 1fr); }
+  .simrows .simtypes { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
+  .simx { width: 32px; height: 32px; }
+}
+@media (pointer: coarse) { .simaddq { font-size: 16px; } .simx { width: 32px; height: 32px; } }
 .g3-overlay { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .g3-label { position: absolute; left: 0; top: 0; white-space: nowrap; font: 600 13px var(--font-ui); color: var(--map-ink);
   text-shadow: 0 0 3px var(--map), 0 0 3px var(--map), 0 0 2px var(--map); will-change: transform; }
@@ -1332,8 +1398,9 @@ tr.self td { font-weight: 600; background: none; }
         <div class="cta-acts" id="ctaActs">
           <button type="button" class="ctabtn primary" id="ctaOpen">Show Complete Profile</button>
           <button type="button" class="ctabtn" id="ctaLook">Show Lookalikes</button>
+          <button type="button" class="ctabtn" id="ctaCompare">Compare with a lookalike</button>
           <button type="button" class="ctabtn" id="ctaSim">Create Lookalike Group</button>
-          <button type="button" class="ctabtn" id="ctaFly" aria-pressed="false">Simulate Pitches</button>
+          <button type="button" class="ctabtn" id="ctaFly" aria-pressed="false">Pitch lab</button>
         </div>
         <section class="cta-look" id="compBox" aria-label="Lookalikes of the selected pitcher" hidden>
           <div class="lk-head"><button type="button" class="link" id="cbBack">← Back</button><b id="cbTitle"></b></div>
@@ -1416,7 +1483,7 @@ tr.self td { font-weight: 600; background: none; }
   </div>
   <aside class="right comps" id="comps" aria-label="Closest comps" hidden></aside>
   <div class="simscrim" id="simScrim" hidden></div>
-  <section class="simbox" id="simBox" role="dialog" aria-modal="true" aria-labelledby="simTitle" hidden></section>
+  <section class="simbox" id="simBox" role="dialog" aria-modal="true" aria-label="Pitch lab" hidden></section>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.34.0/plotly.min.js"></script>
@@ -3617,7 +3684,7 @@ function bestCompSection(view, i, comps, j) {
 // release sits near y = 54, so the velocity is first walked back along the same parabola to the release depth;
 // firing the y = 50 velocity from the release point lands pitches 2-6 inches low. Two pinhole cameras, both
 // looking at the middle of the zone, auto-framed to each pitcher's own release and paths.
-const FL = { Y_REF: 50, PLATE_Y: 1.417, BALL_R: 0.12, FPS: 30, SLOW: 6, HOLD0: 0.3, HOLD1: 1.2, NPTS: 120, ASPECT: 1.45,
+const FL = { Y_REF: 50, PLATE_Y: 1.417, BALL_R: 0.12, FPS: 30, SLOW: 6, HOLD0: 0.8, HOLD1: 1.8, NPTS: 120, ASPECT: 1.45,
   cams: { catcher: { pos: [0, -25, 4.2], fill: 0.72, dy: -0.04 }, pitcher: { pos: [0, 150, 14], fill: 0.62, dy: 0.04 } } };
 let TJ = null, FLS = null;   // decoded trajectories; the running animation
 const flCv = () => document.getElementById((FLS && FLS.cvId) || "flightCv");   // the card's panel, or the simulation card
@@ -3705,20 +3772,29 @@ function renderFlight(j) {
   sec.hidden = false;
   const flight = Math.max(...paths.map(p => p.tEnd));
   const hold0 = Math.round(FL.HOLD0 * FL.FPS), nAnim = Math.max(2, Math.round(FL.FPS * flight * FL.SLOW)), hold1 = Math.round(FL.HOLD1 * FL.FPS);
-  FLS = { j, paths, flight, hold0, nAnim, total: hold0 + nAnim + hold1, cam: state.cardCam || "pitcher", start: null, raf: 0, zone: flightZone(j) };   // the card opens behind the pitcher
+  FLS = { j, paths, flight, hold0, nAnim, total: hold0 + nAnim + hold1, cam: state.flightCam || "catcher", start: null, raf: 0, zone: flightZone(j) };   // one remembered camera, shared with the lab
   // his key: one chip per path with the mph the trajectory implies at release
   const key = sec.querySelector(".flkey");
   if (key) key.innerHTML = paths.map(p => p.ghost
     ? `<span class="flghost"><i></i>League-average ${PTN[p.type].toLowerCase()}, ${T.p_throws[j] === "R" ? "RHP" : "LHP"}, ${s}</span>`
     : `<span><i class="psw" style="background:${p.color}"></i><b>${PTN[p.type]}</b> ${fmt(T.velo[p.row], 1)} mph</span>`).join("");
-  sec.querySelectorAll("[data-flcam]").forEach(b => { b.setAttribute("aria-pressed", String(b.dataset.flcam === FLS.cam)); b.onclick = () => { state.cardCam = b.dataset.flcam; renderFlight(j); }; });
+  sec.querySelectorAll("[data-flcam]").forEach(b => { b.setAttribute("aria-pressed", String(b.dataset.flcam === FLS.cam)); b.onclick = () => { state.flightCam = b.dataset.flcam; renderFlight(j); }; });
   const rp = sec.querySelector("#flReplay"); if (rp) rp.onclick = () => renderFlight(j);
   flightSetup(); flightPlay();
 }
-// project every path and the static scene for the current camera and canvas size
+// project every path and the static scene for the current camera and canvas size. The lab (F.fit) keeps the whole
+// flight on screen: the canvas is never taller than the room under its top edge, and the width follows.
+const LAB_ASPECT = { catcher: 1.25, pitcher: 1.45 };   // the catcher's view is a tall subject; behind the pitcher is wide
 function flightSetup() {
   const F = FLS, cv = flCv(); if (!F || !cv) return;
-  const W = Math.max(cv.clientWidth || cv.parentElement.clientWidth || 480, 240), H = Math.round(W / FL.ASPECT), dpr = window.devicePixelRatio || 1;
+  const col = cv.closest ? cv.closest(".simstage") : null, asp = (F.aspects && F.aspects[F.cam]) || FL.ASPECT;
+  let W = Math.max((col && col.clientWidth) || cv.clientWidth || (cv.parentElement && cv.parentElement.clientWidth) || 480, 240), H = Math.round(W / asp);
+  if (F.fit) {
+    const top = cv.getBoundingClientRect ? cv.getBoundingClientRect().top : 0, avail = Math.max(300, (window.innerHeight || 800) - Math.max(top, 0) - 36);
+    if (H > avail) { H = Math.round(avail); W = Math.max(240, Math.min(W, Math.round(H * asp))); }
+    cv.style.width = W + "px";
+  }
+  const dpr = window.devicePixelRatio || 1;
   cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.height = H + "px";
   if (!F.zoneFt) F.zoneFt = F.zone;   // the zone in feet; F.zone becomes its projection below, so a resize must not reread it
   const c = FL.cams[F.cam], z = F.zoneFt, target = [0, FL.PLATE_Y, (z.top + z.bot) / 2];
@@ -3736,92 +3812,160 @@ function flightSetup() {
   let rx = 0, ry = 0, rz = 0, wsum = 0;
   for (const p of paths) if (!p.ghost && !p.alt) { const w = Math.max(T.usage[p.row] || 1, 1); rx += w * p.pos[0]; ry += w * p.pos[1]; rz += w * p.pos[2]; wsum += w; }
   if (!wsum) for (const p of paths) { rx += p.pos[0]; ry += p.pos[1]; rz += p.pos[2]; wsum += 1; }   // none of his in the air: the mean of what is
-  const rel = proj(new Float64Array([rx / wsum, ry / wsum, rz / wsum]));
+  const rel = wsum ? proj(new Float64Array([rx / wsum, ry / wsum, rz / wsum])) : proj(new Float64Array([0, 54, 6]));   // nothing in the air: a stand-in behind the rubber
   Object.assign(F, { W, H, dpr, paths, zone, plate, grid, rel, ...fr, sx: (s, k) => W / 2 + fr.focal * s.x[k] + fr.ox, sy: (s, k) => H / 2 - (fr.focal * s.y[k] + fr.oy) });
 }
 function flightPlay() {
   const F = FLS; if (!F) return;
-  if (reduced() && !F.rec) { flightDraw(F.total - 1); return; }
+  if (reduced() && !F.rec && !F.force) { flightDraw(F.total - 1); return; }   // reduced motion: no auto-play, but an explicit Replay animates
   const step = now => {
     const G = FLS; if (!G || G !== F) return;
     const cv = flCv(); if (!cv || !cv.isConnected) { stopFlight(); return; }
     if (G.start === null) G.start = now;
     const frame = Math.floor((now - G.start) / 1000 * FL.FPS);
     flightDraw(Math.min(frame, G.total - 1));
-    if (frame < G.total - 1) G.raf = requestAnimationFrame(step); else { G.raf = 0; if (G.onEnd) G.onEnd(); }
+    if (frame < G.total - 1) G.raf = requestAnimationFrame(step);
+    else if (G.loop && !G.rec) { G.start = now; G.raf = requestAnimationFrame(step); }
+    else { G.raf = 0; if (G.onEnd) G.onEnd(); }
   };
   F.raf = requestAnimationFrame(step);
 }
 // one frame: every pitch released at the same instant on a shared clock, so slower pitches arrive later and
-// wait at the plate. Trails fade and thin toward the release; ball size is perspective-correct.
+// wait at the plate. Trails fade and thin toward the release; ball size is perspective-correct. A dashed line
+// always means "not his": a lookalike's pitch (dashed, its own colour) or the MLB average (dotted, grey); the zone
+// and plate are solid. Line weights scale with the canvas (k). In the lab (F.tags) each pitcher is named at his
+// release and every ball carries its mph once it has landed.
 function flightDraw(frame) {
-  const F = FLS, cv = flCv(); if (!F || !cv || !F.paths[0].s) return;
+  const F = FLS, cv = flCv(); if (!F || !cv || (F.paths.length && !F.paths[0].s)) return;
   const t = frame < F.hold0 ? 0 : frame < F.hold0 + F.nAnim ? (frame - F.hold0) / F.nAnim * F.flight : F.flight;
-  const ctx = cv.getContext("2d"), { W, H, sx, sy } = F, pal = mapPalette();
+  const landed = frame >= F.hold0 + F.nAnim;
+  const ctx = cv.getContext("2d"), { W, H, sx, sy } = F, pal = mapPalette(), k = Math.min(Math.max(W / 900, 1), 1.6), uiFont = css("--font-ui") || "sans-serif";
   ctx.setTransform(F.dpr, 0, 0, F.dpr, 0, 0);
   ctx.fillStyle = pal.surface; ctx.fillRect(0, 0, W, H);
   ctx.lineCap = "round"; ctx.lineJoin = "round";
-  // floor grid, zone, plate
+  // floor grid
   ctx.strokeStyle = pal.line; ctx.lineWidth = 0.7; ctx.globalAlpha = 0.9; ctx.setLineDash([]);
   ctx.beginPath();
-  for (let k = 0; k < F.grid.d.length; k += 2) if (F.grid.d[k] > 1 && F.grid.d[k + 1] > 1) { ctx.moveTo(sx(F.grid, k), sy(F.grid, k)); ctx.lineTo(sx(F.grid, k + 1), sy(F.grid, k + 1)); }
+  for (let q = 0; q < F.grid.d.length; q += 2) if (F.grid.d[q] > 1 && F.grid.d[q + 1] > 1) { ctx.moveTo(sx(F.grid, q), sy(F.grid, q)); ctx.lineTo(sx(F.grid, q + 1), sy(F.grid, q + 1)); }
   ctx.stroke();
-  ctx.globalAlpha = 1; ctx.strokeStyle = pal.muted; ctx.lineWidth = 1.4; ctx.setLineDash([6, 5]);
-  ctx.beginPath(); for (let k = 0; k < 4; k++) ctx[k ? "lineTo" : "moveTo"](sx(F.zone, k), sy(F.zone, k)); ctx.closePath(); ctx.stroke();
-  ctx.setLineDash([]); ctx.lineWidth = 1.3;
-  ctx.beginPath(); for (let k = 0; k < 5; k++) ctx[k ? "lineTo" : "moveTo"](sx(F.plate, k), sy(F.plate, k)); ctx.closePath(); ctx.stroke();
-  if (F.cam === "pitcher") {   // release sphere: same size math as the flight balls, so it always scales with them
-    const r = Math.max(5, F.focal * FL.BALL_R / F.rel.d[0]), x = sx(F.rel, 0), y = sy(F.rel, 0);
-    ctx.fillStyle = pal.panel; ctx.strokeStyle = pal.muted; ctx.lineWidth = 1.2;
+  // zone and plate: solid, faintly filled
+  ctx.globalAlpha = 1;
+  ctx.beginPath(); for (let q = 0; q < 4; q++) ctx[q ? "lineTo" : "moveTo"](sx(F.zone, q), sy(F.zone, q)); ctx.closePath();
+  ctx.fillStyle = "rgba(255,255,255,0.035)"; ctx.fill(); ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.lineWidth = 1 * k; ctx.stroke();
+  ctx.beginPath(); for (let q = 0; q < 5; q++) ctx[q ? "lineTo" : "moveTo"](sx(F.plate, q), sy(F.plate, q)); ctx.closePath();
+  ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.fill(); ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 1.2 * k; ctx.stroke();
+  const halo = (text, x, y, font, color, align) => {   // text that stays readable over anything: a surface-coloured outline under it
+    ctx.font = font; ctx.textAlign = align; ctx.textBaseline = "middle"; ctx.lineWidth = 3 * k; ctx.strokeStyle = pal.surface; ctx.setLineDash([]);
+    ctx.strokeText(text, x, y); ctx.fillStyle = color; ctx.fillText(text, x, y);
+  };
+  if (F.cam === "pitcher" && F.paths.length) {   // release sphere: same size math as the flight balls, so it always scales with them
+    const r = Math.max(5 * k, F.focal * FL.BALL_R / F.rel.d[0]), x = sx(F.rel, 0), y = sy(F.rel, 0);
+    ctx.fillStyle = pal.panel; ctx.strokeStyle = pal.muted; ctx.lineWidth = 1.2 * k;
     ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = pal.ink2; ctx.font = `700 12px ${css("--font-ui")}`; ctx.textBaseline = "middle";
-    ctx.textAlign = x < W / 2 ? "left" : "right"; ctx.fillText("RELEASE", x + (x < W / 2 ? r + 6 : -r - 6), y);
+    ctx.fillStyle = pal.ink2; ctx.font = `700 ${Math.round(12 * k)}px ${uiFont}`; ctx.textBaseline = "middle";
+    ctx.textAlign = x < W / 2 ? "left" : "right"; ctx.fillText("RELEASE", x + (x < W / 2 ? r + 6 * k : -r - 6 * k), y);
   }
-  // trails (ghost first, so his pitches sit on top), then balls
+  // the lab: a small ring where each path starts, and one name per pitcher beside his release
+  if (F.tags) {
+    const groups = new Map();
+    for (const p of F.paths) {
+      if (p.avg || !p.tag) continue;
+      const g = groups.get(p.who) || { x: 0, y: 0, n: 0, tag: p.tag };
+      g.x += sx(p.s, 0); g.y += sy(p.s, 0); g.n++; groups.set(p.who, g);
+    }
+    for (const p of F.paths) {
+      if (p.avg) continue;
+      ctx.beginPath(); ctx.arc(sx(p.s, 0), sy(p.s, 0), 3.5 * k, 0, 2 * Math.PI);
+      ctx.strokeStyle = p.color; ctx.lineWidth = 1.5 * k; ctx.setLineDash(p.ghost ? [3 * k, 3 * k] : []); ctx.globalAlpha = 0.9; ctx.stroke(); ctx.setLineDash([]);
+    }
+    ctx.globalAlpha = 1;
+    const gs = [...groups.values()], mx = gs.reduce((a, g) => a + g.x / g.n, 0) / (gs.length || 1);
+    for (const g of gs) {
+      const x = g.x / g.n, y = g.y / g.n, left = gs.length > 1 ? x < mx : x > W / 2;   // away from the other pitcher's release
+      halo(g.tag, x + (left ? -8 * k : 8 * k), y - 10 * k, `600 ${Math.round(13 * k)}px ${uiFont}`, pal.ink2, left ? "right" : "left");
+    }
+  }
+  // trails: the MLB average and lookalikes under, then see-through edits, then his solid pitches on top
   const CH = 6, ends = [];
-  for (const p of [...F.paths.filter(p => p.ghost), ...F.paths.filter(p => !p.ghost && p.fade), ...F.paths.filter(p => !p.ghost && !p.fade)]) {
+  const order = [...F.paths.filter(p => p.avg), ...F.paths.filter(p => p.ghost && !p.avg), ...F.paths.filter(p => !p.ghost && p.fade), ...F.paths.filter(p => !p.ghost && !p.fade)];
+  for (const p of order) {
     const jj = Math.round(Math.min(t / p.tEnd, 1) * (p.n - 1));
     ends.push([p, jj]);
     if (jj < 1) continue;
-    ctx.strokeStyle = p.color;
-    if (p.ghost) {
-      ctx.setLineDash([5, 6]); ctx.lineWidth = 2; ctx.globalAlpha = 0.8;
-      ctx.beginPath(); ctx.moveTo(sx(p.s, 0), sy(p.s, 0)); for (let k = 1; k <= jj; k++) ctx.lineTo(sx(p.s, k), sy(p.s, k)); ctx.stroke();
+    const seg = (a, b) => { ctx.beginPath(); ctx.moveTo(sx(p.s, a), sy(p.s, a)); for (let q = a + 1; q <= b; q++) ctx.lineTo(sx(p.s, q), sy(p.s, q)); ctx.stroke(); };
+    if (p.avg) { ctx.strokeStyle = p.color; ctx.setLineDash([2 * k, 4 * k]); ctx.lineWidth = 1.5 * k; ctx.globalAlpha = 0.85; seg(0, jj); ctx.setLineDash([]); continue; }
+    if (p.ghost) {   // the lookalike: the same comet taper, dashed
+      ctx.strokeStyle = p.color; ctx.setLineDash([7 * k, 6 * k]);
+      for (let a = 0; a < jj; a += CH) { const b = Math.min(a + CH, jj), f = (a + b) / 2 / jj; ctx.globalAlpha = 0.35 + 0.6 * f; ctx.lineWidth = (1.5 + 2.5 * f) * k; seg(a, b); }
       ctx.setLineDash([]); continue;
     }
-    for (let a = 0; a < jj; a += CH) {   // comet tail: alpha 0.18 -> 0.90 and width 1 -> 4.5 px from release to the ball
-      const b = Math.min(a + CH, jj), f = (a + b) / 2 / jj;
-      ctx.globalAlpha = (0.18 + 0.72 * f) * (p.fade ? 0.5 : 1); ctx.lineWidth = 1 + 3.5 * f;
-      ctx.beginPath(); ctx.moveTo(sx(p.s, a), sy(p.s, a)); for (let k = a + 1; k <= b; k++) ctx.lineTo(sx(p.s, k), sy(p.s, k)); ctx.stroke();
+    const dim = p.fade ? 0.5 : 1;
+    for (let pass = 0; pass < 3; pass++) {   // a dark halo, a light under-glow, then the colour: his trail cuts across whatever it crosses
+      for (let a = 0; a < jj; a += CH) {
+        const b = Math.min(a + CH, jj), f = (a + b) / 2 / jj, w = (1 + 3.5 * f) * k, al = (0.18 + 0.72 * f) * dim;
+        if (pass === 0) { ctx.strokeStyle = pal.surface; ctx.lineWidth = w + 2 * k; ctx.globalAlpha = al; }
+        else if (pass === 1) { ctx.strokeStyle = "rgba(233,237,242,0.22)"; ctx.lineWidth = w + 1.5 * k; ctx.globalAlpha = al; }
+        else { ctx.strokeStyle = p.color; ctx.lineWidth = w; ctx.globalAlpha = al; }
+        seg(a, b);
+      }
     }
   }
   ctx.globalAlpha = 1;
-  for (const [p, jj] of ends) {
-    const r = Math.min(Math.max(F.focal * FL.BALL_R / p.s.d[jj], 2), 45), x = sx(p.s, jj), y = sy(p.s, jj);
+  // balls: his solid ones first, lookalikes on top (a translucent disc with a dashed rim stays visible over a solid ball)
+  const ballR = (p, jj) => Math.min(Math.max(F.focal * FL.BALL_R / p.s.d[jj], 3 * k), 45 * k);
+  for (const [p, jj] of ends.filter(([p]) => !p.ghost)) {
+    const r = ballR(p, jj), x = sx(p.s, jj), y = sy(p.s, jj);
     ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * Math.PI);
-    if (p.ghost) { ctx.strokeStyle = p.color; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]); }
-    else {
-      ctx.globalAlpha = p.fade ? 0.55 : 1; ctx.fillStyle = p.color; ctx.fill();
-      ctx.strokeStyle = p.ring ? "#ffffff" : "#14181e"; ctx.lineWidth = p.ring ? 2 : 1; ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.globalAlpha = p.fade ? 0.55 : 1; ctx.fillStyle = p.color; ctx.fill();
+    ctx.strokeStyle = p.ring ? "#ffffff" : "rgba(255,255,255,0.6)"; ctx.lineWidth = (p.ring ? 2.5 : 1.5) * k; ctx.stroke(); ctx.globalAlpha = 1;
+  }
+  for (const [p, jj] of ends.filter(([p]) => p.ghost)) {
+    const r = ballR(p, jj), x = sx(p.s, jj), y = sy(p.s, jj);
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * Math.PI);
+    if (p.avg) { ctx.strokeStyle = p.color; ctx.lineWidth = 1.5 * k; ctx.setLineDash([2 * k, 3 * k]); ctx.stroke(); ctx.setLineDash([]); continue; }
+    ctx.globalAlpha = 0.28; ctx.fillStyle = p.color; ctx.fill(); ctx.globalAlpha = 1;
+    ctx.strokeStyle = p.color; ctx.lineWidth = 2 * k; ctx.setLineDash([4 * k, 3 * k]); ctx.stroke(); ctx.setLineDash([]);
+  }
+  // landed (the lab): mph beside each ball, and who got there first when two pitches share a type
+  if (F.tags && landed) {
+    const firstOf = {}, nOf = {};
+    for (const [p] of ends) if (!p.avg) { firstOf[p.type] = Math.min(firstOf[p.type] ?? Infinity, p.tEnd); nOf[p.type] = (nOf[p.type] || 0) + 1; }
+    const font = `600 ${Math.round(12 * k)}px ${uiFont}`;
+    for (const [p, jj] of ends) {
+      if (p.avg) continue;
+      const r = ballR(p, jj), x = sx(p.s, jj), y = sy(p.s, jj), left = !!p.ghost, dt = Math.round((p.tEnd - firstOf[p.type]) * 1000);
+      const tail = nOf[p.type] > 1 ? (dt >= 1 ? ` · +${dt} ms` : " · first") : "";
+      halo(`${fmt(p.velo, 1)}${tail}`, x + (left ? -(r + 6 * k) : r + 6 * k), y, font, pal.ink, left ? "right" : "left");
     }
   }
-  if (F.rec) drawMark(ctx, W, H, pal);
+  if (F.empty) halo("Nothing to show — turn on a pitch above", W / 2, H / 2, `500 ${Math.round(15 * k)}px ${uiFont}`, pal.ink2, "center");
+  if (F.rec) drawMark(ctx, W, H, pal, F.keyLines);
 }
-// Pitch Universe mark for saved animations: the name, bottom left
-function drawMark(ctx, W, H, pal) {
-  const s = Math.max(13, Math.round(W / 46));
-  ctx.save(); ctx.globalAlpha = 0.9;
+// Pitch Universe mark for saved animations: the name bottom left, with the key above it so a viewer of the video
+// knows who is who
+function drawMark(ctx, W, H, pal, lines) {
+  const s = Math.max(13, Math.round(W / 46)), x0 = Math.round(s * 0.9);
+  let y = H - Math.round(s * 0.9);
+  ctx.save(); ctx.globalAlpha = 0.9; ctx.setLineDash([]);
   ctx.fillStyle = pal.ink; ctx.font = `600 ${s}px ${css("--font-serif") || "Georgia, serif"}`; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-  ctx.fillText("Pitch Universe", Math.round(s * 0.9), H - Math.round(s * 0.9));
+  ctx.fillText("Pitch Universe", x0, y);
+  if (lines && lines.length) {
+    const f = Math.max(11, Math.round(s * 0.78)); ctx.font = `500 ${f}px ${css("--font-ui") || "sans-serif"}`;
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const L = lines[i]; y -= Math.round(f * 1.5);
+      ctx.beginPath(); ctx.strokeStyle = L.color; ctx.lineWidth = 2; ctx.setLineDash(L.dash ? [5, 4] : L.dot ? [2, 3] : []); ctx.globalAlpha = L.fade ? 0.5 : 0.9;
+      ctx.moveTo(x0, y - f * 0.35); ctx.lineTo(x0 + 18, y - f * 0.35); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 0.9;
+      ctx.fillStyle = pal.ink; ctx.fillText(L.text, x0 + 24, y);
+    }
+  }
   ctx.restore();
 }
 window.addEventListener("resize", () => { if (!FLS) return; flightSetup(); flightDraw(FLS.raf ? Math.max(0, Math.floor((performance.now() - (FLS.start || performance.now())) / 1000 * FL.FPS)) : FLS.total - 1); });
 
-// --------------------------------------------------- pitch simulation card
-// Opened from the name bar. Same trajectory engine and cameras as the card's flight panel.
-// The simulation is a pitch lab: put a pitch in the lab, move six sliders (velocity, ride, run, release height,
-// release side, extension), and the designed pitch flies in white beside his real one (its own colour) and the MLB
-// average (dashed). Physics, in Statcast's frame (+x catcher's right, +y toward the pitcher, +z up; feet, seconds):
+// --------------------------------------------------- the Pitch lab
+// A full-screen overlay with the same trajectory engine and cameras as the card's flight panel. Compare (from a
+// lookalike's row) flies his pitch beside the lookalike's dashed one; the lab adds, builds and edits pitches with six
+// sliders (velocity, ride, run, release height, release side, extension); an edit flies see-through beside the real one. Physics, in Statcast's frame (+x catcher's right, +y toward the pitcher, +z up; feet, seconds):
 // ride and run change the spin acceleration so the pitch moves that much more over the window Statcast measures
 // movement on (y = 40 ft to the plate): d(az) = 2 d(IVB) / t40^2, likewise ax. A right-hander's arm side is -x (release
 // x = -release side, ax opposite to arm-side break); a left-hander's is +x. Release height is z, extension 60.5 - y.
@@ -3847,7 +3991,7 @@ function labPath(b, d, sgn) {   // d: { mph, divb, dhb, relH, relS, ext } -> a f
   const n = FL.NPTS, pos = new Float64Array(3 * n);
   for (let k = 0; k < n; k++) { const t = T * k / (n - 1), h = 0.5 * t * t; pos[3 * k] = r[0] + v[0] * t + a[0] * h; pos[3 * k + 1] = r[1] + v[1] * t + a[1] * h; pos[3 * k + 2] = r[2] + v[2] * t + a[2] * h; }
   const vp = [v[0] + a[0] * T, v[1] + a[1] * T, v[2] + a[2] * T];
-  return { pos, tEnd: T, n, mph: Math.hypot(...v) * 3600 / 5280, vaa: Math.atan2(vp[2], -vp[1]) * 180 / Math.PI };
+  return { pos, tEnd: T, n, mph: Math.hypot(...v) * 3600 / 5280, vaa: Math.atan2(vp[2], -vp[1]) * 180 / Math.PI, vEnd: Math.hypot(vp[0], vp[1], vp[2]) };
 }
 function simLeague(season, hand, t) { const d = flightData(); if (d.none) return null; const L = d.league[`${season}|${hand}|${t}`]; return L ? L.slice(0, 9) : null; }
 // the sliders: key, label, unit, decimals, how far either side of his real value, the his-real-value getter
@@ -3876,54 +4020,63 @@ function labDonor(j, t) {
   }
   return best;
 }
-// What flies is the "Pitches to simulate" list: his own pitches (each on or off) plus any pitch added to it. A pitch
-// is added in two steps: it is first put in the lab (from the search, any pitcher's pitch as he threw it, or from
-// "Add pitch he lacks", a donor's pitch moved to his release point), where the sliders can change it, and "Add"
-// then puts it, as edited, in the list. Edit pitch works on one of his own pitches in place.
+// What flies is one list, S.items: his own pitches (each on or off), a lookalike's pitches when comparing (dashed),
+// and any pitch added from the search or built for a type he does not throw. Adding is one step: the pitch goes
+// straight into the air; Edit opens the six sliders for it (his own pitches too). Two modes share everything:
+// "compare" (opened from a lookalike's Compare button; S.vs is that lookalike's row) and "lab".
+const yy = s => "’" + String(s).slice(2);
+const isEdited = it => !!it.d && !!it.ref && LAB_SLIDERS.some(([k, , , dec]) => it.d[k].toFixed(dec) !== it.ref[k].toFixed(dec));
+const labVelo = it => isEdited(it) ? it.d.mph : T.velo[it.r];   // the chip's number: Savant's season average, or the edit
+const whoOf = r => `${lastName(T.name[r])} ${yy(T.season[r])}${T.level[r] === "mlb" ? "" : " AAA"}`;
 function labLack(j, t) {   // a type he lacks: the donor's pitch, thrown from his release point
   const donor = labDonor(j, t); if (donor === null) return null;
   const mine = labMine(j)[0], his = mine ? labReal(mine[1]) : null, ref = labReal(donor);
   if (his) Object.assign(ref, { relH: his.relH, relS: his.relS, ext: his.ext });   // thrown from HIS slot
-  return { kind: "lack", t, r: donor, ref, d: { ...ref } };
+  return { kind: "lack", t, r: donor, ref, d: { ...ref }, on: true };
 }
-function labOther(r) { const ref = labReal(r); return { kind: "other", t: T.pitch_type[r], r, ref, d: { ...ref } }; }
+function labOther(r) { const ref = labReal(r); return { kind: "other", t: T.pitch_type[r], r, ref, d: { ...ref }, on: true }; }
 function labFly(r, d) {   // row r's pitch flown with slider values d, aimed at the spot r's real pitch arrives
   const b = labBase(trajOf(r)), real = labReal(r);
   return labPath(b, { mph: d.mph, divb: d.ivb - real.ivb, dhb: d.hb - real.hb, relH: d.relH, relS: d.relS, ext: d.ext }, ARM_SIGN(T.p_throws[r]));
 }
-function labLabel(j, it) {
-  const ty = PTN[it.t].toLowerCase();
-  if (it.kind === "own") return `${lastName(T.name[j])}’s ${ty}`;
-  if (it.kind === "lack") return `${lastName(T.name[j])}’s new ${ty}`;
-  return `${lastName(T.name[it.r])}’s ${ty} ’${String(T.season[it.r]).slice(2)}${T.level[it.r] === "mlb" ? "" : " AAA"}`;
+function labLabel(j, it) {   // the chip: the row label says whose, so his own and the lookalike's chips carry the type alone
+  const ty = PTN[it.t];
+  if (it.kind === "own" || it.kind === "ghost") return ty;
+  if (it.kind === "lack") return `New ${ty.toLowerCase()}`;
+  return `${lastName(T.name[it.r])}’s ${ty.toLowerCase()} ${yy(T.season[it.r])}`;
+}
+function labKeyText(j, it) {   // the key, the table and the scorecard: pitcher, season, pitch, mph
+  const ty = PTN[it.t].toLowerCase(), v = fmt(labVelo(it), 1);
+  if (it.kind === "own") return `${whoOf(j)} ${ty} ${v}`;
+  if (it.kind === "lack") return `${lastName(T.name[j])}: new ${ty} (from ${whoOf(it.r)}) ${v}`;
+  return `${whoOf(it.r)} ${ty} ${v}`;
 }
 function simState(j) {
   const key = T.pitcher[j] + "|" + T.season[j] + "|" + T.level[j];
   if (!state.sim || state.sim.key !== key) {
     const mine = labMine(j), t0 = mine.some(([t]) => t === T.pitch_type[j]) ? T.pitch_type[j] : (mine[0] || [])[0];
-    state.sim = { key, items: mine.map(([t, r]) => ({ id: "own:" + t, kind: "own", t, r, on: t === t0, ref: labReal(r), d: null })),
-      editId: t0 ? "own:" + t0 : null, edit: false, stage: null, showAvg: true, showDonor: true, nAdd: 0 };
+    state.sim = { key, mode: "lab", vs: null, items: mine.map(([t, r]) => ({ id: "own:" + t, kind: "own", t, r, on: t === t0, ref: labReal(r), d: null })),
+      editId: null, edit: false, showAvg: true, showDonor: true, nAdd: 0, buildOpen: null, tblOpen: null };
   }
   return state.sim;
 }
-function labFocus(S) {   // the pitch the sliders work on: the one in the lab, else (Edit pitch) one of his own
-  if (S.stage) return { st: S.stage, own: false };
+function labFocus(S) {   // the pitch the sliders work on
   if (!S.edit) return null;
-  const it = S.items.find(x => x.id === S.editId); if (!it) return null;
+  const it = S.items.find(x => x.id === S.editId); if (!it || it.kind === "ghost") return null;
   if (!it.d) it.d = { ...it.ref };
-  return { st: it, own: true };
+  return { st: it, own: it.kind === "own" };
 }
-// Normalize release point (state.simNorm: off | v | h | both): every pitch that is not his own is flown from his
-// release height (v), side (h) or both, keeping its velocity, ride, run, extension and plate spot. His release is
-// his own pitch of that type, else his most-used pitch. Side is matched physically (a lefty's pitch moves to where
-// a right-hander lets go), so arm-side run still breaks the way its thrower's does.
-const NORM_OPTS = [["off", "As thrown"], ["v", "Vertical"], ["h", "Horizontal"], ["both", "Both"]];
+// Release point (state.simNorm: off | v | h | both): every pitch that is not his own is flown from his release
+// height (v), side (h) or both, keeping its velocity, ride, run, extension and plate spot. His release is his own
+// pitch of that type, else his most-used pitch. Side is matched physically (a lefty's pitch moves to where a
+// right-hander lets go), so arm-side run still breaks the way its thrower's does.
+const NORM_OPTS = [["off", "As thrown"], ["v", "Match height"], ["h", "Match side"], ["both", "Match both"]];
 const normAxis = k => { const n = state.simNorm || "off"; return k === "relH" ? n === "v" || n === "both" : k === "relS" ? n === "h" || n === "both" : false; };
 function hisRel(j, t) {
   const own = tRow(T.pitcher[j], T.season[j], t, T.level[j]), r = own !== undefined && trajOf(own) ? own : (labMine(j)[0] || [])[1];
   return r === undefined ? null : labReal(r);
 }
-function labPlace(j, r, d) {   // slider values d of row r, with the release moved to his where normalizing
+function labPlace(j, r, d) {   // slider values d of row r, with the release moved to his where matching
   if (!normAxis("relH") && !normAxis("relS")) return d;
   const h = hisRel(j, T.pitch_type[r]); if (!h) return d;
   const o = { ...d };
@@ -3932,57 +4085,168 @@ function labPlace(j, r, d) {   // slider values d of row r, with the release mov
   return o;
 }
 const normOn = () => (state.simNorm || "off") !== "off";
+const whoKey = r => T.pitcher[r] + "|" + T.season[r] + "|" + T.level[r];
 function labPaths(j, S) {
-  const paths = [], F = labFocus(S), avgOf = [];
+  const paths = [], F = labFocus(S), avgOf = [], ink2 = css("--map-ink2") || "#9aa4b1";
   S.items.forEach(it => {
     if (!it.on) return;
-    const c = SAVANT_PITCH[it.t]; if (it.kind !== "ghost") avgOf.push(it.r);
-    if (it.kind === "own") paths.push({ type: it.t, row: it.r, color: c, ...flightPath(trajOf(it.r)) });
-    else if (it.kind === "ghost") paths.push({ type: it.t, row: it.r, ghost: true, color: c, ...(normOn() ? labFly(it.r, labPlace(j, it.r, labReal(it.r))) : flightPath(trajOf(it.r))) });   // a lookalike's pitch, dashed
-    else paths.push({ type: it.t, row: it.r, alt: true, fade: true, color: c, ...labFly(it.r, labPlace(j, it.r, it.d)) });   // added: see-through
+    const c = SAVANT_PITCH[it.t], editing = !!(F && F.st === it), velo = labVelo(it);
+    if (it.kind !== "ghost") avgOf.push(it.r);
+    if (it.kind === "own") {
+      paths.push({ type: it.t, row: it.r, color: c, who: whoKey(j), tag: lastName(T.name[j]), velo: T.velo[it.r], ...flightPath(trajOf(it.r)) });
+      if (editing) paths.push({ type: it.t, row: it.r, alt: true, fade: true, design: true, color: c, who: whoKey(j), tag: lastName(T.name[j]), velo, ...labFly(it.r, it.d) });
+    } else if (it.kind === "ghost") {
+      paths.push({ type: it.t, row: it.r, ghost: true, color: c, who: whoKey(it.r), tag: lastName(T.name[it.r]), velo,
+        ...(normOn() ? labFly(it.r, labPlace(j, it.r, labReal(it.r))) : flightPath(trajOf(it.r))) });
+    } else {   // added: see-through; while it is being edited its donor's real pitch flies too, with a white ring
+      if (editing && S.showDonor) paths.push({ type: it.t, row: it.r, alt: true, ring: true, color: "#ffffff", who: whoKey(it.r), tag: lastName(T.name[it.r]), velo: T.velo[it.r], ...flightPath(trajOf(it.r)) });
+      const his = it.kind === "lack";
+      paths.push({ type: it.t, row: it.r, alt: true, fade: true, design: editing, color: c, who: his ? whoKey(j) : whoKey(it.r), tag: his ? lastName(T.name[j]) : lastName(T.name[it.r]), velo, ...labFly(it.r, labPlace(j, it.r, it.d)) });
+    }
   });
   let design = null, base = null;
-  if (F) {
-    const st = F.st; avgOf.push(st.r);
-    const pl = d => F.own ? d : labPlace(j, st.r, d);
-    design = labFly(st.r, pl(st.d)); base = labFly(st.r, pl(st.ref));   // base: untouched, for the angles
-    if (!F.own && S.showDonor) paths.push({ type: st.t, row: st.r, alt: true, ring: true, color: "#ffffff", ...flightPath(trajOf(st.r)) });
-    paths.push({ type: st.t, alt: true, fade: true, design: true, color: SAVANT_PITCH[st.t], ...design });
-  }
-  if (S.showAvg) {   // the MLB average of every pitch type in the air (dashed)
+  if (F) { const st = F.st, pl = d => F.own ? d : labPlace(j, st.r, d); design = labFly(st.r, pl(st.d)); base = labFly(st.r, pl(st.ref)); }   // base: untouched, for the angles
+  if (S.showAvg) {   // the MLB average of every pitch type in the air: grey, dotted
     const seen = new Set();
     avgOf.forEach(r => {
       const k = `${T.season[r]}|${T.p_throws[r]}|${T.pitch_type[r]}`; if (seen.has(k)) return; seen.add(k);
       const lg = simLeague(T.season[r], T.p_throws[r], T.pitch_type[r]);
-      if (lg) paths.push({ type: T.pitch_type[r], avg: true, ghost: true, color: SAVANT_PITCH[T.pitch_type[r]], ...flightPath(lg) });
+      if (lg) paths.push({ type: T.pitch_type[r], avg: true, ghost: true, color: ink2, ...flightPath(lg) });
     });
   }
   return { paths, design, base, F };
 }
 function labReadout(j, L) {
-  const st = L.F.st, ty = PTN[st.t].toLowerCase(), flat = L.design.vaa - L.base.vaa;
-  const vs = who => `(${who} ${L.base.vaa.toFixed(1)}°${Math.abs(flat) >= 0.05 ? `, ${Math.abs(flat).toFixed(1)}° ${flat > 0 ? "flatter" : "steeper"}` : ""})`;
-  const head = st.kind === "own" ? `Your ${ty}: `
-    : st.kind === "lack" ? `His new ${ty}, from ${esc(T.name[st.r])}’s ${T.season[st.r]} ${ty} thrown from his release point: `
-    : `${esc(T.name[st.r])}’s ${T.season[st.r]} ${ty}: `;
-  const ang = st.kind === "own" ? vs("his") : st.kind === "other" ? vs(`${esc(lastName(T.name[st.r]))}’s`) : "";
-  return head + `<b>${st.d.mph.toFixed(1)} mph</b>, <b>${st.d.ivb.toFixed(1)} in</b> ride, <b>${st.d.hb.toFixed(1)} in</b> run, arriving at <b>${L.design.vaa.toFixed(1)}°</b> ${ang}.`;
+  const st = L.F.st, ty = PTN[st.t].toLowerCase(), flat = L.design.vaa - L.base.vaa, me = lastName(T.name[j]), them = lastName(T.name[st.r]);
+  const angle = who => Math.abs(flat) < 0.05 ? `same as ${who}` : `${Math.abs(flat).toFixed(1)}° ${flat > 0 ? "flatter" : "steeper"} than ${who}, ${L.base.vaa.toFixed(1)}°`;
+  const head = st.kind === "own" ? `${esc(me)}’s ${ty}, edited: `
+    : st.kind === "lack" ? `${esc(me)}’s new ${ty}, built from ${esc(T.name[st.r])}’s ${T.season[st.r]} ${ty} and thrown from ${esc(me)}’s release: `
+    : `${esc(T.name[st.r])}’s ${T.season[st.r]} ${ty}, edited: `;
+  const ang = st.kind === "own" ? angle(`${esc(me)}’s real one`) : st.kind === "other" ? angle(`${esc(them)}’s real one`) : angle("the donor’s");
+  return head + `<b>${st.d.mph.toFixed(1)} mph</b>, <b>${st.d.ivb.toFixed(1)} in</b> ride, <b>${st.d.hb.toFixed(1)} in</b> run, approach angle <b>${L.design.vaa.toFixed(1)}°</b> (${ang}).`;
 }
-function labRun(play) {   // fly (or redraw, while a slider moves) what the controls say
+// the table, the scorecard and the key all read from one list: every pitch in the air, with the values it flies with
+const SIM_COLS = [["mph", "Velocity", "mph", 1], ["ivb", "Ride (IVB)", "in", 1], ["hb", "Run (arm side +)", "in", 1], ["relH", "Release height", "ft", 2],
+  ["relS", "Release side (arm side +)", "ft", 2], ["ext", "Extension", "ft", 2], ["arm", "Arm angle", "°", 0], ["spin", "Spin", "rpm", 0], ["ms", "Flight time", "ms", 0], ["vaa", "Arrival angle", "°", 1]];
+function simTableRows(j, S) {
+  const out = [], F = labFocus(S);
+  const add = (it, r, d, note, o) => { const f = labFly(r, d);
+    out.push({ it, r, t: T.pitch_type[r], label: labKeyText(j, it) + (o.tag || ""), note, dashed: !!o.dashed, who: o.who, matched: !!o.matched,
+      v: { ...d, mph: o.mph, arm: it.kind === "lack" ? null : T.arm_angle[r], spin: T.spin ? T.spin[r] : null, ms: f.tEnd * 1000, vaa: f.vaa, vEnd: f.vEnd } }); };
+  S.items.forEach(it => {
+    if (!it.on) return;
+    const editing = !!(F && F.st === it), norm = normOn() && it.kind !== "own";
+    if (it.kind === "own") {
+      add(it, it.r, it.ref, editing ? "Real pitch; the edit is the next row" : "His pitch", { mph: T.velo[it.r], who: j });
+      if (editing) add(it, it.r, it.d, "Edited, see-through", { mph: it.d.mph, who: j, tag: " (edited)" });
+    } else if (it.kind === "ghost") add(it, it.r, labPlace(j, it.r, labReal(it.r)), norm ? "Lookalike, dashed; release matched to his" : "Lookalike, dashed", { mph: T.velo[it.r], dashed: true, who: it.r, matched: norm });
+    else add(it, it.r, labPlace(j, it.r, it.d), (it.kind === "lack" ? `Built from ${T.name[it.r]} ${yy(T.season[it.r])}` : "Added") + (isEdited(it) ? ", edited" : "") + (norm ? ", release matched" : ""),
+      { mph: labVelo(it), who: it.kind === "lack" ? j : it.r, matched: norm });
+  });
+  return out;
+}
+function simTableHTML(j, S) {
+  const rows = simTableRows(j, S);
+  if (!rows.length) return `<tr><td colspan="${SIM_COLS.length + 2}">Nothing to show: turn on a pitch above.</td></tr>`;
+  return rows.map(o => `<tr><td><i class="psw${o.dashed ? " dash" : ""}" style="${o.dashed ? `background:none;border-color:${SAVANT_PITCH[o.t]}` : `background:${SAVANT_PITCH[o.t]}`};margin-right:6px;vertical-align:-2px"></i>${esc(o.label)}<span class="tm">${esc(o.note)}</span></td>`
+    + `<td>${esc(T.name[o.r])}<span class="tm">${T.season[o.r]}${T.level[o.r] === "mlb" ? "" : " · Triple-A"} · ${T.p_throws[o.r] === "R" ? "RHP" : "LHP"}</span></td>`
+    + SIM_COLS.map(([k, , , d]) => `<td class="num">${isNum(o.v[k]) ? o.v[k].toFixed(d) : "–"}</td>`).join("") + `</tr>`).join("");
+}
+function simCSV(j, S) {
+  const head = ["Pitch", "Note", "Pitcher", "MLBAM ID", "Season", "Level", "Throws", "Pitch type", ...SIM_COLS.map(([, l, u]) => `${l} (${u})`)];
+  const lines = simTableRows(j, S).map(o => [o.label, o.note, T.name[o.r], T.pitcher[o.r], T.season[o.r], T.level[o.r] === "mlb" ? "MLB" : "Triple-A", T.p_throws[o.r], PTN[T.pitch_type[o.r]],
+    ...SIM_COLS.map(([k, , , d]) => csvN(o.v[k], d + 1))].map(csvQ).join(","));
+  return [head.map(csvQ).join(","), ...lines].join("\r\n") + "\r\n";
+}
+// the scorecard beside the canvas: one small table per pitch type in the air, his pitch first, a Δ column when
+// exactly two pitches of that type fly, and who arrives first
+const SC_ROWS = [["mph", "Velocity", 1, "mph"], ["ivb", "Ride", 1, "in"], ["hb", "Run", 1, "in"], ["relH", "Release height", 2, "ft"], ["relS", "Release side", 2, "ft"],
+  ["ext", "Extension", 2, "ft"], ["arm", "Arm angle", 0, "°"], ["spin", "Spin", 0, "rpm"], ["ms", "Flight time", 0, "ms"], ["vaa", "Arrival angle", 1, "°"]];
+function simScoreCards(j, S) {
+  const rows = simTableRows(j, S), byT = new Map();
+  rows.forEach(o => { if (!byT.has(o.t)) byT.set(o.t, []); byT.get(o.t).push(o); });
+  const order = [...byT.keys()].sort((a, b) => (b === T.pitch_type[j]) - (a === T.pitch_type[j]));   // the pitch he was opened on first, then his usage order
+  return order.map(t => { const cols = byT.get(t).slice().sort((a, b) => (b.who === j) - (a.who === j) || a.dashed - b.dashed); return { t, cols: cols.slice(0, 3), more: cols.length - 3 }; });
+}
+function simScoreHTML(j, S) {
+  const cards = simScoreCards(j, S);
+  if (!cards.length) return `<p class="labnote">Nothing to show: turn on a pitch above.</p>`;
+  const sw = o => `<i class="psw${o.dashed ? " dash" : ""}" style="${o.dashed ? `background:none;border-color:${SAVANT_PITCH[o.t]}` : `background:${SAVANT_PITCH[o.t]}`}"></i>`;
+  const head = o => `<th scope="col">${sw(o)}${esc(whoOf(o.who))}${/edited/i.test(o.note) && o.who === j && o.label.endsWith("(edited)") ? ` <span class="tm">edited</span>` : ""}</th>`;
+  const num = (v, d) => isNum(v) ? v.toFixed(d) : "–";
+  return cards.slice(0, 3).map(({ t, cols, more }) => {
+    const two = cols.length === 2, a = cols[0], b = cols[1];
+    const body = SC_ROWS.map(([k, l, d, u]) => {
+      let dlt = "";
+      if (two && isNum(a.v[k]) && isNum(b.v[k])) dlt = (k === "relH" || k === "relS") && b.matched && normAxis(k) ? `<span class="dlt">matched</span>`
+        : `<span class="dlt">${b.v[k] - a.v[k] >= 0 ? "+" : "−"}${Math.abs(b.v[k] - a.v[k]).toFixed(d)}</span>`;
+      return `<tr><th scope="row">${l} <span class="tm">${u}</span></th>${cols.map(o => `<td class="num">${num(o.v[k], d)}</td>`).join("")}${two ? `<td class="num">${dlt}</td>` : ""}</tr>`;
+    }).join("");
+    let foot = "";
+    if (two && isNum(a.v.ms) && isNum(b.v.ms)) {
+      const dt = b.v.ms - a.v.ms, first = dt < 0 ? b : a, ft = Math.abs(dt) / 1000 * (first.v.vEnd || 120);
+      foot = Math.abs(dt) < 1 ? `<p class="scfoot">Both arrive together.</p>` : `<p class="scfoot">${esc(lastName(T.name[first.who]))} arrives <b>${Math.abs(Math.round(dt))} ms</b> (${ft.toFixed(1)} ft) earlier.</p>`;
+    }
+    if (more > 0) foot += `<p class="scfoot">${more} more ${PTN[t].toLowerCase()}${more > 1 ? "s" : ""} in the table below.</p>`;
+    return `<div class="simsc"><div class="schead"><i class="psw" style="background:${SAVANT_PITCH[t]}"></i><b>${PTN[t]}</b></div><table class="simtab sctab"><thead><tr><th scope="col"></th>${cols.map(head).join("")}${two ? `<th scope="col">Δ</th>` : ""}</tr></thead><tbody>${body}</tbody></table>${foot}</div>`;
+  }).join("") + (cards.length > 3 ? `<p class="labnote">More pitch types are in the table below.</p>` : "");
+}
+function simLiveText(j, S) {   // the same comparison as one sentence, for screen readers
+  const cards = simScoreCards(j, S); if (!cards.length) return "Nothing to show: turn on a pitch above.";
+  const c = cards[0], d = o => `${whoOf(o.who)}: ${fmt(o.v.mph, 1)} mph, ${fmt(o.v.ivb, 1)} in ride, ${fmt(o.v.hb, 1)} in run, released ${fmt(o.v.relH, 2)} ft high`;
+  let s = `${PTN[c.t]}. ` + c.cols.map(d).join(". ") + ".";
+  if (c.cols.length === 2) { const dt = c.cols[1].v.ms - c.cols[0].v.ms; if (Math.abs(dt) >= 1) s += ` ${lastName(T.name[(dt < 0 ? c.cols[1] : c.cols[0]).who])} arrives ${Math.abs(Math.round(dt))} ms earlier.`; }
+  return s;
+}
+function simKeyLines(j, S) {   // the key on the canvas: only what is in the air
+  const F = labFocus(S), out = [], ink2 = css("--map-ink2") || "#9aa4b1";
+  S.items.forEach(it => {
+    if (!it.on) return;
+    const c = SAVANT_PITCH[it.t], ed = !!(F && F.st === it);
+    if (it.kind === "own") { out.push({ color: c, text: labKeyText(j, it) }); if (ed) out.push({ color: c, fade: true, text: `${labKeyText(j, it)} edited, see-through` }); }
+    else if (it.kind === "ghost") out.push({ color: c, dash: true, text: labKeyText(j, it) });
+    else {
+      if (ed && S.showDonor) out.push({ color: "#ffffff", ring: true, text: `${whoOf(it.r)} real ${PTN[it.t].toLowerCase()}, white ring` });
+      out.push({ color: c, fade: true, text: labKeyText(j, it) + (isEdited(it) ? ", edited" : "") + ", see-through" });
+    }
+  });
+  if (S.showAvg) {
+    const seen = new Set();
+    S.items.forEach(it => {
+      if (!it.on || it.kind === "ghost") return;
+      const k = `${T.season[it.r]}|${T.p_throws[it.r]}|${it.t}`; if (seen.has(k) || !simLeague(T.season[it.r], T.p_throws[it.r], it.t)) return; seen.add(k);
+      out.push({ color: ink2, dot: true, text: `MLB average ${PTN[it.t].toLowerCase()}, ${T.p_throws[it.r]}HP ${T.season[it.r]}` });
+    });
+  }
+  return out;
+}
+const keySwatch = l => `<i class="psw${l.dash ? " dash" : ""}${l.dot ? " dot" : ""}${l.fade ? " fade" : ""}${l.ring ? " ring" : ""}" style="${l.dash || l.dot ? `background:none;border-color:${l.color}` : `background:${l.color}`}"></i>`;
+// fly (or redraw) what the controls say. play: from the start. hold: keep the current frame (a slider nudge, the
+// camera, the release point, the speed), so a coach studying the plate is not sent back to the wind-up.
+function labRun(play, hold, force) {
   const j = state.sel, S = state.sim; if (j === null || j === undefined || !S) return;
-  const L = labPaths(j, S), cam = state.flightCam || "catcher";
-  const rd = $("#labRead");
-  if (rd) rd.innerHTML = L.F ? labReadout(j, L) : L.paths.length ? "" : "Nothing in the air: turn on a pitch to simulate.";
+  const L = labPaths(j, S), cam = state.flightCam || "catcher", prev = FLS && FLS.cvId === "simCv" ? FLS : null;
+  const rd = $("#labRead"); if (rd) rd.innerHTML = L.F ? labReadout(j, L) : "";
   const tb = document.getElementById("simTbody"); if (tb) tb.innerHTML = simTableHTML(j, S);
+  const sc = document.getElementById("simScore"); if (sc) sc.innerHTML = simScoreHTML(j, S);
+  const live = document.getElementById("simLive"); if (live) live.textContent = simLiveText(j, S);
+  const lines = simKeyLines(j, S), key = document.getElementById("simKey");
+  if (key) { key.innerHTML = lines.map(l => `<span>${keySwatch(l)}${esc(l.text)}</span>`).join(""); key.hidden = !lines.length; }
+  const empty = !L.paths.length;
+  ["simReplay", "simLoop", "simRec"].forEach(id => { const b = document.getElementById(id); if (b) b.disabled = empty; });
+  let frac = 1;   // where the previous run was, as a share of its length
+  if (prev) frac = prev.raf && prev.start !== null ? Math.min(Math.floor((performance.now() - prev.start) / 1000 * FL.FPS), prev.total - 1) / Math.max(prev.total - 1, 1) : 1;
   stopFlight();
-  if (!L.paths.length) { const cv = document.getElementById("simCv"); if (cv && cv.getContext) cv.getContext("2d").clearRect(0, 0, cv.width, cv.height); return; }
-  const flight = Math.max(...L.paths.map(p => p.tEnd));
-  const hold0 = Math.round(FL.HOLD0 * FL.FPS), nAnim = Math.max(2, Math.round(FL.FPS * flight * FL.SLOW)), hold1 = Math.round(FL.HOLD1 * FL.FPS);
-  FLS = { j, paths: L.paths, flight, hold0, nAnim, total: hold0 + nAnim + hold1, cam, start: null, raf: 0, zone: flightZone(j), cvId: "simCv" };
+  const flight = empty ? 0.5 : Math.max(...L.paths.map(p => p.tEnd)), slow = state.simSpeed || FL.SLOW;
+  const hold0 = Math.round(FL.HOLD0 * FL.FPS), nAnim = Math.max(2, Math.round(FL.FPS * flight * slow)), hold1 = Math.round(FL.HOLD1 * FL.FPS);
+  FLS = { j, paths: L.paths, flight, hold0, nAnim, total: hold0 + nAnim + hold1, cam, start: null, raf: 0, zone: flightZone(j), cvId: "simCv",
+    fit: true, aspects: LAB_ASPECT, tags: true, slow, loop: !!state.simLoop && !empty, empty, keyLines: lines, force: !!force };
+  if (empty) { flightSetup(); flightDraw(FLS.total - 1); return; }
+  if (hold && prev) { flightSetup(); flightDraw(Math.round(frac * (FLS.total - 1))); return; }
   if (play) requestAnimationFrame(() => { if (FLS && FLS.cvId === "simCv") { flightSetup(); flightPlay(); } });
   else { flightSetup(); flightDraw(FLS.total - 1); }
 }
-// "Add pitch to simulate" search: every word must start a word of the pitcher's name, start the pitch type's name
+// "Add any pitcher's pitch" search: every word must start a word of the pitcher's name, start the pitch type's name
 // (or an alias), or be the season or level. Any pitcher, any hand, either level; his own pitches this season are
 // already in the list. Newest season first, then most pitches thrown.
 const SIM_ALIAS = { FF: ["fastball", "4-seam", "4s", "ff"], SI: ["two-seam", "2-seam", "si"], FC: ["fc"], SL: ["sl"], ST: ["sweep", "st"], CU: ["curve", "cu"], CH: ["change", "ch"], FS: ["split", "fs"] };
@@ -4008,12 +4272,12 @@ function simFind(j, q) {
 function simFindHTML(j, q) {
   if (!q.trim()) return "";
   const rows = simFind(j, q);
-  if (!rows.length) return `<li class="none">No tracked pitch matches “${esc(q)}”.</li>`;
-  return rows.map(r => `<li><button type="button" data-addr="${r}"><span><i class="psw" style="background:${SAVANT_PITCH[T.pitch_type[r]]};margin-right:6px;vertical-align:-1px"></i>${esc(T.name[r])} · ${PTN[T.pitch_type[r]]}</span>
+  if (!rows.length) return `<li class="none">No tracked pitch matches “${esc(q)}”. Try a last name, a pitch, or a year: Skubal changeup 2025.</li>`;
+  return rows.map(r => `<li role="option"><button type="button" data-addr="${r}"><span><i class="psw" style="background:${SAVANT_PITCH[T.pitch_type[r]]};margin-right:6px;vertical-align:-1px"></i>${esc(T.name[r])} · ${PTN[T.pitch_type[r]]}</span>
     <span class="tm">${T.season[r]}${T.level[r] === "mlb" ? "" : " · Triple-A"} · ${T.p_throws[r] === "R" ? "RHP" : "LHP"} · ${fmt(T.velo[r], 1)} mph · ${(T.n[r] || 0).toLocaleString("en-US")} pitches</span></button></li>`).join("");
 }
-// Save animation: replay the flight while the browser records the canvas (mp4 where it can, else webm), with
-// "Pitch Universe" in text, bottom left. Anything that redraws the lab mid-recording stops it, and nothing is saved.
+// Save video: replay the flight while the browser records the canvas (mp4 where it can, else webm), with the key and
+// "Pitch Universe" drawn in. Anything that redraws the lab mid-recording stops it, and nothing is saved.
 const REC_TYPES = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
 function recType() {
   if (typeof MediaRecorder !== "function" || typeof MediaRecorder.isTypeSupported !== "function") return null;
@@ -4021,159 +4285,209 @@ function recType() {
   return null;
 }
 const canRecord = () => !!recType() && canSave() && typeof HTMLCanvasElement !== "undefined" && typeof HTMLCanvasElement.prototype.captureStream === "function";
+const recLabel = () => `Save video (${(recType() || "").startsWith("video/mp4") ? "MP4" : "WebM"}, ~5 s)`;
 async function saveSimVideo() {
-  const j = state.sel, S = state.sim, type = recType(), cv = document.getElementById("simCv"), btn = $("#simRec"), msg = $("#simRecMsg");
+  const j = state.sel, S = state.sim, type = recType(), cv = document.getElementById("simCv"), btn = $("#simRec"), msg = $("#simRecMsg"), box = $("#simBox");
   if (j === null || j === undefined || !S || !type || !cv || state.simRec) return;
   labRun(false);
-  const F0 = FLS; if (!F0 || F0.cvId !== "simCv") { msg.textContent = "Nothing in the air to record: turn on a pitch."; return; }
-  state.simRec = true; btn.disabled = true; btn.textContent = "Recording…"; msg.textContent = "";
+  const F0 = FLS; if (!F0 || F0.cvId !== "simCv" || F0.empty) { msg.textContent = "Nothing to record: turn on a pitch above."; return; }
+  state.simRec = true; btn.disabled = true; msg.innerHTML = `<span class="recdot" aria-hidden="true"></span>Recording… 0.0 s`; box.classList.add("recording");
+  const t0 = performance.now(), tick = setInterval(() => { const m = $("#simRecMsg"); if (m) m.innerHTML = `<span class="recdot" aria-hidden="true"></span>Recording… ${((performance.now() - t0) / 1000).toFixed(1)} s`; }, 100);
   const stream = cv.captureStream(FL.FPS), chunks = [];
   let rec; try { rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 8e6 }); } catch (e) { rec = new MediaRecorder(stream); }
   rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
   const stopped = new Promise(res => { rec.onstop = res; });
   const stop = () => { try { if (rec.state !== "inactive") rec.stop(); } catch (e) {} };
-  F0.rec = true; F0.onEnd = () => { F0.finished = true; setTimeout(stop, 200); };
+  F0.rec = true; F0.force = true; F0.onEnd = () => { F0.finished = true; setTimeout(stop, 200); };
   const guard = setInterval(() => { if (FLS !== F0) { clearInterval(guard); stop(); } }, 250);   // the lab was redrawn: give up
   rec.start(250); flightSetup(); flightPlay();
-  await stopped; clearInterval(guard); stream.getTracks().forEach(t => t.stop());
-  state.simRec = false; F0.rec = false;
-  if (FLS === F0) flightDraw(F0.total - 1);   // the last frame again, without the mark
-  const b2 = $("#simRec"), m2 = $("#simRecMsg"); if (b2) { b2.disabled = false; b2.textContent = "Save animation"; }
+  await stopped; clearInterval(guard); clearInterval(tick); stream.getTracks().forEach(t => t.stop());
+  state.simRec = false; F0.rec = false; box.classList.remove("recording");
+  if (FLS === F0) { F0.loop = !!state.simLoop; flightDraw(F0.total - 1); }   // the last frame again, without the mark
+  const b2 = $("#simRec"), m2 = $("#simRecMsg"); if (b2) b2.disabled = false; if (m2) m2.textContent = "";
   if (!F0.finished) { if (m2) m2.textContent = "Recording stopped: the lab changed before the pitches landed."; return; }
   const blob = new Blob(chunks, { type: type.split(";")[0] });
   if (!blob.size) { if (m2) m2.textContent = "This browser could not record the animation."; return; }
-  const g = S.items.find(it => it.kind === "ghost" && it.on), ext = type.startsWith("video/mp4") ? "mp4" : "webm";
-  const name = `pitch_universe_${fileSlug(T.name[j])}_${T.season[j]}${g ? `_vs_${fileSlug(T.name[g.r])}_${T.season[g.r]}` : ""}_${state.flightCam || "catcher"}.${ext}`;
-  await saveFile(name, blob, blob.type, m2, "Saved the animation.");
+  const g = S.mode === "compare" && S.vs !== null && S.vs !== undefined ? S.vs : null, ext = type.startsWith("video/mp4") ? "mp4" : "webm";
+  const name = `pitch_universe_${fileSlug(T.name[j])}_${T.season[j]}${g !== null ? `_vs_${fileSlug(T.name[g])}_${T.season[g]}` : ""}_${state.flightCam || "catcher"}.${ext}`;
+  await saveFile(name, blob, blob.type, m2, `Saved ${name}`);
 }
-// Pitches in the air, as a table and a CSV: what flies right now, with the values it flies with
-const SIM_COLS = [["mph", "Velocity", "mph", 1], ["ivb", "Ride (IVB)", "in", 1], ["hb", "Run (arm side +)", "in", 1], ["relH", "Release height", "ft", 2],
-  ["relS", "Release side (arm side +)", "ft", 2], ["ext", "Extension", "ft", 2], ["spin", "Spin", "rpm", 0], ["vaa", "Arrival angle", "°", 1]];
-function simTableRows(j, S) {
-  const out = [], F = labFocus(S);
-  const add = (label, r, d, note) => { const f = labFly(r, d); out.push({ label, r, v: { ...d, spin: T.spin ? T.spin[r] : null, vaa: f.vaa }, note }); };
-  S.items.forEach(it => {
-    if (!it.on) return;
-    if (it.kind === "own") add(labLabel(j, it), it.r, it.ref, "His pitch");
-    else if (it.kind === "ghost") add(labLabel(j, it), it.r, labPlace(j, it.r, labReal(it.r)), normOn() ? "Lookalike (ghost), release normalized" : "Lookalike (ghost)");
-    else add(labLabel(j, it), it.r, labPlace(j, it.r, it.d), (it.kind === "lack" ? "Built from " + T.name[it.r] : "Added") + (it.edited ? ", edited" : "") + (normOn() ? ", release normalized" : ""));
-  });
-  if (F) add(F.own ? labLabel(j, F.st) + " (edited)" : "In the lab: " + labLabel(j, F.st), F.st.r, F.own ? F.st.d : labPlace(j, F.st.r, F.st.d), F.own ? "Edited" : "In the lab");
-  return out;
-}
-function simTableHTML(j, S) {
-  const rows = simTableRows(j, S);
-  if (!rows.length) return `<tr><td colspan="${SIM_COLS.length + 2}">Nothing in the air.</td></tr>`;
-  return rows.map(o => `<tr><td><i class="psw" style="background:${SAVANT_PITCH[T.pitch_type[o.r]]};margin-right:6px;vertical-align:-2px"></i>${esc(o.label)}<span class="tm">${esc(o.note)}</span></td>`
-    + `<td>${esc(T.name[o.r])}<span class="tm">${T.season[o.r]}${T.level[o.r] === "mlb" ? "" : " · Triple-A"} · ${T.p_throws[o.r] === "R" ? "RHP" : "LHP"}</span></td>`
-    + SIM_COLS.map(([k, , , d]) => `<td class="num">${isNum(o.v[k]) ? o.v[k].toFixed(d) : "–"}</td>`).join("") + `</tr>`).join("");
-}
-function simCSV(j, S) {
-  const head = ["Pitch", "Note", "Pitcher", "MLBAM ID", "Season", "Level", "Throws", "Pitch type", ...SIM_COLS.map(([, l, u]) => `${l} (${u})`)];
-  const lines = simTableRows(j, S).map(o => [o.label, o.note, T.name[o.r], T.pitcher[o.r], T.season[o.r], T.level[o.r] === "mlb" ? "MLB" : "Triple-A", T.p_throws[o.r], PTN[T.pitch_type[o.r]],
-    ...SIM_COLS.map(([k, , , d]) => csvN(o.v[k], d + 1))].map(csvQ).join(","));
-  return [head.map(csvQ).join(","), ...lines].join("\r\n") + "\r\n";
-}
-function renderSim() {
-  stopFlight();
+function renderSim(opt = {}) {
   const box = $("#simBox"), j = state.sel; if (j === null || j === undefined) { box.hidden = true; return; }
-  if (flightData().none) { box.hidden = false; box.innerHTML = `<div class="sim-head"><h2 class="sim-name" id="simTitle">${esc(T.name[j])}</h2><button type="button" class="sim-x" id="simClose" aria-label="Close">×</button></div><p class="simsub">No tracked flight paths for this pitch.</p>`; $("#simClose").onclick = () => closeSim(); return; }
-  const S = simState(j), s = T.season[j], lvl = T.level[j], cam = state.flightCam || "catcher";
-  const own = S.items.filter(it => it.kind === "own"), have = new Set(own.map(it => it.t)), lack = TYPES.filter(t => !have.has(t));
-  const F = labFocus(S), st = F && F.st, ty = st ? PTN[st.t].toLowerCase() : "", dn = st && !F.own ? lastName(T.name[st.r]) : null;
+  if (flightData().none) {
+    box.hidden = false; box.setAttribute("aria-label", "Pitch lab");
+    box.innerHTML = `<div class="sim-head"><h2 class="sim-name" id="simTitle" tabindex="-1">${esc(T.name[j])}</h2><button type="button" class="sim-x" id="simClose" aria-label="Close the Pitch lab">×</button></div><p class="simsub">No tracked flight paths for this pitch.</p>`;
+    $("#simClose").onclick = () => closeSimFocus(); return;
+  }
+  const S = simState(j), cmp = S.mode === "compare" && S.vs !== null && S.vs !== undefined, me = lastName(T.name[j]), cam = state.flightCam || "catcher";
+  const own = S.items.filter(it => it.kind === "own"), added = S.items.filter(it => it.kind === "other" || it.kind === "lack"), ghosts = S.items.filter(it => it.kind === "ghost");
+  const have = new Set(own.map(it => it.t)), lack = TYPES.filter(t => !have.has(t));
+  const F = labFocus(S), st = F && F.st, editingOwn = !!(F && F.own);
+  if (S.buildOpen === null || S.buildOpen === undefined) S.buildOpen = !cmp;
+  // keyboard focus must survive the rebuild: remember what had it
+  const ae = document.activeElement, keepKeys = ["simon", "norm", "simcam", "labedit", "simrm", "labt", "addr", "speed", "lab"];
+  const keep = opt.focus ? null : ae && box.contains && box.contains(ae)
+    ? (ae.id ? "#" + ae.id : keepKeys.map(k => ae.dataset && ae.dataset[k] !== undefined ? `[data-${k}="${ae.dataset[k]}"]` : null).find(Boolean)) : null;
+  const sw = (color, style) => `<i class="psw${style ? " " + style : ""}" style="${style === "dash" || style === "dot" ? `background:none;border-color:${color}` : `background:${color}`}"></i>`;
+  // ---- header
+  const comps = labComps(j), myT = T.pitch_type[j], mine = own.find(it => it.t === myT) || own[0];
+  const vsSel = (id, label) => `<select class="simsel" id="${id}" aria-label="${label}">${cmp ? "" : `<option value="">Compare with a lookalike…</option>`}${comps.map(([c, q], k) => `<option value="${c}"${cmp && c === S.vs ? " selected" : ""}>${k + 1}. ${esc(T.name[c])} ${yy(T.season[c])} · ${fitOf(q)[1]}</option>`).join("")}</select>`;
+  let header;
+  if (cmp) {
+    const ci = comps.findIndex(([c]) => c === S.vs), q = ci >= 0 ? comps[ci][1] : undefined, vt = T.pitch_type[S.vs];
+    header = `<div class="sim-head"><div class="simh2h">
+      <div class="simside">${sw(SAVANT_PITCH[mine ? mine.t : myT], "")}<h2 class="sim-name" id="simTitle" tabindex="-1">${esc(T.name[j])} <span class="simyr">${yy(T.season[j])}</span></h2>
+        <p class="simsub">${esc(teamStr(j))}${T.level[j] === "mlb" ? "" : " · Triple-A"}${mine ? ` · ${PTN[mine.t].toLowerCase()} ${fmt(T.velo[mine.r], 1)} mph` : ""} · solid</p></div>
+      <span class="simvsword">vs</span>
+      <div class="simside">${sw(SAVANT_PITCH[vt], "dash")}<h2 class="sim-name">${esc(T.name[S.vs])} <span class="simyr">${yy(T.season[S.vs])}</span></h2>
+        <p class="simsub">${esc(teamStr(S.vs))}${T.level[S.vs] === "mlb" ? "" : " · Triple-A"} · ${PTN[vt].toLowerCase()} ${fmt(T.velo[S.vs], 1)} mph · dashed${q !== undefined ? ` · ${fitOf(q)[1]}` : ""}</p></div></div>
+      <div class="simhr">${comps.length > 1 ? `<div class="simsw" role="group" aria-label="Which lookalike"><button type="button" class="sim-replay" id="simPrev"${ci <= 0 ? " disabled" : ""} aria-label="Previous lookalike" title="Previous lookalike (←)">‹</button>${vsSel("simVs", "Lookalike to compare with")}<button type="button" class="sim-replay" id="simNext"${ci < 0 || ci >= comps.length - 1 ? " disabled" : ""} aria-label="Next lookalike" title="Next lookalike (→)">›</button></div>` : ""}<span class="simhint">Pitch lab</span>
+      <button type="button" class="sim-x" id="simClose" aria-label="Close the Pitch lab" title="Close (Esc)">×</button></div></div>`;
+    box.setAttribute("aria-label", `Pitch lab: ${T.name[j]} vs ${T.name[S.vs]}`);
+  } else {
+    header = `<div class="sim-head"><div><h2 class="sim-name" id="simTitle" tabindex="-1">${esc(T.name[j])} · Pitch lab</h2>
+      <p class="simsub">${T.season[j]}${T.level[j] === "mlb" ? "" : " · Triple-A"} · ${esc(teamStr(j))}</p></div>
+      <div class="simhr">${comps.length ? vsSel("simVs", "Compare with a lookalike") : ""}<button type="button" class="sim-x" id="simClose" aria-label="Close the Pitch lab" title="Close (Esc)">×</button></div></div>`;
+    box.setAttribute("aria-label", `Pitch lab: ${T.name[j]}`);
+  }
+  // ---- the pitches in the air: his row, the lookalike's row (aligned by pitch type), any added pitches
+  const chipOf = it => {
+    const c = SAVANT_PITCH[it.t], lbl = esc(labLabel(j, it)), ed = isEdited(it), ty = PTN[it.t].toLowerCase();
+    const tip = it.kind === "ghost" ? `${T.name[it.r]}’s ${T.season[it.r]} ${ty}, dashed` : it.kind === "lack" ? `Built from ${T.name[it.r]}’s ${T.season[it.r]} ${ty}, thrown from ${me}’s release`
+      : it.kind === "other" ? `${T.name[it.r]}’s ${T.season[it.r]} ${ty}` : `${me}’s ${ty}`;
+    const btn = `<button type="button" class="simtype" data-simon="${it.id}" aria-pressed="${it.on}" title="${esc(tip)}${ed ? ", edited" : ""} — click to ${it.on ? "hide" : "show"}">${sw(c, it.kind === "ghost" ? "dash" : "")}${lbl}${ed ? ` <span class="tm">edited</span>` : ""} <span class="tm">${fmt(labVelo(it), 1)}</span></button>`;
+    if (it.kind === "own" || it.kind === "ghost") return btn;
+    return `<span class="simpair">${btn}<button type="button" class="simx" data-labedit="${it.id}" aria-pressed="${!!(F && F.st === it)}" aria-label="Edit ${lbl}" title="Edit with the sliders">✎</button><button type="button" class="simx" data-simrm="${it.id}" aria-label="Remove ${lbl}" title="Remove">×</button></span>`;
+  };
+  const nOn = arr => arr.filter(it => it.on).length;
+  const hint = arr => arr.length && nOn(arr) < arr.length ? ` <span class="simhint">showing ${nOn(arr)} of ${arr.length}</span>` : "";
+  let rows;
+  if (cmp && ghosts.length) {
+    const types = [...new Set([...own.map(it => it.t), ...ghosts.map(it => it.t)])];   // his usage order, then the lookalike's extra types
+    const cellOf = (list, t) => { const it = list.find(x => x.t === t); return it ? chipOf(it) : `<span class="simnone" aria-hidden="true">—</span>`; };
+    rows = `<div class="simpairs" style="grid-template-columns:max-content repeat(${types.length}, max-content)">
+      <span class="srl">${esc(me)}’s pitches${hint(own)}</span>${types.map(t => cellOf(own, t)).join("")}
+      <span class="srl">${sw(SAVANT_PITCH[T.pitch_type[S.vs]], "dash")}${esc(lastName(T.name[S.vs]))}’s pitches${hint(ghosts)}</span>${types.map(t => cellOf(ghosts, t)).join("")}</div>`
+      + (added.length ? `<div class="simrows"><span class="srl">Added${hint(added)}</span><div class="simtypes">${added.map(chipOf).join("")}</div></div>` : "");
+  } else {
+    const his = [...own, ...added];
+    rows = `<div class="simrows"><span class="srl">${esc(me)}’s pitches${hint(his)}</span><div class="simtypes">${his.map(chipOf).join("") || `<span class="labnote">No tracked flight paths for his pitches; add one below.</span>`}</div></div>`;
+  }
+  // ---- add or build a pitch (closed in Compare, open in the lab)
+  const lackChips = lack.map(t => { const d = labDonor(j, t), ty = PTN[t].toLowerCase();
+    return `<button type="button" class="simact" data-labt="${t}"${d === null ? ` disabled title="No same-handed pitcher with a tracked ${ty} to borrow from"` : ` title="Build a ${ty} from ${esc(T.name[d])}’s (${T.season[d]}, the closest same-hand pitcher by arm angle and release point), thrown from ${esc(me)}’s release"`}><span class="plus" aria-hidden="true">+</span><i class="dot" style="background:${SAVANT_PITCH[t]}"></i>${PTN[t]}</button>`; }).join("");
+  const builder = `<details class="simbuild" id="simBuild"${S.buildOpen ? " open" : ""}><summary>Add or build a pitch</summary><div class="simrows">
+      <label class="srl" for="simAddQ">Add any pitcher’s pitch</label><div class="simvs"><input type="search" id="simAddQ" class="simaddq" autocomplete="off" spellcheck="false" placeholder="Pitcher name or pitch, e.g. Skubal changeup" role="combobox" aria-expanded="false" aria-controls="simAddList" aria-autocomplete="list"><ul class="simvslist" id="simAddList" role="listbox" aria-label="Matching pitches" hidden></ul></div>
+      ${lack.length ? `<span class="srl">Or build one ${esc(me)} doesn’t throw</span><div class="simtypes">${lackChips}</div>` : ""}
+      <span class="srl">Edit one of ${esc(me)}’s pitches</span><div class="simtypes"><button type="button" class="simtype simput labedit" id="labEdit" aria-pressed="${editingOwn}"${own.length ? "" : " disabled"}>${sw(editingOwn ? SAVANT_PITCH[st.t] : "var(--map-ink2)", "")}Edit pitch</button>${editingOwn && own.length > 1 ? own.map(it => `<button type="button" class="simtype simput" data-labedit="${it.id}" aria-pressed="${S.editId === it.id}">${sw(SAVANT_PITCH[it.t], "")}${PTN[it.t]}</button>`).join("") : ""}</div>
+    </div></details>`;
+  // ---- left column: the sliders while editing, else the scorecard; then the view settings
   const slider = ([k, label, unit, dec, span]) => {
-    if (!F.own && normAxis(k)) {   // normalized: this release axis is his, not a slider
+    if (!F.own && normAxis(k)) {   // matched: this release axis is his, not a slider
       const v = labPlace(j, st.r, st.d)[k];
-      return `<div class="labrow"><span class="labl">${esc(label)}</span><span class="labv">${v.toFixed(dec)} ${unit}</span><span class="labr">his (Normalize release point)</span></div>`;
+      return `<div class="labrow"><span class="labl">${esc(label)}</span><span class="labv">${v.toFixed(dec)} ${unit}</span><span class="labr">${esc(me)}’s (release matched)</span></div>`;
     }
     const ref = st.ref, lo = +(ref[k] - span).toFixed(dec), hi = +(ref[k] + span).toFixed(dec), step = Math.pow(10, -dec);
-    const who = F.own || (st.kind === "lack" && ["relH", "relS", "ext"].includes(k)) ? "his" : `${dn}’s`;
+    const who = F.own || (st.kind === "lack" && ["relH", "relS", "ext"].includes(k)) ? `${me}’s` : `${lastName(T.name[st.r])}’s`;
     return `<label class="labrow" for="lab-${k}"><span class="labl">${esc(label)}</span>
       <input type="range" id="lab-${k}" data-lab="${k}" min="${lo}" max="${hi}" step="${step}" value="${st.d[k]}">
       <span class="labv" id="labv-${k}">${st.d[k].toFixed(dec)} ${unit}</span><span class="labr">${esc(who)} ${ref[k].toFixed(dec)}</span></label>`;
   };
-  const chip = it => {
-    const c = SAVANT_PITCH[it.t], lbl = esc(labLabel(j, it));
-    if (it.kind === "own") return `<button type="button" class="simtype" data-simon="${it.id}" aria-pressed="${it.on}"><i class="psw" style="background:${c};border-color:${c}"></i>${lbl} <span class="tm">${fmt(T.velo[it.r], 1)}</span></button>`;
-    if (it.kind === "ghost") return `<span class="simpair"><button type="button" class="simtype added" data-simon="${it.id}" aria-pressed="${it.on}" title="${esc(`${T.name[it.r]}’s ${T.season[it.r]} ${PTN[it.t].toLowerCase()}, a lookalike, flying as a dashed ghost`)}"><i class="psw dash" style="background:none;border-color:${c}"></i>${lbl}</button><button type="button" class="simx" data-simrm="${it.id}" aria-label="Remove ${lbl}" title="Remove">×</button></span>`;
-    const tip = it.kind === "lack" ? `Built from ${T.name[it.r]}’s ${T.season[it.r]} ${PTN[it.t].toLowerCase()}, thrown from his release point` : `${T.name[it.r]}’s ${T.season[it.r]} ${PTN[it.t].toLowerCase()}`;
-    return `<span class="simpair"><button type="button" class="simtype added" data-simon="${it.id}" aria-pressed="${it.on}" title="${esc(tip)}${it.edited ? " (edited)" : ""}"><i class="psw fade" style="background:${c};border-color:${c}"></i>${lbl} <span class="tm">${it.d.mph.toFixed(1)}</span></button><button type="button" class="simx" data-simrm="${it.id}" aria-label="Remove ${lbl}" title="Remove">×</button></span>`;
-  };
-  const tColor = st ? SAVANT_PITCH[st.t] : null;
-  const controls = S.stage
-    ? `<button type="button" class="simtype" id="labDonor" aria-pressed="${S.showDonor}"><i class="psw ring" style="background:#ffffff"></i>${esc(dn)}’s ${ty}</button>
-       <button type="button" class="simtype labadd" id="labAdd" title="Put this pitch, as edited, in Pitches to simulate">Add</button>`
-    : `<button type="button" class="simtype labedit" id="labEdit" aria-pressed="${S.edit}"${own.length ? "" : " disabled"}><i class="psw fade" style="background:${tColor || "var(--map-ink2)"};border-color:${tColor || "var(--map-ink2)"}"></i>Edit pitch</button>`;
-  const avgBtn = `<button type="button" class="simtype" id="labAvg" aria-pressed="${S.showAvg}"><i class="psw dash" style="background:none;border-color:${tColor || "var(--map-ink2)"}"></i>MLB average</button>`;
-  const editWhich = !S.stage && S.edit && own.length > 1
-    ? `<div class="simrow"><span class="flbl">Edit</span><div class="simtypes">${own.map(it => `<button type="button" class="simtype" data-labedit="${it.id}" aria-pressed="${S.editId === it.id}"><i class="psw" style="background:${SAVANT_PITCH[it.t]};border-color:${SAVANT_PITCH[it.t]}"></i>${PTN[it.t]}</button>`).join("")}</div></div>` : "";
-  const note = S.stage
-    ? st.kind === "lack"
-      ? `<p class="labnote">No ${ty} of his own: this one is ${esc(T.name[st.r])}’s (${T.season[st.r]}, the closest same-hand pitcher by arm angle and release point), thrown from his release point. It flies in see-through ${ty} colour; edit it below, then Add it to the pitches to simulate.</p>`
-      : `<p class="labnote">${esc(T.name[st.r])}’s ${T.season[st.r]}${T.level[st.r] === "mlb" ? "" : " Triple-A"} ${ty}, from his own release point. It flies in see-through ${ty} colour; edit it below, then Add it to the pitches to simulate.</p>`
-    : F ? "" : `<p class="labnote">Turn on Edit pitch to change one of his pitches: the edit flies in see-through colour beside the real one.</p>`;
-  const sliders = F ? LAB_SLIDERS.map(slider).join("") + `<div class="simrow"><button type="button" class="sim-replay" id="labReset">Reset</button>${S.stage ? `<button type="button" class="sim-replay" id="labDiscard">Discard</button>` : ""}</div>` : "";
+  const sliders = !F ? "" : `<div class="labhead"><b>${esc(F.own ? `${me}’s ${PTN[st.t].toLowerCase()}` : labLabel(j, st))}</b> <span class="simhint">editing</span></div>`
+    + (F.own ? `<p class="labnote">The edit flies see-through beside the real one.</p>`
+      : st.kind === "lack" ? `<p class="labnote">Built from ${esc(T.name[st.r])}’s ${T.season[st.r]} ${PTN[st.t].toLowerCase()} (the closest same-hand pitcher by arm angle and release point), thrown from ${esc(me)}’s release. It flies see-through; the donor’s real pitch wears a white ring.</p>`
+      : `<p class="labnote">${esc(T.name[st.r])}’s ${T.season[st.r]} ${PTN[st.t].toLowerCase()}, from his own release. The edit flies see-through; his real pitch wears a white ring.</p>`)
+    + LAB_SLIDERS.map(slider).join("")
+    + `<div class="simrow"><button type="button" class="sim-replay" id="labReset">Reset</button>${F.own ? "" : `<button type="button" class="simtype simput" id="labDonor" aria-pressed="${S.showDonor}">${sw("#ffffff", "")}Real ${PTN[st.t].toLowerCase()}, white ring</button>`}<button type="button" class="sim-replay" id="labDone">Done</button></div><p class="labread" id="labRead"></p>`;
+  const anyOther = S.items.some(it => it.kind !== "own");
+  const view = `<div class="simview"><div class="simrows"><span class="srl" id="normLbl">Release point</span><div class="mseg simnorm" role="group" aria-labelledby="normLbl">${NORM_OPTS.map(([v, l]) => `<button type="button" data-norm="${v}" aria-pressed="${(state.simNorm || "off") === v}"${anyOther ? "" : " disabled"}>${l}</button>`).join("")}</div>
+      <span class="srl">Reference</span><div class="simtypes"><button type="button" class="simtype simput" id="labAvg" aria-pressed="${S.showAvg}">${sw("var(--map-ink2)", "dot")}MLB average</button></div></div>
+      <p class="labnote">${anyOther ? `Match flies every pitch that is not ${esc(me)}’s from his release height, side or both, keeping its speed and movement, so the comparison is shape, not slot; arm-side run still breaks its thrower’s way.` : `Match moves another pitcher’s pitch to ${esc(me)}’s release; compare with a lookalike or add a pitch first.`}</p></div>`;
+  const left = `<div class="labsliders">${sliders}${F ? "" : `<div id="simScore"></div>`}${view}<p class="vh" id="simLive" aria-live="polite"></p></div>`;
+  // ---- the stage: camera top left, Replay / Loop / Speed top right, the key bottom left, then the note and exports
+  const speeds = [[1, "Real"], [3, "3×"], [6, "6×"], [12, "12×"]], spd = state.simSpeed || FL.SLOW;
+  const stage = `<div class="simstage labstage"><div class="simcvwrap">
+      <div class="simover-l"><div class="mseg simcam" role="group" aria-label="Camera">${[["pitcher", "Behind the pitcher"], ["catcher", "Catcher’s view"]].map(([c, l]) => `<button type="button" data-simcam="${c}" aria-pressed="${cam === c}">${l}</button>`).join("")}</div></div>
+      <div class="simover"><button type="button" class="sim-replay simprimary" id="simReplay" title="Play the flight again">↻ Replay</button><button type="button" class="sim-replay" id="simLoop" aria-pressed="${!!state.simLoop}" title="Play again and again">Loop</button><div class="mseg simspeed" role="group" aria-label="Speed">${speeds.map(([v, l]) => `<button type="button" data-speed="${v}" aria-pressed="${spd === v}" title="${v === 1 ? "Real time" : `${v}× slow motion`}">${l}</button>`).join("")}</div></div>
+      <canvas id="simCv" class="simcv" role="img" aria-label="Animated flight of the pitches shown" aria-describedby="simLive"></canvas>
+      <p class="simkey simkeybox" id="simKey" hidden></p></div>
+      <p class="simnote">${spd === 1 ? "Real time" : `${spd}× slow motion`} · season-average path per pitch type, not one thrown pitch · every pitch leaves the hand at the same instant, so the slower ones arrive later</p>
+      <div class="simexports">${canRecord() ? `<button type="button" class="sim-replay" id="simRec" title="The flight as a video, with the key and the Pitch Universe mark">${recLabel()}</button>` : ""}${canSave() ? `<button type="button" class="sim-replay" id="simCsv" title="Every pitch shown, as numbers">Download CSV</button>` : ""}<span class="labnote" id="simRecMsg" aria-live="polite"></span></div></div>`;
+  const nAir = S.items.filter(it => it.on).length, tblOpen = S.tblOpen === null || S.tblOpen === undefined ? (!cmp && nAir > 2) : S.tblOpen;
+  const table = `<details class="simtbl" id="simTbl"${tblOpen ? " open" : ""}><summary>Every pitch shown, as numbers</summary>
+      <div class="simtblscroll"><table class="simtab"><thead><tr><th>Pitch</th><th>Pitcher</th>${SIM_COLS.map(([, l, u]) => `<th class="num">${esc(l)} <span class="tm">(${esc(u)})</span></th>`).join("")}</tr></thead><tbody id="simTbody"></tbody></table></div>
+      <p class="labnote" id="simTblMsg" aria-live="polite"></p></details>`;
   box.hidden = false;
-  box.innerHTML = `<div class="sim-head"><div><h2 class="sim-name" id="simTitle">${esc(T.name[j])} · Pitch lab</h2>
-      <p class="simsub">${s}${lvl === "mlb" ? "" : " · Triple-A"} · ${esc(teamStr(j))}</p></div>
-      <button type="button" class="sim-x" id="simClose" aria-label="Close the pitch lab" title="Close (Esc)">×</button></div>
-    <div class="simrow"><span class="flbl">Pitches to simulate${(() => { const m = S.items.filter(it => it.kind !== "ghost"); return m.length ? ` <span class="simhint">${m.filter(it => it.on).length} of ${m.length} in the air · click to show or hide</span>` : ""; })()}</span><div class="simtypes">${S.items.filter(it => it.kind !== "ghost").map(chip).join("") || `<span class="labnote">No tracked flight paths for his pitches; add one below.</span>`}</div></div>
-    ${S.items.some(it => it.kind === "ghost") ? (() => { const g = S.items.find(it => it.kind === "ghost"); return `<div class="simrow"><span class="flbl">Compare with ${esc(T.name[g.r])} ’${String(T.season[g.r]).slice(2)}${T.level[g.r] === "mlb" ? "" : " AAA"} (ghost) <span class="simhint">${S.items.filter(it => it.kind === "ghost" && it.on).length} of ${S.items.filter(it => it.kind === "ghost").length} in the air</span></span><div class="simtypes">${S.items.filter(it => it.kind === "ghost").map(chip).join("")}</div></div>`; })() : ""}
-    <div class="simrow"><label class="flbl" for="simAddQ">Add pitch to simulate</label><div class="simvs"><input type="search" id="simAddQ" class="simaddq" autocomplete="off" spellcheck="false"
-      placeholder="Pitcher name or pitch, e.g. Skubal changeup" aria-controls="simAddList"><ul class="simvslist" id="simAddList" hidden></ul></div></div>
-    ${lack.length ? `<div class="simrow"><span class="flbl">Add pitch he lacks</span><div class="simtypes">${lack.map(t => `<button type="button" class="simtype added" data-labt="${t}" aria-pressed="${!!(S.stage && S.stage.kind === "lack" && S.stage.t === t)}" title="Build a ${PTN[t].toLowerCase()} from his closest lookalike by arm angle and release point, thrown from his release point"><i class="psw" style="background:${SAVANT_PITCH[t]};border-color:${SAVANT_PITCH[t]}"></i>${PTN[t]}</button>`).join("")}</div></div>` : ""}
-    ${S.stage || S.items.some(it => it.kind !== "own") ? `<div class="simrow"><span class="flbl" id="normLbl">Normalize release point</span><div class="mseg simnorm" role="group" aria-labelledby="normLbl">${NORM_OPTS.map(([v, l]) => `<button type="button" data-norm="${v}" aria-pressed="${(state.simNorm || "off") === v}" title="${v === "off" ? "Every pitch from its own release point" : `Every pitch that is not his from his release ${v === "v" ? "height" : v === "h" ? "side" : "height and side"}`}">${l}</button>`).join("")}</div></div>` : ""}
-    <div class="lab">
-      <div class="labsliders">
-        <div class="simrow labshow">${controls}${avgBtn}</div>
-        ${editWhich}${note}${sliders}
-        <p class="labread" id="labRead"></p></div>
-      <div class="simstage labstage"><div class="simover"><div class="mseg simcam" role="group" aria-label="Camera">${["catcher", "pitcher"].map(c => `<button type="button" data-simcam="${c}" aria-pressed="${cam === c}">${c === "catcher" ? "Catcher view" : "Pitcher view"}</button>`).join("")}</div>
-        <button type="button" class="sim-replay" id="simReplay">Replay</button>${canRecord() ? `<button type="button" class="sim-replay" id="simRec" title="Save this animation as a video, with &quot;Pitch Universe&quot; in the corner">Save animation</button>` : ""}</div>
-        <canvas id="simCv" class="simcv" role="img" aria-label="Animated flight of the pitches to simulate"></canvas>
-        <p class="labnote simmsg" id="simRecMsg" aria-live="polite"></p></div>
-    </div>
-    <section class="simtblwrap" aria-labelledby="simTblLbl"><div class="simrow"><span class="flbl" id="simTblLbl">Pitches in the air</span>${canSave() ? `<button type="button" class="sim-replay" id="simCsv">Download CSV</button>` : ""}<span class="labnote" id="simTblMsg" aria-live="polite"></span></div>
-      <div class="simtblscroll"><table class="simtab"><thead><tr><th>Pitch</th><th>Pitcher</th>${SIM_COLS.map(([, l, u]) => `<th class="num">${esc(l)} <span class="tm">(${esc(u)})</span></th>`).join("")}</tr></thead><tbody id="simTbody"></tbody></table></div></section>`;
-  const tog = (id, k) => { const el = $(id); if (el) el.onclick = () => { S[k] = !S[k]; renderSim(); }; };
-  tog("#labEdit", "edit"); tog("#labDonor", "showDonor"); tog("#labAvg", "showAvg");
-  $("#simClose").onclick = () => closeSim();
-  $("#simReplay").onclick = () => labRun(true);
-  const rb = $("#simRec"); if (rb) rb.onclick = saveSimVideo;
-  const cb2 = $("#simCsv"); if (cb2) cb2.onclick = () => saveFile(`pitch_universe_lab_${fileSlug(T.name[j])}_${T.season[j]}.csv`, simCSV(j, S), "text/csv;charset=utf-8", $("#simTblMsg"), "Saved the table.");
-  const on = (sel, fn) => { const el = $(sel); if (el) el.onclick = fn; };
-  on("#labReset", () => { st.d = { ...st.ref }; renderSim(); });
-  on("#labDiscard", () => { S.stage = null; renderSim(); });
-  on("#labAdd", () => {
-    const g = S.stage, edited = LAB_SLIDERS.some(([k, , , dec]) => g.d[k].toFixed(dec) !== g.ref[k].toFixed(dec));
-    S.items.push({ id: "add:" + (++S.nAdd), kind: g.kind, t: g.t, r: g.r, ref: g.ref, d: { ...g.d }, on: true, edited });
-    S.stage = null; renderSim();
+  box.innerHTML = header + rows + (cmp ? "" : builder) + `<div class="lab">${left}${stage}</div>` + (cmp ? builder : "") + table;
+  // ---- wiring
+  const rerender = () => renderSim(), hold = () => renderSim({ hold: true }), on = (sel, fn) => { const el = $(sel); if (el) el.onclick = fn; };
+  on("#simClose", () => closeSimFocus());
+  const vs = $("#simVs"); if (vs) vs.onchange = () => { const c = +vs.value; if (vs.value !== "" && Number.isInteger(c)) compareSim(c); };
+  const stepVs = dir => { const k = comps.findIndex(([c]) => c === S.vs), n = comps[k + dir]; if (n) compareSim(n[0]); };
+  on("#simPrev", () => stepVs(-1)); on("#simNext", () => stepVs(1));
+  on("#simReplay", () => labRun(true, false, true));
+  on("#simLoop", () => { state.simLoop = !state.simLoop; $("#simLoop").setAttribute("aria-pressed", String(state.simLoop));
+    if (FLS && FLS.cvId === "simCv") { FLS.loop = state.simLoop && !FLS.empty; if (FLS.loop && !FLS.raf) { FLS.start = null; FLS.force = true; flightPlay(); } } });
+  box.querySelectorAll("[data-speed]").forEach(b => b.onclick = () => { state.simSpeed = +b.dataset.speed; hold(); });
+  box.querySelectorAll("[data-simcam]").forEach(b => b.onclick = () => { state.flightCam = b.dataset.simcam; hold(); });
+  box.querySelectorAll("[data-norm]").forEach(b => b.onclick = () => { state.simNorm = b.dataset.norm; hold(); });
+  on("#labAvg", () => { S.showAvg = !S.showAvg; hold(); });
+  on("#labDonor", () => { S.showDonor = !S.showDonor; hold(); });
+  on("#labEdit", () => {
+    if (editingOwn) S.edit = false;
+    else { const cur = S.items.find(x => x.id === S.editId), pick = cur && cur.kind === "own" ? cur : (own.find(it => it.on) || own[0]); if (!pick) return; S.edit = true; S.editId = pick.id; pick.on = true; }
+    rerender();
   });
-  box.querySelectorAll("[data-simon]").forEach(b => b.onclick = () => { const it = S.items.find(x => x.id === b.dataset.simon); if (it) { it.on = !it.on; renderSim(); } });
-  box.querySelectorAll("[data-simrm]").forEach(b => b.onclick = () => { S.items = S.items.filter(x => x.id !== b.dataset.simrm); renderSim(); });
-  box.querySelectorAll("[data-labedit]").forEach(b => b.onclick = () => { S.editId = b.dataset.labedit; renderSim(); });
-  box.querySelectorAll("[data-labt]").forEach(b => b.onclick = () => {
-    const t = b.dataset.labt; if (S.stage && S.stage.kind === "lack" && S.stage.t === t) return;
-    const g = labLack(j, t); if (!g) return;
-    S.stage = g; S.showDonor = true; renderSim();
+  on("#labReset", () => { st.d = { ...st.ref }; hold(); });
+  on("#labDone", () => { S.edit = false; rerender(); });
+  box.querySelectorAll("[data-simon]").forEach(b => b.onclick = () => { const it = S.items.find(x => x.id === b.dataset.simon); if (it) { it.on = !it.on; if (!it.on && F && F.st === it) S.edit = false; rerender(); } });
+  box.querySelectorAll("[data-simrm]").forEach(b => b.onclick = () => { if (S.editId === b.dataset.simrm) S.edit = false; S.items = S.items.filter(x => x.id !== b.dataset.simrm); rerender(); });
+  box.querySelectorAll("[data-labedit]").forEach(b => b.onclick = () => {
+    const id = b.dataset.labedit, it = S.items.find(x => x.id === id); if (!it) return;
+    if (S.edit && S.editId === id && b.classList.contains("simx")) S.edit = false; else { S.edit = true; S.editId = id; it.on = true; }
+    rerender();
   });
+  box.querySelectorAll("[data-labt]").forEach(b => b.onclick = () => { const g = labLack(j, b.dataset.labt); if (!g) return; S.items.push({ id: "add:" + (++S.nAdd), ...g }); rerender(); });
   // the search fills only its own list while typing, so the box (and the input's focus) stays put
   const q = $("#simAddQ"), list = $("#simAddList");
-  const pick = r => { S.stage = labOther(r); S.showDonor = true; renderSim(); };
-  q.oninput = () => { list.innerHTML = simFindHTML(j, q.value); list.hidden = !q.value.trim(); };
-  q.onkeydown = e => {
-    if (e.key === "Enter") { const b = list.querySelector("[data-addr]"); if (b) { e.preventDefault(); pick(+b.dataset.addr); } }
-    else if (e.key === "Escape" && (q.value || !list.hidden)) { e.preventDefault(); e.stopPropagation(); q.value = ""; list.hidden = true; }
-  };
-  list.onclick = e => { const b = e.target.closest("[data-addr]"); if (b) pick(+b.dataset.addr); };
-  box.querySelectorAll("[data-simcam]").forEach(b => b.onclick = () => { state.flightCam = b.dataset.simcam; renderSim(); });
-  box.querySelectorAll("[data-norm]").forEach(b => b.onclick = () => { state.simNorm = b.dataset.norm; renderSim(); });
+  const pick = r => { S.items.push({ id: "add:" + (++S.nAdd), ...labOther(r) }); rerender(); };
+  if (q && list) {
+    q.oninput = () => { list.innerHTML = simFindHTML(j, q.value); list.hidden = !q.value.trim(); q.setAttribute("aria-expanded", String(!list.hidden)); };
+    q.onkeydown = e => {
+      if (e.key === "Enter") { const b = list.querySelector("[data-addr]"); if (b) { e.preventDefault(); pick(+b.dataset.addr); } }
+      else if (e.key === "ArrowDown") { const b = list.querySelector("[data-addr]"); if (b) { e.preventDefault(); b.focus(); } }
+      else if (e.key === "Escape" && (q.value || !list.hidden)) { e.preventDefault(); e.stopPropagation(); q.value = ""; list.hidden = true; q.setAttribute("aria-expanded", "false"); }
+    };
+    list.onkeydown = e => {
+      const bs = [...list.querySelectorAll("[data-addr]")], i = bs.indexOf(e.target); if (i < 0) return;
+      if (e.key === "ArrowDown" && bs[i + 1]) { e.preventDefault(); bs[i + 1].focus(); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); (bs[i - 1] || q).focus(); }
+      else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); q.focus(); }
+    };
+    list.onclick = e => { const b = e.target.closest("[data-addr]"); if (b) pick(+b.dataset.addr); };
+  }
   box.querySelectorAll("[data-lab]").forEach(inp => {
     const k = inp.dataset.lab, spec = LAB_SLIDERS.find(x => x[0] === k);
-    inp.oninput = () => { st.d[k] = +inp.value; const v = $("#labv-" + k); if (v) v.textContent = `${st.d[k].toFixed(spec[3])} ${spec[2]}`; labRun(false); };
-    inp.onchange = () => labRun(true);
+    inp.oninput = () => { st.d[k] = +inp.value; const v = $("#labv-" + k); if (v) v.textContent = `${st.d[k].toFixed(spec[3])} ${spec[2]}`; labRun(false, true); };
+    inp.onchange = () => labRun(false, true);
   });
-  labRun(true);
+  const rb = $("#simRec"); if (rb) rb.onclick = saveSimVideo;
+  const cb2 = $("#simCsv"); if (cb2) cb2.onclick = () => saveFile(`pitch_universe_lab_${fileSlug(T.name[j])}_${T.season[j]}${cmp ? `_vs_${fileSlug(T.name[S.vs])}_${T.season[S.vs]}` : ""}.csv`, simCSV(j, S), "text/csv;charset=utf-8", $("#simRecMsg"), "Saved the table.");
+  const bd = $("#simBuild"); if (bd) bd.ontoggle = () => { S.buildOpen = !!bd.open; };
+  const td = $("#simTbl"); if (td) td.ontoggle = () => { S.tblOpen = !!td.open; };
+  // keep the keyboard inside the lab: Tab wraps; ←/→ on the lookalike switcher
+  box.onkeydown = e => {
+    if (e.key === "Tab") {
+      const f = [...box.querySelectorAll("button:not([disabled]), input:not([disabled]), select:not([disabled]), summary")].filter(el => el.offsetParent !== null);
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1], a = document.activeElement;
+      if (e.shiftKey && (a === first || a === box || !box.contains(a))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && a === last) { e.preventDefault(); first.focus(); }
+    } else if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && e.target.closest && e.target.closest(".simsw") && e.target.tagName !== "SELECT") { e.preventDefault(); stepVs(e.key === "ArrowLeft" ? -1 : 1); }
+  };
+  if (opt.focus === "title") { const h = $("#simTitle"); if (h && h.focus) h.focus({ preventScroll: true }); }
+  else if (keep) { const el = box.querySelector(keep); if (el && el.focus) el.focus({ preventScroll: true }); }
+  labRun(!opt.hold, !!opt.hold);
 }
 
 // --------------------------------------------------- Savant-style pitch movement
@@ -4625,7 +4939,7 @@ function renderCompBox() {
       + `<span class="lk-who"><span class="lk-name">${esc(T.name[c])} <span class="lk-yr">’${String(T.season[c]).slice(2)}${T.level[c] === "mlb" ? "" : " AAA"}</span></span>`
       + `<span class="lk-nums">${num(T.velo[c], 1, " mph")} · ${num(T.ivb[c], 1, "″ ride")} · ${num(T.hb[c], 1, "″ run")} · arm ${num(T.arm_angle[c], 0, "°")}</span></span>`
       + `<span class="lk-fit lk-${fc}">${ft}</span></button>`
-      + (canFly && trajOf(c) ? `<button type="button" class="lk-cmp" data-cmp="${c}" title="Compare Pitch Simulation: his ${PTN[t].toLowerCase()} in full colour beside ${esc(T.name[c])}’s as a ghost">Compare</button>` : "") + `</li>`; }).join("");
+      + (canFly ? `<button type="button" class="lk-cmp" data-cmp="${c}"${trajOf(c) ? "" : " disabled"} title="${trajOf(c) ? `Compare: ${esc(lastName(T.name[r]))}’s ${PTN[t].toLowerCase()} beside ${esc(T.name[c])}’s, in the Pitch lab` : "No tracked flight for this pitch"}">Compare</button>` : "") + `</li>`; }).join("");
 }
 function syncCta() {
   const r = state.sel, on = !!state.preview && r !== null && r !== undefined, box = $("#selCta");
@@ -4639,35 +4953,51 @@ function syncCta() {
   grp.textContent = made ? "See Lookalike Group" : "Create Lookalike Group";
   grp.title = made ? "Open the group of him and his lookalikes in the Groups panel"
     : `Save him and his ${K_SHOWN} closest lookalikes (his ${PTN[T.pitch_type[r]].toLowerCase()}, same hand, similar arm angle) as a group`;
-  const fly = $("#ctaFly");
-  fly.textContent = state.simOpen ? "Close Simulation" : "Simulate Pitches";
-  fly.setAttribute("aria-pressed", String(!!state.simOpen));
+  const fly = $("#ctaFly"), canFly = !flightData().none && !!trajOf(r), lk = canFly ? labComps(r) : [];
+  fly.textContent = state.simOpen ? "Close the Pitch lab" : "Pitch lab";
+  fly.setAttribute("aria-pressed", String(!!state.simOpen)); fly.disabled = !canFly && !state.simOpen;
+  fly.title = canFly ? "Fly his pitches, edit them, add any pitcher's" : "No tracked flight for this pitch";
+  const cc = $("#ctaCompare"); cc.disabled = !lk.length;
+  cc.title = lk.length ? `Fly his ${PTN[T.pitch_type[r]].toLowerCase()} beside his closest lookalike's, ${T.name[lk[0][0]]}'s, in the Pitch lab` : canFly ? "No lookalike with a tracked flight" : "No tracked flight for this pitch";
 }
-// Compare Pitch Simulation (a lookalike's row): his pitch in full colour, that lookalike's same pitch as a dashed
-// ghost; the lookalike's other pitch types are listed as ghosts too, off until turned on
-function compareSim(c) {
-  const r = state.sel; if (r === null || r === undefined || c === null || c === undefined || flightData().none) return;
+// His lookalikes with a tracked flight: what Compare can fly beside him
+const labComps = j => compsOf(state.view, j).filter(([c]) => !!trajOf(c));
+// Compare: his pitch of this type in full colour beside that lookalike's as a dashed path; the lookalike's other
+// pitch types wait as off toggles. Opened from a lookalike's row, the card's button, or the lab's own switcher.
+function compareSim(c, opener) {
+  const r = state.sel; if (r === null || r === undefined || c === null || c === undefined || flightData().none || !trajOf(c)) return;
   const S = simState(r), t = T.pitch_type[r];
   S.items = S.items.filter(it => it.kind !== "ghost");
   S.items.forEach(it => { it.on = it.kind === "own" && it.t === t; });
   TYPES.map(x => tRow(T.pitcher[c], T.season[c], x, T.level[c])).filter(x => x !== undefined && trajOf(x))
     .sort((a, b) => (b === c) - (a === c) || (T.usage[b] || 0) - (T.usage[a] || 0))
     .forEach(x => S.items.push({ id: "cmp:" + x, kind: "ghost", t: T.pitch_type[x], r: x, on: x === c }));
-  S.vs = c; S.stage = null; S.edit = false; S.showAvg = false;   // the dashed MLB average would read like one more ghost
-  if (state.simOpen) renderSim(); else toggleSim();
+  S.mode = "compare"; S.vs = c; S.edit = false; S.showAvg = false; S.buildOpen = false;
+  if (state.simOpen) renderSim({ focus: "title" }); else openSim(opener);
 }
-// The simulation is an overlay on the map: nothing else on the page moves, and × or Escape puts it away.
-function toggleSim() {
+// The lab is an overlay on the map: nothing else on the page moves, and × or Escape puts it away.
+function toggleSim(opener) {
   if (state.sel === null || state.sel === undefined) return;
-  if (state.simOpen) { closeSim(); return; }
-  state.simOpen = true; renderSim(); syncCta(); $("#simScrim").hidden = false;
-  const x = document.getElementById("simClose"); if (x) x.focus({ preventScroll: true });
+  if (state.simOpen) { closeSimFocus(); return; }
+  const S = simState(state.sel); S.mode = "lab"; S.vs = null; S.items = S.items.filter(it => it.kind !== "ghost"); S.buildOpen = null;
+  openSim(opener);
+}
+function openSim(opener) {
+  const ae = document.activeElement;
+  state.simOpener = (opener && opener.nodeType) ? opener : (ae && ae !== document.body ? ae : null);
+  state.simOpen = true; renderSim({ focus: "title" }); syncCta(); $("#simScrim").hidden = false;
 }
 function closeSim(quiet) {
   const was = !!state.simOpen;
   state.simOpen = false; $("#simBox").hidden = true; $("#simScrim").hidden = true;
   if (FLS && FLS.cvId === "simCv") stopFlight();
   if (!quiet && was) { renderDetail(); syncCta(); }   // the card's own flight panel comes back
+}
+function closeSimFocus() {   // × and Escape: focus goes back to whatever opened the lab
+  const o = state.simOpener; closeSim();
+  const usable = el => !!el && el.isConnected !== false && !el.disabled && !el.hidden && el.offsetParent !== null;
+  const tgt = usable(o) ? o : (usable($("#cbBack")) && !$("#compBox").hidden) ? $("#cbBack") : usable($("#ctaFly")) ? $("#ctaFly") : null;
+  if (tgt && tgt.focus) tgt.focus({ preventScroll: true });
 }
 
 function mapSelection(from, to, r) {
@@ -4874,6 +5204,7 @@ const TERMS = () => [
   ["Ride (IVB)", "Induced vertical break: inches of rise or drop compared with a ball thrown without spin, gravity taken out. A fastball with ride holds its line and looks as if it climbs."],
   ["Run and sweep (HB)", "Horizontal break: sideways inches compared with a spinless ball. Run is toward the pitcher’s arm side, sweep toward his glove side."],
   ["Arm slot, arm angle", "The angle of the arm at release, in degrees: 90° is straight over the top, 0° is sidearm, below zero is submarine."],
+  ["Dashed path", "In the Pitch lab, a dashed path is a lookalike’s pitch and a dotted grey one the MLB average, both there for comparison; the selected pitcher’s own pitches fly solid, and an edited or added pitch flies see-through."],
   ["Extension", "How far in front of the rubber the ball leaves the hand, in feet. More extension shortens the ball’s trip, so the pitch plays faster than its speed."],
   ["VAA, HAA", "Vertical and horizontal approach angle: the angle, in degrees, at which the pitch crosses the plate, up-and-down and side-to-side. A flat VAA on a high fastball is hard to get on top of."],
   ["VRA, HRA", "Vertical and horizontal release angle: the direction the ball leaves the hand, in degrees, up-and-down and side-to-side."],
@@ -5304,7 +5635,7 @@ function buildStatic() {
   $("#rail").querySelector(".railtabs").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b && !b.disabled) setRailTab(b.dataset.tab); });
   $("#railClose").addEventListener("click", railClose);
   $("#railPills").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b) setRailTab(b.dataset.tab); });
-  $("#simScrim").addEventListener("click", () => closeSim());
+  $("#simScrim").addEventListener("click", () => closeSimFocus());
 
   // "How to read it" box: Hide / show, remembered for this viewer (storage may be blocked)
   const setHow = (hidden, focus) => {
@@ -5326,14 +5657,15 @@ function buildStatic() {
     if (!compsSavedId(r)) saveCompsGroup(r);
     setRailTab("groups"); syncCta();
   });
-  $("#ctaFly").addEventListener("click", toggleSim);
-  document.addEventListener("keydown", e => { if (e.key === "Escape" && state.simOpen) { e.preventDefault(); closeSim(); $("#ctaFly").focus({ preventScroll: true }); } });
+  $("#ctaFly").addEventListener("click", () => toggleSim($("#ctaFly")));
+  $("#ctaCompare").addEventListener("click", () => { const r = state.sel; if (r === null || r === undefined) return; const lk = labComps(r); if (lk.length) compareSim(lk[0][0], $("#ctaCompare")); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && state.simOpen) { e.preventDefault(); closeSimFocus(); } });
   $("#ctaLook").addEventListener("click", () => setLook(true));
   $("#cbBack").addEventListener("click", () => setLook(false));
   $("#ctaFrom").addEventListener("click", () => { const f = state.lookFrom; if (f !== null && f !== undefined) preview(f, { look: true }); });
   $("#cbChips").addEventListener("click", e => { const b = e.target.closest("[data-cb]"); if (b) { state.sel = +b.dataset.cb; render(); } });
   $("#cbList").addEventListener("click", e => {
-    const m = e.target.closest("[data-cmp]"); if (m) { compareSim(+m.dataset.cmp); return; }
+    const m = e.target.closest("[data-cmp]"); if (m) { if (!m.disabled) compareSim(+m.dataset.cmp, m); return; }
     const b = e.target.closest("[data-cbp]"); if (b) preview(+b.dataset.cbp, { from: state.sel });
   });
   $("#cbSave").addEventListener("click", () => saveCompsGroup(state.sel));
@@ -5533,7 +5865,7 @@ function buildStatic() {
     }
     cands.sort((a, b) => tab.season[b] - tab.season[a]);
     $("#searchMsg").textContent = "";
-    preview(cands[0]);   // on the map first, with Show Complete Profile / Create Lookalike Group / Simulate Pitches
+    preview(cands[0]);   // on the map first, with Show Complete Profile / Show Lookalikes / Compare with a lookalike / Create Lookalike Group / Pitch lab
     e.target.value = "";
   });
 
