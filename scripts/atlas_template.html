@@ -612,14 +612,12 @@ button, input, select { font: inherit; color: inherit; }
 #simBox .sctab thead th:not(:first-child) { text-align: right; }
 #simBox .schead { color: var(--ink); }
 #simBox .dlt { background: var(--wash); color: var(--ink); }
-#simBox .scleg { display: flex; flex-direction: column; gap: 3px; margin: 8px 0 2px; font: 400 12px/1.35 var(--font-ui); color: var(--ink2); }
-#simBox .scleg-t { font-weight: 600; color: var(--ink2); }
-#simBox .scleg-bar { display: block; height: 10px; border-radius: 5px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1); }
-#simBox .scleg-ticks { position: relative; height: 15px; margin: 0 4px; }
-#simBox .scleg-ticks span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; font-size: 11px; color: var(--muted); }
-#simBox .scleg-ticks span:first-child { transform: none; margin-left: -4px; }
-#simBox .scleg-ticks span:last-child { transform: translateX(-100%); margin-left: 4px; }
-#simBox .scleg-n { color: var(--muted); }
+#simBox .scleg { display: flex; flex-direction: column; gap: 3px; margin: 10px 0 2px; font: 400 13px/1.4 var(--font-ui); color: var(--ink2); }
+#simBox .scleg p { margin: 0; }
+#simBox .scleg b { font-weight: 600; color: var(--ink); }
+#simBox .scleg-row { display: flex; align-items: center; gap: 8px; }
+#simBox .scleg-sw { display: inline-flex; flex: none; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12); border-radius: 3px; overflow: hidden; }
+#simBox .scleg-sw i { display: block; width: 14px; height: 13px; }
 #simBox .simview { border-top-color: var(--line); }
 /* the stage: a light bar, the dark canvas, the key and note under it, all on one left edge and as wide as the canvas */
 #simBox .simfit { width: min-content; max-width: 100%; display: flex; flex-direction: column; gap: 8px; }
@@ -3899,9 +3897,22 @@ function renderFlight(j) {
 // project every path and the static scene for the current camera and canvas size. The lab (F.fit) keeps the whole
 // flight on screen: the canvas is never taller than the room under its top edge, and the width follows.
 const LAB_ASPECT = { catcher: 1.25, pitcher: 1.45 };   // the catcher's view is a tall subject; behind the pitcher is wide
+// On wide screens the lab's overlay hugs its content: the left column plus the canvas the window's height allows,
+// centred, so no dead space opens to the right of a height-limited canvas. Narrow screens (stacked layout) keep the
+// full width. Run twice: a narrower box can wrap the chip rows, which moves the canvas down and shrinks it a little.
+function fitSimBox(cv, asp) {
+  const box = document.getElementById("simBox"), lab = cv && cv.closest ? cv.closest(".lab") : null, vw = window.innerWidth || 0;
+  if (!box) return;
+  if (!lab || vw <= 900) { box.style.inset = ""; return; }
+  const lc = lab.firstElementChild, left = (lc && lc.getBoundingClientRect && lc.getBoundingClientRect().width) || 400;
+  const top = cv.getBoundingClientRect ? cv.getBoundingClientRect().top : 0, H = Math.max(300, (window.innerHeight || 800) - Math.max(top, 0) - 36);
+  const need = Math.ceil(left + 20 + H * asp + 38);   // left column + grid gap + canvas + the box's padding and border
+  box.style.inset = `16px ${Math.max(16, Math.floor((vw - need) / 2))}px`;
+}
 function flightSetup() {
   const F = FLS, cv = flCv(); if (!F || !cv) return;
   const col = cv.closest ? cv.closest(".simstage") : null, asp = (F.aspects && F.aspects[F.cam]) || FL.ASPECT;
+  if (F.fit) { fitSimBox(cv, asp); fitSimBox(cv, asp); }
   let W = Math.max((col && col.clientWidth) || cv.clientWidth || (cv.parentElement && cv.parentElement.clientWidth) || 480, 240), H = Math.round(W / asp);
   if (F.fit) {
     const top = cv.getBoundingClientRect ? cv.getBoundingClientRect().top : 0, avail = Math.max(300, (window.innerHeight || 800) - Math.max(top, 0) - 36);
@@ -4307,7 +4318,7 @@ function pairMedian(P) {   // the median gap between two of them
   for (let it = 0; it < 40; it++) { const mid = (lo + hi) / 2; if (pairShare(v, mid) < 0.5) lo = mid; else hi = mid; }
   return (P.med = (lo + hi) / 2);
 }
-const scGradient = () => `linear-gradient(90deg, ${SAVANT_STOPS.map(([q, c]) => `rgb(${c.join(",")}) ${q}%`).join(", ")})`;
+
 function simScoreHTML(j, S) {
   const cards = simScoreCards(j, S);
   if (!cards.length) return `<p class="labnote">Nothing to show: turn on a pitch above.</p>`;
@@ -4322,9 +4333,9 @@ function simScoreHTML(j, S) {
         if ((k === "relH" || k === "relS") && b.matched && normAxis(k)) dlt = `<span class="dlt">matched</span>`;
         else {
           const dv = b.v[k] - a.v[k], hand = T.p_throws[j], P = pairVals(t, hand, k), share = pairShare(P.v, Math.abs(dv));
-          const pp = share === null ? 50 : 50 + 50 * Math.sign(dv) * share, med = share === null ? NaN : pairMedian(P), tn = `${hand}HP ${PTN[t].toLowerCase()}s`;
-          const tip = `${lastName(T.name[b.who])} ${Math.abs(dv).toFixed(d)} ${u} ${dv >= 0 ? "higher" : "lower"} than ${lastName(T.name[a.who])}`
-            + (share === null ? "" : `: a bigger gap than ${Math.round(share * 100)}% of the gaps between any two MLB ${tn} (the typical gap is ${med.toFixed(d)} ${u})`);
+          const pp = share === null ? 50 : 50 + 50 * Math.sign(dv) * share, med = share === null ? NaN : pairMedian(P), tn = `${hand === "R" ? "right" : "left"}-handed MLB ${PTN[t].toLowerCase()}s`;
+          const tip = `${lastName(T.name[b.who])} is ${Math.abs(dv).toFixed(d)} ${u} ${dv >= 0 ? "higher" : "lower"} than ${lastName(T.name[a.who])}.`
+            + (share === null ? "" : ` ${Math.round(share * 100)}% of pairs of ${tn} differ by less; the typical pair differs by ${med.toFixed(d)} ${u}.`);
           dlt = `<span class="dlt" style="background:${savantColor(pp)};color:${savantInk(pp)}" title="${esc(tip)}">${dv >= 0 ? "+" : "−"}${Math.abs(dv).toFixed(d)}</span>`;
         }
       }
@@ -4334,11 +4345,18 @@ function simScoreHTML(j, S) {
     if (more > 0) foot += `<p class="scfoot">${more} more ${PTN[t].toLowerCase()}${more > 1 ? "s" : ""} in the table below.</p>`;
     const widths = two ? [34, 24, 24, 18] : [40, ...cols.map(() => Math.floor(60 / cols.length))];   // percent: label, values, Δ
     const colg = `<colgroup>${widths.map(w => `<col style="width:${w}%">`).join("")}</colgroup>`;
-    const leg = two ? `<div class="scleg" aria-label="Colour key for Δ"><span class="scleg-t">Δ colour: this gap against the gap between any two same-handed MLB ${PTN[t].toLowerCase()}s</span>
-      <span class="scleg-bar" style="background:${scGradient()}"></span>
-      <span class="scleg-ticks"><span style="left:0">lower</span><span style="left:25%">typical</span><span style="left:50%">same</span><span style="left:75%">typical</span><span style="left:100%">higher</span></span>
-      <span class="scleg-n">Pale: smaller than most pairs. Full colour: among the league’s largest.</span></div>` : "";
-    return `<div class="simsc"><div class="schead"><i class="psw" style="background:${SAVANT_PITCH[t]}"></i><b>${PTN[t]}</b></div><table class="simtab sctab">${colg}<thead><tr><th scope="col"></th>${cols.map(head).join("")}${two ? `<th scope="col" title="The second minus the first; the colour key is under the table">Δ</th>` : ""}</tr></thead><tbody>${body}</tbody></table>${leg}${foot}</div>`;
+    let leg = "";
+    if (two) {
+      const bn = esc(lastName(T.name[b.who])), an = esc(lastName(T.name[a.who])), hand = T.p_throws[j] === "R" ? "right" : "left";
+      const pair = share => `<span class="scleg-sw" aria-hidden="true"><i style="background:${savantColor(50 - 50 * share)}"></i><i style="background:${savantColor(50 + 50 * share)}"></i></span>`;
+      leg = `<div class="scleg" role="note" aria-label="Key for the Δ column">
+        <p><b>Δ = ${bn} minus ${an}.</b> Red: ${bn} higher. Blue: ${bn} lower.</p>
+        <p>Compared with every pair of ${hand}-handed MLB ${PTN[t].toLowerCase()}s:</p>
+        <p class="scleg-row">${pair(0.12)}<span><b>Small gap:</b> smaller than 3 in 4 pairs</span></p>
+        <p class="scleg-row">${pair(0.5)}<span><b>Typical gap:</b> about half of pairs differ more</span></p>
+        <p class="scleg-row">${pair(0.95)}<span><b>Large gap:</b> bigger than 9 in 10 pairs</span></p></div>`;
+    }
+    return `<div class="simsc"><div class="schead"><i class="psw" style="background:${SAVANT_PITCH[t]}"></i><b>${PTN[t]}</b></div><table class="simtab sctab">${colg}<thead><tr><th scope="col"></th>${cols.map(head).join("")}${two ? `<th scope="col" title="The second pitcher minus the first; the key is under the table">Δ</th>` : ""}</tr></thead><tbody>${body}</tbody></table>${leg}${foot}</div>`;
   }).join("") + (cards.length > 3 ? `<p class="labnote">More pitch types are in the table below.</p>` : "");
 }
 function simLiveText(j, S) {   // the same comparison as one sentence, for screen readers
