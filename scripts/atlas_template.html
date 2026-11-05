@@ -1401,17 +1401,16 @@ tr.self td { font-weight: 600; background: none; }
         <div class="cta-acts" id="ctaActs">
           <button type="button" class="ctabtn primary" id="ctaOpen">Show Complete Profile</button>
           <button type="button" class="ctabtn" id="ctaLook">Show Lookalikes</button>
-          <button type="button" class="ctabtn" id="ctaCompare">Compare with a lookalike</button>
-          <button type="button" class="ctabtn" id="ctaSim">Create Lookalike Group</button>
-          <button type="button" class="ctabtn" id="ctaFly" aria-pressed="false">Pitch lab</button>
+          <button type="button" class="ctabtn" id="ctaFly" aria-pressed="false">Pitch Simulation Lab</button>
         </div>
         <section class="cta-look" id="compBox" aria-label="Lookalikes of the selected pitcher" hidden>
           <div class="lk-head"><button type="button" class="link" id="cbBack">← Back</button><b id="cbTitle"></b></div>
           <div class="lk-chips" id="cbChips" role="group" aria-label="Lookalikes for which of his pitches"></div>
           <div id="cbPool" role="group" aria-label="Lookalikes among which pitchers" hidden></div>
+          <div class="lk-acts"><button type="button" class="savebtn" id="cbTable" aria-pressed="false" title="A table of him and his lookalikes on every measure, in the map's place">Show table</button></div>
           <p class="lk-help" id="cbHelp"></p>
           <ol class="lk-list" id="cbList"></ol>
-          <div class="lk-acts"><button type="button" class="savebtn" id="cbSave" title="Keep him and his lookalikes as a named group">Save as group</button><button type="button" class="savebtn" id="cbTable" aria-pressed="false" title="A table of him and his lookalikes on every measure, in the map's place">Compare in table</button></div>
+          <div class="lk-acts"><button type="button" class="savebtn" id="cbSave" title="Keep him and his lookalikes as a named group">Save as group</button></div>
         </section>
       </div>
       </div>
@@ -1486,7 +1485,7 @@ tr.self td { font-weight: 600; background: none; }
   </div>
   <aside class="right comps" id="comps" aria-label="Closest comps" hidden></aside>
   <div class="simscrim" id="simScrim" hidden></div>
-  <section class="simbox" id="simBox" role="dialog" aria-modal="true" aria-label="Pitch lab" hidden></section>
+  <section class="simbox" id="simBox" role="dialog" aria-modal="true" aria-label="Pitch Simulation Lab" hidden></section>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.34.0/plotly.min.js"></script>
@@ -3962,7 +3961,7 @@ function drawMark(ctx, W, H, pal, lines) {
 }
 window.addEventListener("resize", () => { if (!FLS) return; flightSetup(); flightDraw(FLS.raf ? Math.max(0, Math.floor((performance.now() - (FLS.start || performance.now())) / 1000 * FL.FPS)) : FLS.total - 1); });
 
-// --------------------------------------------------- the Pitch lab
+// --------------------------------------------------- the Pitch Simulation Lab
 // A full-screen overlay with the same trajectory engine and cameras as the card's flight panel. Compare (from a
 // lookalike's row) flies his pitch beside the lookalike's dashed one; the lab adds, builds and edits pitches with six
 // sliders (velocity, ride, run, release height, release side, extension); an edit flies see-through beside the real one. Physics, in Statcast's frame (+x catcher's right, +y toward the pitcher, +z up; feet, seconds):
@@ -4309,8 +4308,8 @@ async function saveSimVideo() {
 function renderSim(opt = {}) {
   const box = $("#simBox"), j = state.sel; if (j === null || j === undefined) { box.hidden = true; return; }
   if (flightData().none) {
-    box.hidden = false; box.setAttribute("aria-label", "Pitch lab");
-    box.innerHTML = `<div class="sim-head"><h2 class="sim-name" id="simTitle" tabindex="-1">${esc(T.name[j])}</h2><button type="button" class="sim-x" id="simClose" aria-label="Close the Pitch lab">×</button></div><p class="simsub">No tracked flight paths for this pitch.</p>`;
+    box.hidden = false; box.setAttribute("aria-label", "Pitch Simulation Lab");
+    box.innerHTML = `<div class="sim-head"><h2 class="sim-name" id="simTitle" tabindex="-1">${esc(T.name[j])}</h2><button type="button" class="sim-x" id="simClose" aria-label="Close the Pitch Simulation Lab">×</button></div><p class="simsub">No tracked flight paths for this pitch.</p>`;
     $("#simClose").onclick = () => closeSimFocus(); return;
   }
   const S = simState(j), cmp = S.mode === "compare" && S.vs !== null && S.vs !== undefined, me = lastName(T.name[j]), cam = state.flightCam || "catcher";
@@ -4335,14 +4334,14 @@ function renderSim(opt = {}) {
       <span class="simvsword">vs</span>
       <div class="simside">${sw(SAVANT_PITCH[vt], "dash")}<h2 class="sim-name">${esc(T.name[S.vs])} <span class="simyr">${yy(T.season[S.vs])}</span></h2>
         <p class="simsub">${esc(teamStr(S.vs))}${T.level[S.vs] === "mlb" ? "" : " · Triple-A"} · ${PTN[vt].toLowerCase()} ${fmt(T.velo[S.vs], 1)} mph · dashed${q !== undefined ? ` · ${fitOf(q)[1]}` : ""}</p></div></div>
-      <div class="simhr">${comps.length > 1 ? `<div class="simsw" role="group" aria-label="Which lookalike"><button type="button" class="sim-replay" id="simPrev"${ci <= 0 ? " disabled" : ""} aria-label="Previous lookalike" title="Previous lookalike (←)">‹</button>${vsSel("simVs", "Lookalike to compare with")}<button type="button" class="sim-replay" id="simNext"${ci < 0 || ci >= comps.length - 1 ? " disabled" : ""} aria-label="Next lookalike" title="Next lookalike (→)">›</button></div>` : ""}<span class="simhint">Pitch lab</span>
-      <button type="button" class="sim-x" id="simClose" aria-label="Close the Pitch lab" title="Close (Esc)">×</button></div></div>`;
-    box.setAttribute("aria-label", `Pitch lab: ${T.name[j]} vs ${T.name[S.vs]}`);
+      <div class="simhr">${comps.length > 1 ? `<div class="simsw" role="group" aria-label="Which lookalike"><button type="button" class="sim-replay" id="simPrev"${ci <= 0 ? " disabled" : ""} aria-label="Previous lookalike" title="Previous lookalike (←)">‹</button>${vsSel("simVs", "Lookalike to compare with")}<button type="button" class="sim-replay" id="simNext"${ci < 0 || ci >= comps.length - 1 ? " disabled" : ""} aria-label="Next lookalike" title="Next lookalike (→)">›</button></div>` : ""}<span class="simhint">Pitch Simulation Lab</span>
+      <button type="button" class="sim-x" id="simClose" aria-label="Close the Pitch Simulation Lab" title="Close (Esc)">×</button></div></div>`;
+    box.setAttribute("aria-label", `Pitch Simulation Lab: ${T.name[j]} vs ${T.name[S.vs]}`);
   } else {
-    header = `<div class="sim-head"><div><h2 class="sim-name" id="simTitle" tabindex="-1">${esc(T.name[j])} · Pitch lab</h2>
+    header = `<div class="sim-head"><div><h2 class="sim-name" id="simTitle" tabindex="-1">${esc(T.name[j])} · Pitch Simulation Lab</h2>
       <p class="simsub">${T.season[j]}${T.level[j] === "mlb" ? "" : " · Triple-A"} · ${esc(teamStr(j))}</p></div>
-      <div class="simhr">${comps.length ? vsSel("simVs", "Compare with a lookalike") : ""}<button type="button" class="sim-x" id="simClose" aria-label="Close the Pitch lab" title="Close (Esc)">×</button></div></div>`;
-    box.setAttribute("aria-label", `Pitch lab: ${T.name[j]}`);
+      <div class="simhr">${comps.length ? vsSel("simVs", "Compare with a lookalike") : ""}<button type="button" class="sim-x" id="simClose" aria-label="Close the Pitch Simulation Lab" title="Close (Esc)">×</button></div></div>`;
+    box.setAttribute("aria-label", `Pitch Simulation Lab: ${T.name[j]}`);
   }
   // ---- the pitches in the air: his row, the lookalike's row (aligned by pitch type), any added pitches
   const chipOf = it => {
@@ -4921,19 +4920,19 @@ function renderCompBox() {
   $("#cbChips").innerHTML = mine.length < 2 ? "" : mine.map(x => `<button type="button" data-cb="${x}" aria-pressed="${x === r}"><i class="psw" style="background:${SAVANT_PITCH[T.pitch_type[x]]}"></i>${PTN[T.pitch_type[x]]}</button>`).join("");
   const poolSeg = poolSegHTML(r);
   $("#cbPool").hidden = !poolSeg; $("#cbPool").innerHTML = poolSeg;
-  const tol = compTolOf(r), tolTxt = isNum(tol) && isFinite(tol) ? `within ${tol}° of his arm angle` : "any arm angle";
+  const tol = compTolOf(r), tolTxt = isNum(tol) && isFinite(tol) ? `within ${tol}° of his arm angle` : "any arm angle", canFly = !flightData().none && !!trajOf(r);
   const who = compPoolOf(r) === "aaa" ? "Triple-A " : T.level[r] === "aaa" ? "big-league " : "";
   $("#cbHelp").textContent = comps.length
-    ? `Same-handed ${who}pitchers ${tolTxt}, any season, closest first. The numbers match the map; click a name to go to him.`
+    ? `Same-handed ${who}pitchers ${tolTxt}, any season, closest first. The numbers match the map; click a name to go to him.${canFly ? " ▶ Simulate opens the Pitch Simulation Lab with his pitch flying beside theirs." : ""}`
     : "No lookalikes for this pitch.";
   $("#cbSave").hidden = !comps.length; $("#cbTable").hidden = !comps.length; syncCompsSaveButtons();
-  const num = (v, d, u) => isNum(v) ? `${v.toFixed(d)}${u}` : "–", canFly = !flightData().none && !!trajOf(r);
+  const num = (v, d, u) => isNum(v) ? `${v.toFixed(d)}${u}` : "–";
   $("#cbList").innerHTML = comps.map(([c, q], k) => { const [fc, ft] = fitOf(q);
     return `<li><button type="button" class="lk-row" data-cbp="${c}"><span class="lk-n">${k + 1}</span>`
       + `<span class="lk-who"><span class="lk-name">${esc(T.name[c])} <span class="lk-yr">’${String(T.season[c]).slice(2)}${T.level[c] === "mlb" ? "" : " AAA"}</span></span>`
       + `<span class="lk-nums">${num(T.velo[c], 1, " mph")} · ${num(T.ivb[c], 1, "″ ride")} · ${num(T.hb[c], 1, "″ run")} · arm ${num(T.arm_angle[c], 0, "°")}</span></span>`
       + `<span class="lk-fit lk-${fc}">${ft}</span></button>`
-      + (canFly ? `<button type="button" class="lk-cmp" data-cmp="${c}"${trajOf(c) ? "" : " disabled"} title="${trajOf(c) ? `Compare: ${esc(lastName(T.name[r]))}’s ${PTN[t].toLowerCase()} beside ${esc(T.name[c])}’s, in the Pitch lab` : "No tracked flight for this pitch"}">Compare</button>` : "") + `</li>`; }).join("");
+      + (canFly ? `<button type="button" class="lk-cmp" data-cmp="${c}"${trajOf(c) ? "" : " disabled"} title="${trajOf(c) ? `Open the Pitch Simulation Lab: ${esc(lastName(T.name[r]))}’s ${PTN[t].toLowerCase()} flying beside ${esc(T.name[c])}’s` : "No tracked flight for this pitch"}"><span aria-hidden="true">▶</span> Simulate</button>` : "") + `</li>`; }).join("");
 }
 function syncCta() {
   const r = state.sel, on = !!state.preview && r !== null && r !== undefined, box = $("#selCta");
@@ -4943,16 +4942,10 @@ function syncCta() {
   const from = state.lookFrom, fb = $("#ctaFrom"), showFrom = from !== null && from !== undefined && from !== r && !compsOnMap();
   fb.hidden = !showFrom; if (showFrom) fb.textContent = `← Back to ${lastName(T.name[from])}’s lookalikes`;
   $("#ctaSub").textContent = `${T.season[r]} · ${teamStr(r)} · ${n} pitch${n === 1 ? "" : "es"}`;
-  const grp = $("#ctaSim"), made = !!compsSavedId(r);
-  grp.textContent = made ? "See Lookalike Group" : "Create Lookalike Group";
-  grp.title = made ? "Open the group of him and his lookalikes in the Groups panel"
-    : `Save him and his ${K_SHOWN} closest lookalikes (his ${PTN[T.pitch_type[r]].toLowerCase()}, same hand, similar arm angle) as a group`;
-  const fly = $("#ctaFly"), canFly = !flightData().none && !!trajOf(r), lk = canFly ? labComps(r) : [];
-  fly.textContent = state.simOpen ? "Close the Pitch lab" : "Pitch lab";
+  const fly = $("#ctaFly"), canFly = !flightData().none && !!trajOf(r);
+  fly.textContent = state.simOpen ? "Close the Pitch Simulation Lab" : "Pitch Simulation Lab";
   fly.setAttribute("aria-pressed", String(!!state.simOpen)); fly.disabled = !canFly && !state.simOpen;
   fly.title = canFly ? "Fly his pitches, edit them, add any pitcher's" : "No tracked flight for this pitch";
-  const cc = $("#ctaCompare"); cc.disabled = !lk.length;
-  cc.title = lk.length ? `Fly his ${PTN[T.pitch_type[r]].toLowerCase()} beside his closest lookalike's, ${T.name[lk[0][0]]}'s, in the Pitch lab` : canFly ? "No lookalike with a tracked flight" : "No tracked flight for this pitch";
 }
 // His lookalikes with a tracked flight: what Compare can fly beside him
 const labComps = j => compsOf(state.view, j).filter(([c]) => !!trajOf(c));
@@ -5198,7 +5191,7 @@ const TERMS = () => [
   ["Ride (IVB)", "Induced vertical break: inches of rise or drop compared with a ball thrown without spin, gravity taken out. A fastball with ride holds its line and looks as if it climbs."],
   ["Run and sweep (HB)", "Horizontal break: sideways inches compared with a spinless ball. Run is toward the pitcher’s arm side, sweep toward his glove side."],
   ["Arm slot, arm angle", "The angle of the arm at release, in degrees: 90° is straight over the top, 0° is sidearm, below zero is submarine."],
-  ["Dashed path", "In the Pitch lab, a dashed path is a lookalike’s pitch and a dotted grey one the MLB average, both there for comparison; the selected pitcher’s own pitches fly solid, and an edited or added pitch flies see-through."],
+  ["Dashed path", "In the Pitch Simulation Lab, a dashed path is a lookalike’s pitch and a dotted grey one the MLB average, both there for comparison; the selected pitcher’s own pitches fly solid, and an edited or added pitch flies see-through."],
   ["Extension", "How far in front of the rubber the ball leaves the hand, in feet. More extension shortens the ball’s trip, so the pitch plays faster than its speed."],
   ["VAA, HAA", "Vertical and horizontal approach angle: the angle, in degrees, at which the pitch crosses the plate, up-and-down and side-to-side. A flat VAA on a high fastball is hard to get on top of."],
   ["VRA, HRA", "Vertical and horizontal release angle: the direction the ball leaves the hand, in degrees, up-and-down and side-to-side."],
@@ -5455,7 +5448,7 @@ function syncTable() {
   $("#app").classList.toggle("with-table", on);
   $("#mtSearch").hidden = look; $("#mtScroll").hidden = look; $("#mtLook").hidden = !look;
   $("#mtDl").hidden = !look || !canSave(); if (!look) $("#mtMsg").textContent = "";
-  const cb = $("#cbTable"); if (cb) { cb.setAttribute("aria-pressed", String(look)); cb.textContent = look ? "Hide table" : "Compare in table"; }
+  const cb = $("#cbTable"); if (cb) { cb.setAttribute("aria-pressed", String(look)); cb.textContent = look ? "Hide table" : "Show table"; }
   if (look) { renderLookTable(); return; }
   $("#slList").querySelectorAll(".sltbl").forEach(b => {
     const me = on && b.dataset.g === state.tblGroup;
@@ -5472,7 +5465,7 @@ function renderLookTable() {
   $("#mtLook").innerHTML = comps.length ? heatTable(view, r, comps) : `<p class="mt-more">No lookalikes for this pitch.</p>`;
   wireHeatRows($("#mtLook"));
 }
-// Compare in table as a CSV: him first, then his lookalikes closest first; xERA and every pitch measure, raw values
+// Show table as a CSV: him first, then his lookalikes closest first; xERA and every pitch measure, raw values
 function lookCSV(r) {
   const comps = compsOf(state.view, r), hv = VARS.t.filter(v => !v.cat && v.key.startsWith("t:"));
   const cols = [...new Set(hv.map(v => v.group))].flatMap(g => hv.filter(v => v.group === g));
@@ -5646,13 +5639,7 @@ function buildStatic() {
   $("#dlBtn").addEventListener("click", downloadCSV);
   wireSaved();
   $("#ctaOpen").addEventListener("click", openCard);
-  $("#ctaSim").addEventListener("click", () => {   // Create Lookalike Group: him + his closest comps, shown in the Groups panel
-    const r = state.sel; if (r === null || r === undefined) return;
-    if (!compsSavedId(r)) saveCompsGroup(r);
-    setRailTab("groups"); syncCta();
-  });
   $("#ctaFly").addEventListener("click", () => toggleSim($("#ctaFly")));
-  $("#ctaCompare").addEventListener("click", () => { const r = state.sel; if (r === null || r === undefined) return; const lk = labComps(r); if (lk.length) compareSim(lk[0][0], $("#ctaCompare")); });
   document.addEventListener("keydown", e => { if (e.key === "Escape" && state.simOpen) { e.preventDefault(); closeSimFocus(); } });
   $("#ctaLook").addEventListener("click", () => setLook(true));
   $("#cbBack").addEventListener("click", () => setLook(false));
@@ -5859,7 +5846,7 @@ function buildStatic() {
     }
     cands.sort((a, b) => tab.season[b] - tab.season[a]);
     $("#searchMsg").textContent = "";
-    preview(cands[0]);   // on the map first, with Show Complete Profile / Show Lookalikes / Compare with a lookalike / Create Lookalike Group / Pitch lab
+    preview(cands[0]);   // on the map first, with Show Complete Profile / Show Lookalikes / Pitch Simulation Lab
     e.target.value = "";
   });
 
