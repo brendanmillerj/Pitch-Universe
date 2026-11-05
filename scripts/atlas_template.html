@@ -134,8 +134,16 @@ button, input, select { font: inherit; color: inherit; }
 .typecol .tcsel select { width: 100%; max-width: none; padding: 0 28px 0 10px; }
 .typecol .tcsel select:disabled { color: var(--muted); cursor: default; }
 .tcnote { font: 400 12px/1.35 var(--font-ui); color: var(--ink2); }
-.lqual { font: 400 13px/1.3 var(--font-ui); color: var(--ink2); cursor: help; text-decoration: underline dotted; text-underline-offset: 3px; max-width: 26ch; }
-.lqual b { font-weight: 700; color: var(--ink); }
+/* "Similar pitches kept together": both layouts' scores as bars, the one on screen in ink */
+.lqual { display: grid; grid-template-columns: auto auto 84px auto; column-gap: 8px; row-gap: 4px; align-items: center;
+  font: 400 12px/1.15 var(--font-ui); color: var(--muted); cursor: help; }
+.lq-h { grid-column: 1; grid-row: 1 / 3; font-weight: 600; color: var(--ink2); line-height: 1.25;
+  text-decoration: underline dotted; text-underline-offset: 3px; text-decoration-color: var(--rule); }
+.lq-bar { height: 8px; background: var(--wash); border-radius: 2px; overflow: hidden; }
+.lq-bar i { display: block; height: 100%; background: var(--rule); }
+.lq-v { text-align: right; font-variant-numeric: tabular-nums; }
+.lqual .lq-on { color: var(--ink); font-weight: 700; }
+.lq-bar.lq-on i { background: var(--ink); }
 .dimseg button:disabled { color: var(--muted); cursor: default; }
 /* map controls off the map: light outline buttons, the chosen one filled in ink */
 .maptool .dimseg, .maptool .ellp, .typecol .mseg { border-color: var(--ink); background: var(--field); }
@@ -1574,7 +1582,7 @@ tr.self td { font-weight: 600; background: none; }
             <button type="button" data-lay="move" title="The plain movement chart: horizontal break across, induced vertical break up">Movement</button>
             <button type="button" data-lay="tsne" title="The universe: pitches placed by everything that defines them (t-SNE)">t-SNE</button>
           </div>
-          <span class="lqual" id="lqual" hidden></span>
+          <div class="lqual" id="lqual" hidden></div>
           <div class="ellrow">
             <button type="button" class="mbtn" id="ellOn" aria-pressed="false">Show ellipses</button>
             <div class="ellp" id="ellP" role="group" aria-label="Ellipse coverage" hidden>
@@ -2191,14 +2199,21 @@ function syncLQ() {
   const el = document.getElementById("lqual"); if (!el) return;
   const Q = D.layout_quality, m = Q && Q.maps && (Q.maps[state.view] || Q.maps.all);
   if (!m) { el.hidden = true; return; }
-  const k = Q.k || 10, lay = layKey(), v = lay === "move" ? m.move : is3D() && isNum(m.tsne3) ? m.tsne3 : m.tsne;
+  const k = Q.k || 10, cur = layKey(), t3 = is3D() && isNum(m.tsne3), t = t3 ? m.tsne3 : m.tsne;
   const what = state.view === "all" ? "pitches" : PTN[state.view].toLowerCase() + "s", pc = x => isNum(x) ? Math.round(x * 100) + "%" : "–";
-  el.hidden = !isNum(v);
-  el.innerHTML = `Information projected: <b>${pc(v)}</b> of true neighbours kept`;
-  el.title = `Take any pitch and its ${k} most similar ${what} on the 15 measures that define a pitch here (shape, delivery and the rest; `
-    + `the same pitcher's other seasons left out). On this map, ${pc(v)} of those ${k} are also among its ${k} nearest dots. `
-    + `Movement chart: ${pc(m.move)}. t-SNE universe: ${pc(m.tsne)} flat${isNum(m.tsne3) ? `, ${pc(m.tsne3)} in 3D` : ""}. `
-    + `Picking ${k} of the others at random would keep about ${pc(k / Math.max(1, viewRows(state.view).length))}.`;
+  el.hidden = !isNum(t) || !isNum(m.move);
+  if (el.hidden) return;
+  const row = (key, name, v) => {
+    const on = key === cur ? " lq-on" : "";
+    return `<span class="lq-n${on}">${name}</span><span class="lq-bar${on}"><i style="width:${Math.round(Math.max(0, Math.min(1, v)) * 100)}%"></i></span>`
+      + `<span class="lq-v${on}">${pc(v)}</span>`;
+  };
+  el.innerHTML = `<span class="lq-h">Similar pitches<br>kept together</span>` + row("tsne", t3 ? "t-SNE 3D" : "t-SNE", t) + row("move", "Movement", m.move);
+  const rnd = k / Math.max(1, viewRows(state.view).length);
+  el.title = `Take any pitch and the ${k} ${what} most like it on the 15 measures that define a pitch here (shape, delivery and the rest; `
+    + `the same pitcher's other seasons left out). The bars show how many of those ${k} also land among its ${k} nearest dots: `
+    + `${pc(t)} on the t-SNE ${t3 ? "3D " : ""}map, ${pc(m.move)} on the movement chart. A longer bar means a dot's neighbours are more often real lookalikes. `
+    + `Placing dots at random would keep ${rnd < 0.01 ? "under 1%" : "about " + pc(rnd)}.`;
 }
 function syncLayoutSeg() {
   const seg = document.getElementById("laySeg"); if (!seg) return;
