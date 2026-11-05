@@ -1594,7 +1594,7 @@ tr.self td { font-weight: 600; background: none; }
         <circle class="hf-far" cx="138" cy="27" r="4.5"/>
         <text x="38" y="55">alike</text><text x="138" y="55">different</text>
       </svg>
-      <p><b>How to read it.</b> Each dot is one pitcher’s pitch type over one season. Pitches that are alike in movement, release, delivery, command and consistency sit near each other, and the farther apart two dots are, the less alike the pitches. The axes have no units.</p>
+      <p><b>How to read it.</b> Each dot is one pitcher’s pitch type over one season. Pitches that are alike in what they are (speed, spin, movement, angles, release and delivery) sit next to each other: nearby means alike. The gaps between islands and the axes have no meaning. Where a pitch is thrown, how repeatable it is and how often it is thrown do not place it; color the map by them instead.</p>
       <button type="button" class="howhide" id="howHide" aria-controls="howto">Hide</button>
     </section>
     <button type="button" class="link howshow" id="howShow" aria-controls="howto" hidden>How to read the map</button>
@@ -1849,10 +1849,18 @@ const TF = [
   ["csw", "Called + swinging strike rate", "%", 1, "Results"],
   ["xwoba_con", "xwOBA on contact", "", 3, "Results"],
   ["rv100", "Run value per 100 (+ good for pitcher)", "", 2, "Results", 1],
+  ["whiff_vs_look", "Whiff rate vs. his lookalikes (+ more)", "pts", 1, "Results", 1],
+  ["loc_height_vs_look", "Location height vs. his lookalikes (+ higher)", "in", 1, "Results", 1],
+  ["zone_vs_look", "Zone rate vs. his lookalikes (+ more in the zone)", "pts", 1, "Results", 1],
   ["uniq_z", "Uniqueness (SD from the typical pitch of its type)", "", 2, "Results"],
   ["n", "Pitches thrown", "", 0, "Results"],
 ];
 const TFm = Object.fromEntries(TF.map(f => [f[0], f]));
+// What a pitch IS: the measures the maps, comps, uniqueness and group regions are built from (atlas_build MAP_FEATURES
+// = profile_embed.IDENTITY_BLOCKS: shape, derived, delivery, near-duplicates dropped). Location, scatter and usage are
+// shown, filtered and coloured on, but do not define "similar" (user decision 2026-11-04).
+const ID_KEYS = new Set(["velo", "spin", "spin_axis", "ivb", "hb", "ssw", "ddz_az", "ddz_ax", "vaa", "vra",
+  "arm_angle", "rel_height", "rel_side", "extension"]);
 const PITCHER_RESULTS = [
   ["xera", "xERA", "", 2], ["era", "ERA", "", 2], ["luck", "ERA minus xERA (+ = unlucky)", "", 2, 1], ["look_xera", "Lookalikes' xERA", "", 2], ["look_gap", "xERA gap vs lookalikes (+ = trailed them)", "", 2, 1],
   ["look_gap_3y", "xERA gap vs lookalikes, 2024–26 (innings-weighted)", "", 2, 1], ["look_era", "Lookalikes' ERA", "", 2], ["look_era_gap", "ERA gap vs lookalikes (+ = trailed them)", "", 2, 1], ["k_pct", "Strikeout rate", "%", 1],
@@ -1934,7 +1942,7 @@ const state = {
   rail: { open: false, tab: "groups" },
   picks: new Set(),   // pitches picked for a new group (Add, Draw a group); saved from the Groups tab
   lasso: false, selRev: 0,   // Draw a group: the 2D map's drag draws a loop instead of panning   // the docked right rail: Pitchers / Comps / Groups
-  dim: 2,              // 2D UMAP by default; 3D is one click away
+  dim: 2,              // 2D t-SNE by default; 3D is one click away
   showName: true,
   ellipses: false, ellP: 68,   // ellipses start off
   teamPick: new Set(["CHC"]),   // teams drawn in club colour when colouring by team
@@ -2530,7 +2538,7 @@ function ellipseTraces(view, cg, on, match, pal) {
 // ------------------------------------------------------- saved groups
 // "Save as group" freezes the pitchers in a list (or a pitcher and his comps) as a set of pitcher-seasons, each
 // with its level. A group is a REGION of the measure space, not just a list: on the pitch type it was built on,
-// its centroid over the 27 map measures (each standardized by that type's league SD) and a radius out to its
+// its centroid over the identity measures (ID_KEYS, each standardized by that type's league SD) and a radius out to its
 // farthest member. Its ellipse is drawn on that pitch type's dots only; the Groups panel lists everyone inside
 // the region on the map on screen, at either level, nearest the middle first. Kept in this browser's storage.
 const SAVED_STORE = "atlas.savedEllipses.v1";
@@ -2579,7 +2587,7 @@ function groupType(e) {
   const n = {}; memberRows(e).forEach(r => { n[T.pitch_type[r]] = (n[T.pitch_type[r]] || 0) + 1; });
   return Object.keys(n).sort((a, b) => n[b] - n[a])[0] || null;
 }
-const REGION_VARS = () => VARS.t.filter(v => !v.cat && v.key.startsWith("t:") && v.group !== "Results" && v.group !== "Usage");
+const REGION_VARS = () => VARS.t.filter(v => !v.cat && v.key.startsWith("t:") && ID_KEYS.has(v.key.slice(2)));
 const regionCache = new Map();
 function groupRegion(e) {
   const ck = e.id + "|" + NT;
@@ -3534,10 +3542,36 @@ function compsPanel(view, j) {
     <p class="cmprow"><label class="flbl" for="cmpSel">Compare with</label><span class="sel"><select id="cmpSel">${opts}</select></span></p>
     <div class="cmpkey" id="cmpKey"></div>
     <div id="cmpPlot" class="moveplot" role="img" aria-label="Pitch movement of ${esc(T.name[j])} compared with a comp"></div></section>` : ""}
-    <section class="sec heat"><h3>Closest ${PTN[t].toLowerCase()} comps</h3>${poolSegHTML(j) ? `<div class="poolseg" role="group" aria-label="Comps among which pitchers">${poolSegHTML(j)}</div>` : ""}${comps.length ? `<button type="button" class="savebtn oncard" data-svcomps="${j}" data-label="Save as group"${compsSavedId(j) ? " disabled" : ""} title="Keep him and these ${comps.length} as a named group: a region on the map, with everyone inside it listed">${compsSavedId(j) ? "Saved" : "Save as group"}</button>` : ""}<p class="help">Nearest ${compPoolOf(j) === "aaa" ? "Triple-A" : T.level[j] === "mlb" ? "other" : "big-league"} pitchers' ${PTN[t].toLowerCase()}s on shape, angles, delivery, command, consistency and usage, any season. Only ${T.p_throws[j] === "R" ? "right" : "left"}-handers with an arm angle within ±${isNum(compTolOf(j)) && isFinite(compTolOf(j)) ? compTolOf(j) : "any"}° of his${isNum(compTolOf(j)) && compTolOf(j) > 7.5 ? " (window widened: too few pitchers within ±7.5°)" : ""}. Each cell is the value, shaded by its percentile among MLB ${PTN[t].toLowerCase()}s: red high, blue low, flipped where lower is better. Hover a cell for its percentile; click a row to open him.</p>
+    <section class="sec heat"><h3>Closest ${PTN[t].toLowerCase()} comps</h3>${poolSegHTML(j) ? `<div class="poolseg" role="group" aria-label="Comps among which pitchers">${poolSegHTML(j)}</div>` : ""}${comps.length ? `<button type="button" class="savebtn oncard" data-svcomps="${j}" data-label="Save as group"${compsSavedId(j) ? " disabled" : ""} title="Keep him and these ${comps.length} as a named group: a region on the map, with everyone inside it listed">${compsSavedId(j) ? "Saved" : "Save as group"}</button>` : ""}<p class="help">Nearest ${compPoolOf(j) === "aaa" ? "Triple-A" : T.level[j] === "mlb" ? "other" : "big-league"} pitchers' ${PTN[t].toLowerCase()}s on what the pitch is (shape, angles, delivery), not where it is thrown, how repeatable it is or how often, any season. Only ${T.p_throws[j] === "R" ? "right" : "left"}-handers with an arm angle within ±${isNum(compTolOf(j)) && isFinite(compTolOf(j)) ? compTolOf(j) : "any"}° of his${isNum(compTolOf(j)) && compTolOf(j) > 7.5 ? " (window widened: too few pitchers within ±7.5°)" : ""}. Each cell is the value, shaded by its percentile among MLB ${PTN[t].toLowerCase()}s: red high, blue low, flipped where lower is better. Hover a cell for its percentile; click a row to open him.</p>
     ${comps.length ? heatTable(view, j, comps) : ""}</section>`;
+  h += locationBox(j);
   if (i !== undefined) h += bestCompSection(view, i, comps, j);
   return h + `</div>`;
+}
+
+// ------------------------------------------ same pitch, different location
+// Lookalikes are nearest on what the pitch is (ID_KEYS), so location is free to differ among them; on the
+// 2026-11-04 benchmark the location gap explains the whiff gap among such lookalikes twice as well as when location
+// was part of "similar". The box puts his location and whiff next to theirs, then splits the lookalikes at their
+// median location height to show what location alone is worth for pitches shaped like his. Descriptive, not a test.
+function locationBox(j) {
+  const t = PTN[T.pitch_type[j]].toLowerCase();
+  const look = nbhdOf(j).map(([c]) => c).filter(c => isNum(T.whiff[c]) && isNum(T.loc_height[c]));
+  if (look.length < 8 || !isNum(T.whiff[j]) || !isNum(T.whiff_vs_look[j])) return "";
+  const avg = (rs, k) => rs.reduce((s, c) => s + T[k][c], 0) / rs.length;
+  const mh = med(look.map(c => T.loc_height[c]));
+  const lo = look.filter(c => T.loc_height[c] < mh), hi = look.filter(c => T.loc_height[c] >= mh);
+  const dh = T.loc_height_vs_look[j], dw = T.whiff_vs_look[j], dz = T.zone_vs_look[j];
+  const abs1 = x => Math.abs(x).toFixed(1);
+  const where = !isNum(dh) ? "" : Math.abs(dh) < 0.5 ? "at about the same height as they do"
+    : `${abs1(dh)} in ${dh > 0 ? "higher" : "lower"} than they do`;
+  const zone = !isNum(dz) ? "" : Math.abs(dz) < 1 ? ", with about the same zone rate" : `, ${abs1(dz)} points ${dz > 0 ? "more" : "less"} often in the zone`;
+  const whiff = Math.abs(dw) < 0.5 ? "the same whiff rate as theirs" : `a whiff rate ${abs1(dw)} points ${dw > 0 ? "above" : "below"} theirs`;
+  const wl = avg(lo, "whiff"), wh = avg(hi, "whiff"), better = wl > wh ? "lower" : "higher";
+  return `<section class="sec locbox"><h3>Same pitch, different location</h3>
+    <p>His ${esc(t)} has the shape, angles and delivery of his ${look.length} closest lookalikes. He throws it ${where}${zone}, and gets ${whiff} (${fmt(T.whiff[j], 1, "%")} vs. ${fmt(avg(look, "whiff"), 1, "%")}).</p>
+    <p>Among those lookalikes, the ones who throw it lower (average ${fmt(avg(lo, "loc_height"), 2, "ft")}) get ${fmt(wl, 1, "%")} whiffs; the ones who throw it higher (${fmt(avg(hi, "loc_height"), 2, "ft")}), ${fmt(wh, 1, "%")}. For ${esc(t)}s shaped like his, ${better} has paid.</p>
+    <p class="help">Lookalikes are matched on what the pitch is, not where it goes, so location is free to differ among them. A scouting read, not a test: pitcher quality, counts and batter mix are not held equal.</p></section>`;
 }
 
 // The comps as a heat table: one row for him, one per comp; columns are xERA (whole season) and every measure on the
@@ -4849,7 +4883,8 @@ const SHORT = { velo: "Velocity", ivb: "Ride (IVB)", hb: "Horizontal break", spi
   scaled_ext: "Extension ÷ height", loc_inside: "Location in / out", loc_height: "Location height", zone_pct: "Zone rate",
   release_sd: "Release scatter", movement_sd: "Movement scatter", velo_sd: "Velocity SD", usage: "Usage", usage_ahead: "Usage, ahead",
   usage_behind: "Usage, behind", usage_vs_lhb: "Usage vs. LHB", usage_vs_rhb: "Usage vs. RHB", whiff: "Whiff %", csw: "CSW %",
-  xwoba_con: "xwOBA on contact", rv100: "Run value / 100", n: "Pitches", uniq_z: "Uniqueness" };
+  xwoba_con: "xwOBA on contact", rv100: "Run value / 100", n: "Pitches", uniq_z: "Uniqueness",
+  whiff_vs_look: "Whiff vs. lookalikes", loc_height_vs_look: "Height vs. lookalikes", zone_vs_look: "Zone vs. lookalikes" };
 // Measures for the card: percentile within the pitch type, in Savant direction (flipped where lower is better)
 function measureItems(vars, r, poolName, rows) {
   return vars.filter(v => !v.cat).map(v => {
@@ -4943,8 +4978,8 @@ function typeCard(view, j) {
   // ---------------- hero: what puts this pitch where it is in the 3D space ----------------
   // the measures on which his pitch sits farthest from a typical pitch of its type: these are what
   // place it in the map. Every measure at/above HERO_HI or at/below HERO_LO percentile, at least HERO_MIN.
-  // only what the map is built from (shape, Dynamic Dead Zone, angles, delivery, command, consistency, usage); results don't place it
-  const ranked = items.filter(it => it.p >= 0 && it.v.group !== "Results").sort((a, b) => Math.abs(b.p - 50) - Math.abs(a.p - 50));
+  // only what the map is built from (ID_KEYS: shape, Dynamic Dead Zone, angles, delivery); location, scatter, usage and results don't place it
+  const ranked = items.filter(it => it.p >= 0 && ID_KEYS.has(it.v.key.slice(2))).sort((a, b) => Math.abs(b.p - 50) - Math.abs(a.p - 50));
   let hero = ranked.filter(it => it.p >= HERO_HI || it.p <= HERO_LO);
   if (hero.length < HERO_MIN) hero = ranked.slice(0, HERO_MIN);
   // compact: at most HERO_MAX rows, two columns, so it fits the band beside "Color pitchers by"
@@ -5438,6 +5473,9 @@ const EXPLAIN = {
   loc_inside: "Where the pitch crosses the plate side to side, in inches. Positive is inside to the batter, negative is away.",
   loc_height: "The average height at which the pitch crosses the plate, in feet.",
   zone_pct: "The share of these pitches that cross the plate in the strike zone.",
+  whiff_vs_look: "His whiff rate minus the average of his lookalikes (pitches nearest his on shape, angles and delivery), in percentage points. Positive: more whiffs than pitches shaped like his.",
+  loc_height_vs_look: "How much higher (+) or lower he throws the pitch than his lookalikes do, in inches. Lookalikes are matched on what the pitch is, so this is a choice of location, not a different pitch.",
+  zone_vs_look: "His zone rate minus his lookalikes' average, in percentage points.",
   release_sd: "How much the release point moves from pitch to pitch, in inches. Lower means a more repeatable delivery.",
   movement_sd: "How much the movement varies from pitch to pitch, in inches. Lower is more consistent.",
   velo_sd: "How much the speed varies from pitch to pitch, in mph. Lower is more consistent.",
@@ -5495,7 +5533,7 @@ const TERMS = () => [
   ["ERA − xERA", "Positive: his ERA was worse than his strikeouts, walks and contact deserved (unlucky). Negative: better (lucky)."],
   ["Run value / 100", "Runs saved per 100 pitches, from the change in expected runs after each pitch. Positive is good for the pitcher."],
   ["Uniqueness", EXPLAIN.uniq_z],
-  ["Comps, lookalikes, similar pitchers", "The ten other pitchers whose version of the pitch sits nearest his in the measure space: same hand, arm angle within 7.5° (widened only when too few qualify), any season."],
+  ["Comps, lookalikes, similar pitchers", "The ten other pitchers whose version of the pitch sits nearest his on what the pitch is: shape (velocity, spin, break), angles, dead-zone and seam-shifted-wake residuals, and delivery. Location, release and movement scatter, and usage are left out, so lookalikes can differ in how they use the same pitch. Same hand, arm angle within 7.5° (widened only when too few qualify), any season."],
   ["Fit (Close, Loose, Very Loose)", FIT_TIP.replace(/^Fit: /, "")],
   ["Pitcher types", "Named groups under “Find a type of pitcher”; the definition of the chosen one shows under the box."],
 ];
@@ -5844,6 +5882,7 @@ const COL_SHORT = {
   release_sd: "Release SD", movement_sd: "Move SD", velo_sd: "Velo SD",
   usage: "Usage", usage_ahead: "Ahead", usage_behind: "Behind", usage_vs_lhb: "vs LHB", usage_vs_rhb: "vs RHB",
   whiff: "Whiff%", whiff_sv: "Whiff%", csw: "CSW%", xwoba_con: "xwOBAcon", xwoba: "xwOBA", rv100: "RV/100", uniq_z: "Unique", n: "Pitches",
+  whiff_vs_look: "Whiff vs look.", loc_height_vs_look: "Ht vs look.", zone_vs_look: "Zone vs look.",
   xera: "xERA", era: "ERA", luck: "ERA − xERA", look_xera: "Lookalike xERA", look_gap: "xERA gap", look_gap_3y: "xERA gap 3y",
   look_era: "Lookalike ERA", look_era_gap: "ERA gap", k_pct: "K%", bb_pct: "BB%", k9: "K/9", bb9: "BB/9", ip: "IP",
 };
@@ -6142,7 +6181,7 @@ function buildStatic() {
     e.target.value = "";
   });
 
-  $("#source").textContent = "Data: Statcast (Baseball Savant) and the MLB Stats API. Map: UMAP of 27 pitch measures."
+  $("#source").textContent = "Data: Statcast (Baseball Savant) and the MLB Stats API. Map: t-SNE of what each pitch is (shape, angles, delivery)."
     + (LEVELS.includes("aaa") ? " Triple-A pitches are placed among their closest MLB pitches." : "");
 
   // Keep the map sized when the drawer, team row or caption change height

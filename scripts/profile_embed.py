@@ -29,9 +29,14 @@ import pandas as pd
 from mlbpitch import paths, profiles
 
 SEED = 0
-K = 15
+K = 15               # kNN graph for Leiden islands
 N_PCS = 30
 RESOLUTION = 1.0
+# t-SNE layout settings for the atlas maps (2D and 3D), chosen in analysis/umap_benchmark.md (2026-11-04):
+# perplexity 30, PCA initialisation, Barnes-Hut. A later build restarts from the previous layout for
+# TSNE_RESTART_ITERS iterations without early exaggeration, which keeps the islands in place across refreshes.
+TSNE_PERPLEXITY = 30
+TSNE_RESTART_ITERS = 250
 
 TYPE_BLOCKS = {
     **profiles.MEAN_FEATURES,
@@ -39,6 +44,15 @@ TYPE_BLOCKS = {
     "usage": profiles.USAGE_FEATURES,
 }
 PER_TYPE = profiles.MEAN_FEATURES["shape"] + profiles.MEAN_FEATURES["derived"]
+
+# What a pitch IS: shape, derived (angles, dead zone, seam-shifted wake) and delivery, with near-duplicate
+# columns left out so no idea is counted twice (|r| >= 0.89 within every pitch type: HAA/HRA ~ horizontal
+# break, ax/az ~ break, the velo-conditioned dead-zone ride ~ the plain one, scaled extension ~ extension).
+# The atlas maps AND comps use this (user decision 2026-11-04); location (intent), scatter (consistency)
+# and usage are shown and filtered on, but do not define "similar". The duplicates stay on the cards.
+DUPLICATE_FEATURES = ["ax", "az", "haa_above_avg", "hra_above_avg", "ddz_delta_az_velo", "scaled_extension"]
+IDENTITY_BLOCKS = {b: [c for c in profiles.MEAN_FEATURES[b] if c not in DUPLICATE_FEATURES]
+                   for b in ("shape", "derived", "delivery")}
 
 
 def log(msg):
@@ -65,13 +79,30 @@ def assert_no_outcomes(blocks):
     assert not leaked, f"outcome columns in features: {leaked}"
 
 
-def embed(X, label):
-    """PCA -> kNN -> Leiden -> UMAP. Returns (PCs, knn_idx, leiden, umap)."""
+def tsne_layout(P, n_components=2, init=None, seed=SEED):
+    """openTSNE layout of the PCs. Cold: PCA initialisation, perplexity TSNE_PERPLEXITY. Restart (`init` = the
+    previous layout's coordinates, one row per row of P): no early exaggeration, TSNE_RESTART_ITERS iterations.
+    Returns (coords, embedding); the embedding object places new points with .transform()."""
+    import openTSNE
+    kw = dict(n_components=n_components, perplexity=TSNE_PERPLEXITY, random_state=seed, n_jobs=1,
+              negative_gradient_method="bh")
+    if init is not None:
+        kw.update(early_exaggeration_iter=0, n_iter=TSNE_RESTART_ITERS)
+    E = openTSNE.TSNE(**kw).fit(P, initialization=init)
+    # a copy: openTSNE's transform() re-centres the fitted embedding in place, so a view would move with it
+    return np.array(E, dtype="float64", copy=True), E
+
+
+def embed(X, label, method="umap", init=None):
+    """PCA -> kNN -> Leiden -> layout. Returns (PCs, knn_idx, leiden, layout).
+    method "umap" (15 neighbours, min_dist 0.3: the older offline analyses) or "tsne" (the atlas; `init` restarts
+    from a previous 2D layout). With "tsne" the openTSNE embedding is kept on embed.last for .transform()."""
     from sklearn.decomposition import PCA
     from sklearn.neighbors import NearestNeighbors
     import igraph as ig
     import leidenalg
-    import umap as umap_mod
+    if method == "umap":
+        import umap as umap_mod
 
     n_pcs = min(N_PCS, X.shape[1])
     pca = PCA(n_components=n_pcs, random_state=SEED).fit(X)
@@ -87,7 +118,11 @@ def embed(X, label):
     leiden = np.array(part.membership)
     log(f"[{label}] Leiden: {leiden.max() + 1} clusters at resolution {RESOLUTION}")
 
-    U = umap_mod.UMAP(n_neighbors=K, min_dist=0.3, random_state=SEED).fit_transform(P)
+    if method == "tsne":
+        U, embed.last = tsne_layout(P, 2, init)
+        log(f"[{label}] t-SNE 2D ({'restart' if init is not None else 'cold'})")
+    else:
+        U = umap_mod.UMAP(n_neighbors=K, min_dist=0.3, random_state=SEED).fit_transform(P)
     return P, idx, leiden, U
 
 
@@ -133,24 +168,28 @@ def continuity_checks(meta, P, idx, label):
             f"{100 * (pt[idx] == pt[:, None]).mean():.1f}%")
 
 
-def type_space(types, blocks=TYPE_BLOCKS):
-    """`blocks` picks the feature blocks that build the space (the atlas maps leave out usage)."""
+def type_space(types, blocks=TYPE_BLOCKS, method="umap", scalings=("global", "within"), init=None):
+    """`blocks` picks the feature blocks that build the space; `method`/`init` go to embed() (the atlas passes
+    method="tsne", scalings=("global",) and the previous global layout as `init`). Layout columns are
+    <scaling>_map1/2 (named <scaling>_umap1/2 too when method="umap", for the older scripts)."""
     keys = profiles.KEYS + ["pitch_type", "player_name", "p_throws", "n"]
     assert_no_outcomes(blocks)
     cols = [c for cs in blocks.values() for c in cs]
     out = types[keys + profiles.OUTCOME_COLUMNS + ["rv100_raw"]].copy()
 
-    for scaling in ("global", "within"):
+    for scaling in scalings:
         F = types[cols].astype("float64")
         F = F.fillna(F.groupby(types.pitch_type).transform("median"))
         Z = zscore(F) if scaling == "global" else pd.concat(
             zscore(g) for _, g in F.groupby(types.pitch_type)).loc[F.index]
         X = block_scale(Z, blocks)
-        P, idx, leiden, U = embed(X, f"type/{scaling}")
+        P, idx, leiden, U = embed(X, f"type/{scaling}", method, init if scaling == "global" else None)
         continuity_checks(types[keys], P, idx, f"type/{scaling}")
         out[[f"{scaling}_pc{i + 1}" for i in range(P.shape[1])]] = P
         out[f"{scaling}_leiden"] = leiden
-        out[[f"{scaling}_umap1", f"{scaling}_umap2"]] = U
+        out[[f"{scaling}_map1", f"{scaling}_map2"]] = U
+        if method == "umap":
+            out[[f"{scaling}_umap1", f"{scaling}_umap2"]] = U
     return out
 
 

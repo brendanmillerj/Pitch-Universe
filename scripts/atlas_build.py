@@ -4,15 +4,18 @@ Exploratory only -- nothing here predicts. One dot = one pitcher-season's versio
 of one pitch (2024-2026). No whole-arsenal pitcher map, by design.
 
   all pitches        pitcher x season x pitch type, global scaling (types separate)
-  <type> universe    one UMAP per pitch type, fit on that type's rows alone
-  (both maps leave out the usage block: 27 of the 32 measures; comps and uniqueness use all 32)
+  <type> universe    one t-SNE map per pitch type, fit on that type's rows alone
+  (maps, comps and uniqueness all use the 15 pitch-identity measures, profile_embed.IDENTITY_BLOCKS:
+   shape, derived and delivery without near-duplicates; location, scatter and usage are shown and
+   filtered on but do not define "similar" -- user decision 2026-11-04, analysis/umap_benchmark.md)
   comps              10 nearest DISTINCT other pitchers in the PCA space each map
                      is drawn from (not the 2D map), any season
 
 Levels. The maps, comps, percentiles and baselines are all MLB. Triple-A
 pitchers (level "aaa", from the Triple-A store) are *placed* on the fixed MLB
-maps -- each pitch lands among its nearest big-league pitches of the same type
-in the PCA space the map was drawn from -- and their comps are MLB pitchers, so
+maps -- a call-up who also has an MLB row of that pitch type is placed by the map's own t-SNE
+transform (beside his big-league self); anyone else lands at the inverse-distance mean of his 15
+nearest big-league pitches of the same type in the PCA space -- and their comps are MLB pitchers, so
 every number on a Triple-A card reads as "against big-league norms". The MLB
 layout is never refitted because of them.
 
@@ -35,6 +38,8 @@ Usage:
   python scripts/atlas_build.py --rebuild-profiles    # after an ingest
   python scripts/atlas_build.py --refetch-leaders     # refresh Savant outcomes
   python scripts/atlas_build.py --html-only           # re-inject data into the template
+  python scripts/atlas_build.py --cold-layout         # refit the maps from scratch (default: restart from the
+                                                      # previous layout when it used the same measures)
 """
 import argparse
 import base64
@@ -47,7 +52,8 @@ import pandas as pd
 
 from comps import other_pitcher_neighbours
 from mlbpitch import paths, profiles, store
-from profile_embed import TYPE_BLOCKS, block_scale, embed, type_space, zscore
+from profile_embed import (IDENTITY_BLOCKS, TSNE_PERPLEXITY, TSNE_RESTART_ITERS, TYPE_BLOCKS, block_scale, embed,
+                           tsne_layout, zscore)
 
 SEASONS = profiles.SEASONS
 RANGE = f"{min(SEASONS)}_{max(SEASONS)}"
@@ -56,7 +62,7 @@ K_COMPS = 10
 NBHD = 30          # neighbourhood stored per pitch: first K_COMPS are the displayed comps, the rest feed
                    # the "what goes with lower xERA among his lookalikes" analysis on the page
 NBHD_LEVEL = {"mlb": NBHD, "aaa": K_COMPS}   # that analysis needs his own xERA, which Triple-A has none of
-K_PLACE = 15       # MLB neighbours a Triple-A pitch is placed among (the UMAP's own n_neighbors)
+K_PLACE = 15       # MLB neighbours a Triple-A stranger is placed among (inverse-distance mean)
 TEMPLATE = paths.ROOT / "scripts" / "atlas_template.html"
 PITCHER_TYPES = paths.ROOT / "scripts" / "pitcher_types.json"   # "Find a type of pitcher" rules (editable)
 OUT_HTML = paths.ROOT / "analysis" / "pitch_atlas.html"
@@ -82,11 +88,24 @@ ACTIVE_SPIN_TYPES = {"fourseam": "FF", "sinker": "SI", "cutter": "FC", "changeup
                      "curve": "CU", "slider": "SL", "sweeper": "ST"}
 FA_URL = "https://statsapi.mlb.com/api/v1/people/freeAgents?season={season}"
 TYPE_FEATURES = [c for cs in TYPE_BLOCKS.values() for c in cs]
-# The maps (2D, 3D, clusters, and where Triple-A pitches land) are laid out WITHOUT the usage block, so a pitch
-# sits by what it is, not how often or when it is thrown (user's call, 2026-11-03). Comps, uniqueness, the
-# filters and every card still use all 32 measures, usage included.
-MAP_BLOCKS = {k: v for k, v in TYPE_BLOCKS.items() if k != "usage"}
+# Maps (2D, 3D, clusters, Triple-A placement), comps and uniqueness are all built on what a pitch IS: shape,
+# derived and delivery, near-duplicates dropped (15 measures). Usage left the maps on 2026-11-03; location and
+# scatter left maps and comps, and usage left the comps, on 2026-11-04 (user decisions; the half-to-half
+# reliability of those blocks is 0.6 to 0.86 against 0.92 to 0.97, and they drove 79% of a pitcher's season-to-
+# season movement in the old comps space). Cards, filters, colours and the heat table still show all 32 measures.
+MAP_BLOCKS = IDENTITY_BLOCKS
 MAP_FEATURES = [c for cs in MAP_BLOCKS.values() for c in cs]
+LAYOUT_META = paths.META / f"atlas_layout_{RANGE}.json"   # how the cached layout was made; a restart needs a match
+EMBEDS = {}        # (map, dims) -> (openTSNE embedding fitted this run, its coordinates' mean as stored)
+
+
+def tsne_place(key, Q):
+    """Place rows Q (PCA space of that map) with the map's t-SNE transform, in the stored map's frame. openTSNE
+    re-centres the fitted embedding in place on the first transform() (a pure translation; checked 2026-11-04),
+    so the result is shifted back by however far the reference moved."""
+    E, centre = EMBEDS[key]
+    T = np.asarray(E.transform(Q), dtype="float64")
+    return T + (centre - np.asarray(E, dtype="float64").mean(axis=0))
 
 
 def log(msg):
@@ -368,12 +387,16 @@ def scaler_apply(sc, F, by_type=None):
     return np.nan_to_num(np.hstack([Z[cols].to_numpy(dtype="float64") / sc["fac"][n] for n, cols in sc["blocks"].items()]))
 
 
-def place_level(types_mlb, space_mlb, types_new):
-    """Put another level's pitches on the fixed MLB maps.
+def place_level(types_mlb, space_mlb, types_new, cached=None):
+    """Put another level's pitches on the fixed MLB maps. Nothing MLB moves.
 
-    Each pitch lands at the inverse-distance-weighted mean position of its K_PLACE nearest MLB pitches
-    of the same type in the PCA space that map was drawn from (global scaling for the all-pitches map,
-    within-type scaling for each type's map), and takes their weighted-majority cluster. Nothing MLB moves.
+    A call-up who also has an MLB row of the same pitch type (any season) is placed by the map's own t-SNE
+    transform, fitted in this run (EMBEDS): on the 2026-11-04 benchmark that puts a pitcher's new data beside his
+    old row far more often than any average does (71% vs 29-36% in 3D). Everyone else (a stranger) lands at the
+    inverse-distance-weighted mean position of his K_PLACE nearest MLB pitches of the same type in the PCA space
+    the map was drawn from (42% in 3D, level with every transform). Clusters always come from the weighted
+    majority of those K_PLACE neighbours. With --html-only there are no embeddings: rows in `cached` (this level's
+    previous placements) keep them, new rows are placed as strangers.
     """
     from sklearn.decomposition import PCA
     from sklearn.neighbors import NearestNeighbors
@@ -381,19 +404,26 @@ def place_level(types_mlb, space_mlb, types_new):
     types_mlb, space_mlb = types_mlb.reset_index(drop=True), space_mlb.reset_index(drop=True)
     types_new = types_new.reset_index(drop=True)
     assert (types_mlb.pitcher.to_numpy() == space_mlb.pitcher.to_numpy()).all()
-    G_COLS, T_COLS = ["gx", "gy", "gx3", "gy3", "gz3"], ["tx", "ty", "tx3", "ty3", "tz3"]
+    G2, G3, T2, T3 = ["gx", "gy"], ["gx3", "gy3", "gz3"], ["tx", "ty"], ["tx3", "ty3", "tz3"]
     out = types_new[profiles.KEYS + ["pitch_type"]].copy()
-    for c in G_COLS + T_COLS:
+    for c in G2 + G3 + T2 + T3:
         out[c] = np.nan
     out["tcluster"] = -1
+    known = set(zip(types_mlb.pitcher, types_mlb.pitch_type))
+    callup = np.array([(p, t) in known for p, t in zip(types_new.pitcher, types_new.pitch_type)])
+    counts = {"transform": 0, "cached": 0, "IDW": 0}
 
-    def land(P_fit, P_new, rows_fit, rows_new, cols, cluster):
+    def land(P_fit, P_new, rows_fit, rows_new, groups, cluster):
+        """groups: [(cols, embedding key)]; IDW everywhere first, then transform for call-ups when fitted."""
         d, i = NearestNeighbors(n_neighbors=min(K_PLACE, len(rows_fit))).fit(P_fit).kneighbors(P_new)
         w = 1 / (d + 1e-6)
         w /= w.sum(axis=1, keepdims=True)
-        for c in cols:
-            if c in space_mlb:
+        for cols, key in groups:
+            for c in cols:
                 out.loc[rows_new, c] = (w * space_mlb[c].to_numpy(dtype="float64")[rows_fit][i]).sum(axis=1)
+            cu = callup[rows_new]
+            if key in EMBEDS and cu.any():
+                out.loc[rows_new[cu], cols] = tsne_place(key, P_new[cu])
         if cluster:
             cl = space_mlb.tcluster.to_numpy()[rows_fit][i]
             out.loc[rows_new, "tcluster"] = [int(np.bincount(r[r >= 0], weights=ww[r >= 0]).argmax()) if (r >= 0).any() else -1
@@ -401,14 +431,19 @@ def place_level(types_mlb, space_mlb, types_new):
 
     Fm, Fn = types_mlb[MAP_FEATURES], types_new[MAP_FEATURES]
     gm, gn = types_mlb.groupby("pitch_type").indices, types_new.groupby("pitch_type").indices
-    # all-pitches map: one global scaling, same-type neighbours
+    # all-pitches map: one global scaling (as fitted), same-type neighbours for the average; the transform uses
+    # the global embedding, which was fitted on every MLB row in this same PCA space
     sc = scaler_fit(Fm, types_mlb.pitch_type, MAP_BLOCKS)
     Xm = scaler_apply(sc, Fm, types_mlb.pitch_type)
     pca = PCA(n_components=min(30, Xm.shape[1]), random_state=0).fit(Xm)
     Pm, Pn = pca.transform(Xm), pca.transform(scaler_apply(sc, Fn, types_new.pitch_type))
     for pt, rn in gn.items():
-        if pt in gm:
-            land(Pm[gm[pt]], Pn[rn], gm[pt], rn, G_COLS, False)
+        if pt not in gm:
+            continue
+        land(Pm[gm[pt]], Pn[rn], gm[pt], rn, [(G2, None), (G3, None)], False)
+    if ("global", 2) in EMBEDS and callup.any():   # transform against the whole global map in one call
+        for cols, key in [(G2, ("global", 2)), (G3, ("global", 3))]:
+            out.loc[callup, cols] = tsne_place(key, Pn[callup])
     # each type's map: that type's own scaling and PCA
     for pt, rn in gn.items():
         if pt not in gm:
@@ -417,8 +452,20 @@ def place_level(types_mlb, space_mlb, types_new):
         sc = scaler_fit(Fm.iloc[rm], blocks=MAP_BLOCKS)
         Xm = scaler_apply(sc, Fm.iloc[rm])
         pca = PCA(n_components=min(30, Xm.shape[1]), random_state=0).fit(Xm)
-        land(pca.transform(Xm), pca.transform(scaler_apply(sc, Fn.iloc[rn])), rm, rn, T_COLS, True)
-    log(f"placed {len(out):,} pitches on the MLB maps among their {K_PLACE} nearest big-league pitches")
+        land(pca.transform(Xm), pca.transform(scaler_apply(sc, Fn.iloc[rn])), rm, rn, [(T2, (pt, 2)), (T3, (pt, 3))], True)
+    if EMBEDS:
+        counts["transform"], counts["IDW"] = int(callup.sum()), int((~callup).sum())
+    elif cached is not None and len(cached):
+        c = cached.set_index(["pitcher", "season", "pitch_type"])
+        idx = pd.MultiIndex.from_frame(out[["pitcher", "season", "pitch_type"]])
+        hit = idx.isin(c.index)
+        cols = [x for x in G2 + G3 + T2 + T3 + ["tcluster"] if x in c.columns]
+        out.loc[hit, cols] = c.reindex(idx[hit])[cols].to_numpy()
+        counts["cached"], counts["IDW"] = int(hit.sum()), int((~hit).sum())
+    else:
+        counts["IDW"] = len(out)
+    log(f"placed {len(out):,} pitches on the MLB maps: {counts['transform']:,} call-ups by t-SNE transform, "
+        f"{counts['cached']:,} kept from the cached build, {counts['IDW']:,} among their {K_PLACE} nearest big-league pitches")
     return out
 
 
@@ -465,12 +512,12 @@ def type_comps(types, query_level=None, cand_level="mlb"):
         mrows = rows[is_m]
         if not len(mrows):
             continue
-        sc = scaler_fit(types.loc[mrows, TYPE_FEATURES])
-        pca = PCA(n_components=min(30, len(TYPE_FEATURES)), random_state=0)
+        sc = scaler_fit(types.loc[mrows, MAP_FEATURES], blocks=MAP_BLOCKS)
+        pca = PCA(n_components=min(30, len(MAP_FEATURES)), random_state=0)
         Pc = np.zeros((len(rows), pca.n_components))
-        Pc[is_m] = pca.fit_transform(scaler_apply(sc, types.loc[mrows, TYPE_FEATURES]))
+        Pc[is_m] = pca.fit_transform(scaler_apply(sc, types.loc[mrows, MAP_FEATURES]))
         if (~is_m).any():
-            Pc[~is_m] = pca.transform(scaler_apply(sc, types.loc[rows[~is_m], TYPE_FEATURES]))
+            Pc[~is_m] = pca.transform(scaler_apply(sc, types.loc[rows[~is_m], MAP_FEATURES]))
         is_c = lvl[rows] == cand_level
         for h in np.unique(hand[rows]):
             local = np.flatnonzero((hand[rows] == h) & is_query[rows])   # queries
@@ -521,44 +568,97 @@ def type_comps(types, query_level=None, cand_level="mlb"):
     return rows_out, np.where(np.isnan(dist_out), np.nan, pct), tol_out
 
 
-def umap_3d(types):
-    """3D UMAP coordinates on the same PCA spaces as the 2D maps (2D layouts untouched).
-
-    All pitches: global z-scoring (pitch types separate), like profile_embed.type_space("global").
-    Each pitch type: within-type z-scoring, like type_comps. Same neighbours/min_dist/seed as 2D.
-    """
-    import umap as umap_mod
-    from sklearn.decomposition import PCA
-
-    types = types.reset_index(drop=True)
-    out = pd.DataFrame(index=types.index, columns=["gx3", "gy3", "gz3", "tx3", "ty3", "tz3"], dtype="float64")
+def global_space(types):
+    """The all-pitches map's input: per-type median fill, z over all rows (pitch types separate), block-scaled.
+    place_level's scaler_fit(F, by_type, MAP_BLOCKS) reproduces it exactly."""
     F = types[MAP_FEATURES].astype("float64")
     F = F.fillna(F.groupby(types.pitch_type).transform("median"))
-    Pg = PCA(n_components=min(30, F.shape[1]), random_state=0).fit_transform(block_scale(zscore(F), MAP_BLOCKS))
-    out[["gx3", "gy3", "gz3"]] = umap_mod.UMAP(n_components=3, n_neighbors=15, min_dist=0.3, random_state=0).fit_transform(Pg)
-    log("umap 3d: all pitches done")
+    return block_scale(zscore(F), MAP_BLOCKS)
+
+
+def type_input(types, rows):
+    """One pitch type's map input: within-type median fill, z within type, block-scaled."""
+    F = types.loc[rows, MAP_FEATURES].astype("float64")
+    return block_scale(zscore(F.fillna(F.median())), MAP_BLOCKS)
+
+
+def pcs(X):
+    from sklearn.decomposition import PCA
+    return PCA(n_components=min(30, X.shape[1]), random_state=0).fit_transform(X)
+
+
+def layout_signature():
+    return {"method": "tsne", "perplexity": TSNE_PERPLEXITY, "features": MAP_FEATURES}
+
+
+def previous_layout(cold):
+    """The cached MLB coordinates, keyed by pitcher/season/pitch type, if they were laid out the same way."""
+    if cold or not ATLAS.exists() or not LAYOUT_META.exists():
+        return None
+    if json.loads(LAYOUT_META.read_text()) != layout_signature():
+        log("cached layout used other measures or method: fitting the maps from scratch")
+        return None
+    a = pd.read_parquet(ATLAS)
+    if "level" in a:
+        a = a[a.level == "mlb"]
+    return a.drop_duplicates(["pitcher", "season", "pitch_type"]).set_index(["pitcher", "season", "pitch_type"])
+
+
+def restart_from(prev, keys, cols, P):
+    """Start coordinates for a restart: each row's previous position; a row new since then starts at the
+    inverse-distance mean of its K_PLACE nearest previous rows in P. None (a cold fit) without a usable cache."""
+    from sklearn.neighbors import NearestNeighbors
+    if prev is None or not set(cols) <= set(prev.columns):
+        return None
+    old = prev.reindex(pd.MultiIndex.from_frame(keys[["pitcher", "season", "pitch_type"]]))[cols].to_numpy(dtype="float64")
+    have = ~np.isnan(old).any(axis=1)
+    if have.sum() < max(K_PLACE, 0.5 * len(old)):
+        return None
+    init = old.copy()
+    if (~have).any():
+        d, i = NearestNeighbors(n_neighbors=K_PLACE).fit(P[have]).kneighbors(P[~have])
+        w = 1 / (d + 1e-6)
+        w /= w.sum(axis=1, keepdims=True)
+        init[~have] = (w[:, :, None] * old[have][i]).sum(axis=1)
+    return init
+
+
+def layout_3d(types, prev=None):
+    """3D t-SNE coordinates on the same PCA spaces as the 2D maps. Restarts from `prev` when given."""
+    types = types.reset_index(drop=True)
+    out = pd.DataFrame(index=types.index, columns=["gx3", "gy3", "gz3", "tx3", "ty3", "tz3"], dtype="float64")
+    P = pcs(global_space(types))
+    init = restart_from(prev, types, ["gx3", "gy3", "gz3"], P)
+    U, E = tsne_layout(P, 3, init)
+    out[["gx3", "gy3", "gz3"]], EMBEDS[("global", 3)] = U, (E, U.mean(axis=0))
+    log(f"t-SNE 3d: all pitches done ({'restart' if init is not None else 'cold'})")
     for pt, rows in types.groupby("pitch_type").indices.items():
-        Ft = types.loc[rows, MAP_FEATURES].astype("float64")
-        Pt = PCA(n_components=min(30, Ft.shape[1]), random_state=0).fit_transform(block_scale(zscore(Ft.fillna(Ft.median())), MAP_BLOCKS))
-        out.loc[rows, ["tx3", "ty3", "tz3"]] = umap_mod.UMAP(n_components=3, n_neighbors=15, min_dist=0.3, random_state=0).fit_transform(Pt)
-        log(f"umap 3d: {pt} done")
+        Pt = pcs(type_input(types, rows))
+        init = restart_from(prev, types.loc[rows], ["tx3", "ty3", "tz3"], Pt)
+        U, E = tsne_layout(Pt, 3, init)
+        EMBEDS[(pt, 3)] = (E, U.mean(axis=0))
+        out.loc[rows, ["tx3", "ty3", "tz3"]] = U
+        log(f"t-SNE 3d: {pt} done ({'restart' if init is not None else 'cold'})")
     return out
 
 
-def build_type_space(types):
+def build_type_space(types, prev=None):
+    """2D t-SNE maps (all pitches + one per type), Leiden islands per type. Restarts from `prev` when given."""
     types = types.reset_index(drop=True)
-    glob = type_space(types, MAP_BLOCKS)         # global scaling: the "all pitches" map (no usage block)
+    X = global_space(types)
+    _, _, _, U = embed(X, "type/global", "tsne", restart_from(prev, types, ["gx", "gy"], pcs(X)))
+    EMBEDS[("global", 2)] = (embed.last, U.mean(axis=0))
     out = types[profiles.KEYS + ["pitch_type"]].copy()
-    out["gx"], out["gy"] = glob.global_umap1.to_numpy(), glob.global_umap2.to_numpy()
+    out["gx"], out["gy"] = U[:, 0], U[:, 1]
     out["tx"] = out["ty"] = np.nan
     out["tcluster"] = -1
     comp_rows = np.full((len(types), K_COMPS), -1)
     comp_pct = np.full((len(types), K_COMPS), np.nan)
     pid = types.pitcher.to_numpy()
     for pt, rows in types.groupby("pitch_type").indices.items():
-        F = types.loc[rows, MAP_FEATURES].astype("float64")
-        X = block_scale(zscore(F.fillna(F.median())), MAP_BLOCKS)
-        P_sub, _, leiden, U = embed(X, f"type/{pt}")
+        X = type_input(types, rows)
+        P_sub, _, leiden, U = embed(X, f"type/{pt}", "tsne", restart_from(prev, types.loc[rows], ["tx", "ty"], pcs(X)))
+        EMBEDS[(pt, 2)] = (embed.last, U.mean(axis=0))
         out.loc[rows, ["tx", "ty"]] = U
         out.loc[rows, "tcluster"] = leiden
         P = np.zeros((len(types), P_sub.shape[1]))
@@ -567,6 +667,7 @@ def build_type_space(types):
         comp_rows[rows], comp_pct[rows] = ci, cp
     out["comp_rows"], out["comp_pct"] = list(comp_rows), list(comp_pct)
     return out
+
 
 
 # -------------------------------------------------------------------- export
@@ -613,8 +714,26 @@ def type_display(t):
     d["csw"] = 100 * t.csw_pct
     d["xwoba_con"] = t.xwoba_contact
     d["rv100"] = t.rv100
-    d["uniq_z"] = uniqueness(t)      # SDs from the typical pitch of its type (all measures)
+    d["uniq_z"] = uniqueness(t)      # SDs from the typical pitch of its type (the 15 identity measures)
     return d
+
+
+def look_deltas(types):
+    """Per pitch: how he differs from his lookalikes (same type, same hand, similar arm angle, nearest on the
+    identity measures; up to 30 for MLB pitches, 10 MLB lookalikes for Triple-A): whiff rate (points), location
+    height (inches) and zone rate (points), his value minus their mean. Same pitch, different location: on the
+    2026-11-04 benchmark the location gap explains the whiff gap twice as well among identity lookalikes as it
+    did when location was part of "similar". NaN with fewer than 5 lookalikes."""
+    cr = np.stack(types.comp_rows.to_numpy())
+    valid = cr >= 0
+    out = pd.DataFrame(index=types.index)
+    for name, v in [("whiff_vs_look", 100 * types.whiff_pct), ("loc_height_vs_look", 12 * types.plate_z),
+                    ("zone_vs_look", 100 * types.in_zone)]:
+        v = v.to_numpy(dtype="float64")
+        M = np.where(valid, v[np.clip(cr, 0, None)], np.nan)
+        ok = (~np.isnan(M)).sum(axis=1) >= 5
+        out[name] = np.where(ok, v - np.nanmean(np.where(ok[:, None], M, 0.0), axis=1), np.nan)
+    return out
 
 
 def uniqueness(types):
@@ -630,11 +749,11 @@ def uniqueness(types):
         mrows = rows[lvl.loc[rows].to_numpy() == "mlb"]
         if not len(mrows):
             continue
-        sc = scaler_fit(types.loc[mrows, TYPE_FEATURES])
-        Xm = scaler_apply(sc, types.loc[mrows, TYPE_FEATURES])
+        sc = scaler_fit(types.loc[mrows, MAP_FEATURES], blocks=MAP_BLOCKS)
+        Xm = scaler_apply(sc, types.loc[mrows, MAP_FEATURES])
         centre = np.median(Xm, axis=0)
         dm = np.linalg.norm(Xm - centre, axis=1)
-        d = np.linalg.norm(scaler_apply(sc, types.loc[rows, TYPE_FEATURES]) - centre, axis=1)
+        d = np.linalg.norm(scaler_apply(sc, types.loc[rows, MAP_FEATURES]) - centre, axis=1)
         out.loc[rows] = (d - dm.mean()) / dm.std()
     return out
 
@@ -699,7 +818,7 @@ def export(types, pitchers, t_space, lead, fa, spin, mv, tj, teams, levels, team
     t_out = types[["pitcher", "season", "level", "pitch_type", "p_throws", "n", "gx", "gy", "tx", "ty",
                    "tcluster", "comp_tol", "gx3", "gy3", "gz3", "tx3", "ty3", "tz3"]
                   + (["comp_tol_aaa"] if "comp_tol_aaa" in types else [])].copy()
-    t_out = pd.concat([t_out, type_display(types)], axis=1)
+    t_out = pd.concat([t_out, type_display(types), look_deltas(types)], axis=1)
     p_out = pitchers[["pitcher", "season", "level", "p_throws", "n", "primary_fb", "teams", "team_main"]].copy()
     p_out = pd.concat([p_out, pitcher_display(pitchers)], axis=1)
     p_out["name"] = pitchers.player_name.map(first_last)
@@ -743,19 +862,24 @@ def main():
     ap.add_argument("--rebuild-profiles", action="store_true")
     ap.add_argument("--refetch-leaders", action="store_true")
     ap.add_argument("--html-only", action="store_true")
+    ap.add_argument("--cold-layout", action="store_true", help="fit the maps from scratch instead of restarting")
     a = ap.parse_args()
 
     types, pitchers = season_profiles(a.rebuild_profiles, "mlb")
     lead = pd.concat([leaders(s, a.refetch_leaders) for s in SEASONS], ignore_index=True)
+    cached_levels = {}
     if a.html_only and ATLAS.exists():
         t_space = pd.read_parquet(ATLAS)
-        if "level" in t_space:   # other levels are re-placed below; only the MLB layout is cached
+        if "level" in t_space:   # other levels: their cached placements are kept for rows that still exist
+            cached_levels = {l: g.drop(columns="level") for l, g in t_space[t_space.level != "mlb"].groupby("level")}
             t_space = t_space[t_space.level == "mlb"].drop(columns="level").reset_index(drop=True)
+        prev = None
     else:
-        t_space = build_type_space(types)
-    # 3D layouts: computed once and cached in the atlas table
+        prev = previous_layout(a.cold_layout)
+        t_space = build_type_space(types, prev)
+    # 3D layouts: computed with the 2D ones and cached in the atlas table
     if not {"gx3", "tx3"} <= set(t_space.columns):
-        u3 = umap_3d(types)
+        u3 = layout_3d(types, prev)
         for c in u3.columns:
             t_space[c] = u3[c].to_numpy()
 
@@ -768,7 +892,7 @@ def main():
     for level in levels[1:]:
         t_l, p_l = season_profiles(a.rebuild_profiles, level)
         parts["types"].append(t_l.assign(level=level)); parts["pitchers"].append(p_l.assign(level=level))
-        parts["space"].append(place_level(types, t_space, t_l).assign(level=level))
+        parts["space"].append(place_level(types, t_space, t_l, cached_levels.get(level)).assign(level=level))
         parts["mv"].append(movement_sample(a.rebuild_profiles, level))
         parts["tj"].append(trajectory_means(a.rebuild_profiles, level))
         parts["teams"].append(pitcher_teams(level))
@@ -787,6 +911,8 @@ def main():
         cr, cp, ctol = type_comps(types, None, "aaa")
         t_space["comp_rows_aaa"], t_space["comp_pct_aaa"], t_space["comp_tol_aaa"] = list(cr), list(cp), ctol
     t_space.to_parquet(ATLAS, index=False)
+    if not a.html_only:
+        LAYOUT_META.write_text(json.dumps(layout_signature(), indent=1))
     spin = pd.concat([active_spin(s, a.refetch_leaders) for s in SEASONS], ignore_index=True)
     export(types, pitchers, t_space, lead, free_agents(), spin, mv, tj, teams, levels, teams_aaa)
 
