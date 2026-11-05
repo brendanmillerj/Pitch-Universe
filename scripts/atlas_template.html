@@ -69,11 +69,17 @@ button, input, select { font: inherit; color: inherit; }
 .app.with-table { grid-template-areas: "head" "controls" "tbl" "caption"; }
 .app.with-sliders.with-table { grid-template-areas: "head head" "controls controls" "sl tbl" "sl caption"; }
 .app.with-table .map { display: none; }
-/* a selected pitcher: his card takes the map's place and the page scrolls as one */
-.app.has-sel { height: auto; min-height: 0; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto auto;
-  grid-template-areas: "head" "dhead" "dtraits" "detail"; }
-.app.has-sel .controls, .app.has-sel .map, .app.has-sel .caption, .app.has-sel .mtable, .app.has-sel .sliders { display: none; }
-.cardwrap { display: contents; }
+/* a selected pitcher: his card pops out over the map like the Pitch Simulation Lab; the map stays put underneath (it
+   is not even redrawn while the card is open), so closing the card lands exactly where you were */
+.cardwrap { display: none; }
+.app.has-sel .cardwrap { display: block; position: fixed; z-index: 65; inset: 16px max(16px, calc((100vw - 1400px) / 2)); overflow-y: auto; overscroll-behavior: contain;
+  background: var(--panel); border: 1px solid var(--rule); border-radius: var(--r-lg); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35); padding: 4px 24px 32px; }
+.cardscrim { position: fixed; inset: 0; z-index: 64; background: rgba(0, 0, 0, 0.45); }
+.cardscrim[hidden] { display: none; }
+.cardx { position: sticky; top: 10px; float: right; z-index: 5; margin: 6px -8px 0 8px; width: var(--ctl); height: var(--ctl); border: 1.5px solid var(--ink); border-radius: var(--r);
+  background: var(--field); color: var(--ink); font: 400 24px/1 var(--font-ui); cursor: pointer; box-shadow: var(--sh1); }
+.cardx:hover { background: var(--wash); }
+.app:not(.has-sel) .cardx { display: none; }
 
 /* masthead, two rows: the title, the level and the three finders; then the measure filter, the pitch-type
    switch and the coloring. A gray band edge to edge: bleed through the page gutters, then pad back in. */
@@ -1586,7 +1592,9 @@ tr.self td { font-weight: 600; background: none; }
     <p class="source" id="source"></p>
   </div>
 
-  <div class="cardwrap" id="cardWrap">
+  <div class="cardscrim" id="cardScrim" hidden></div>
+  <div class="cardwrap" id="cardWrap" role="dialog" aria-modal="true" aria-label="Pitcher profile">
+    <button type="button" class="cardx" id="cardClose" aria-label="Close the profile and go back to the map" title="Back to the map (Esc)">×</button>
     <div class="dhead" id="dHead"></div>
     <div class="dtraits" id="dTraits"></div>
     <aside class="right" id="detail" aria-label="Pitcher detail"></aside>
@@ -2063,8 +2071,9 @@ function render() {
   if (cardOpen !== !!state.cardOpen) {
     // the card takes over the screen: the measure filters (and their table) tuck away while it's open,
     // still applied to the map, and come back as they were when it closes
-    if (cardOpen) { state.slPrev = state.slidersOpen; if (state.slidersOpen) setSlidersOpen(false, true); }
-    else if (state.slPrev) { state.slPrev = false; setSlidersOpen(true, true); }
+    if (cardOpen) { state.slPrev = state.slidersOpen; if (state.slidersOpen) setSlidersOpen(false, true);
+      if (!state.cardFrom) state.cardFrom = { view: state.view, sel: null, preview: false, showComps: false, lookFrom: null, level: state.level, zoomK: state.zoomK || 1 }; }   // opened without a snapshot: closing just clears him
+    else { state.cardFrom = null; if (state.slPrev) { state.slPrev = false; setSlidersOpen(true, true); } }
     state.cardOpen = cardOpen;
   }
   const rows = visibleRows(view);
@@ -2322,7 +2331,9 @@ function render() {
       uirevision: view + "|3d", annotations: [] };
     delete outLayout.xaxis; delete outLayout.yaxis; delete outLayout.dragmode;
   }
-  if (is3D() && window.THREE && THREE.OrbitControls) {
+  if (state.cardOpen && state.cardFrom) {
+    // the map behind an open card stays exactly as it was, zoom included: it is redrawn only when the card closes
+  } else if (is3D() && window.THREE && THREE.OrbitControls) {
     render3D(outTraces, view, pal, outLayout, (state.ellipses ? ellipseGroups(view, cg, on, match, pal) : []).concat(savedGroups(view)));
   } else {
   if (G3) dispose3D();
@@ -3437,6 +3448,7 @@ function renderDetail() {
   const el = $("#detail"), view = state.view, r = state.sel;
   let cp = $("#comps");   // replaced by the in-card container when similar pitchers are open
   const app = $("#app"), had = app.classList.contains("has-sel"), has = r !== null && r !== undefined && !state.preview;
+  $("#cardScrim").hidden = !has;
   const wantComps = has && !!state.showComps, hadComps = app.classList.contains("show-comps");
   if (had !== has || hadComps !== wantComps) {
     app.classList.toggle("has-sel", has);
@@ -3489,7 +3501,7 @@ function renderDetail() {
     b.addEventListener("click", go);
     b.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(e); } });
   });
-  const cs = dh.querySelector(".clearsel"); if (cs) cs.addEventListener("click", e => { select(null); if (viaKeys(e)) focusCard(); });
+  const cs = dh.querySelector(".clearsel"); if (cs) cs.addEventListener("click", () => closeCard());
   const bk = dh.querySelector(".backsel"); if (bk) bk.addEventListener("click", e => { goBack(); if (viaKeys(e)) focusCard(); });
   if (!had) try { window.scrollTo({ top: 0, behavior: "auto" }); } catch (e) {}   // the card replaced the map: start at its head
 }
@@ -5073,6 +5085,7 @@ function preview(r, opt = {}) {   // opt.look: open on his lookalikes; opt.from:
 // Search opens the card straight away (a dot click previews first): on his most-used pitch, in that pitch's universe
 function openPitcher(r) {
   if (r === null || r === undefined) return;
+  cardSnap();
   followLevel(r);
   const m = mostUsedRow(r);
   state.preview = false; closeSim(true);
@@ -5083,8 +5096,28 @@ function mostUsedRow(r) {
   const rows = TYPES.map(t => tRow(T.pitcher[r], T.season[r], t, T.level[r])).filter(x => x !== undefined && T.n[x] >= state.minN);
   return rows.sort((a, b) => (T.usage[b] || 0) - (T.usage[a] || 0))[0] ?? r;
 }
+// The card pops out over the map. Opening it remembers the map as it is (view, selection, preview card, lookalike
+// list, level, dot size); the map behind is not redrawn while the card is open, so Plotly keeps its zoom; closing
+// (Back to map, ×, Escape, a click outside) puts all of it back.
+function cardSnap() {
+  if (state.cardOpen || state.cardFrom) return;   // already open: keep the first snapshot
+  state.cardFrom = { view: state.view, sel: state.sel, preview: !!state.preview, showComps: !!state.showComps, lookFrom: state.lookFrom ?? null, level: state.level, zoomK: state.zoomK || 1 };
+}
+function closeCard() {
+  const f = state.cardFrom;
+  if (!state.cardOpen) return;
+  if (!f) { select(null); return; }
+  state.cardFrom = null;
+  if (f.level !== state.level) { state.level = f.level; syncLevel(); svRowCache.clear(); }
+  Object.assign(state, { view: f.view, sel: f.sel, preview: f.preview, showComps: f.showComps, lookFrom: f.lookFrom, zoomK: f.zoomK });
+  writeHash(f.view); buildUniverse(); buildVarSelects(); buildSliders();
+  render(); renderDetail();
+  const back = compsOnMap() ? $("#cbBack") : state.preview ? $("#ctaOpen") : null;
+  if (back && back.focus) back.focus({ preventScroll: true });
+}
 function openCard() {
   const r = state.sel; if (r === null || r === undefined) return;
+  cardSnap();
   const m = mostUsedRow(r);
   state.preview = false; closeSim(true);
   setView(T.pitch_type[m], m);
@@ -5870,6 +5903,8 @@ function buildStatic() {
   $("#railClose").addEventListener("click", railClose);
   $("#railPills").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b) setRailTab(b.dataset.tab); });
   $("#simScrim").addEventListener("click", () => closeSimFocus());
+  $("#cardScrim").addEventListener("click", () => closeCard());
+  $("#cardClose").addEventListener("click", () => closeCard());
 
   // "How to read it" box: Hide / show, remembered for this viewer (storage may be blocked)
   const setHow = (hidden, focus) => {
@@ -5923,6 +5958,7 @@ function buildStatic() {
     if (e.key !== "Escape" || e.defaultPrevented) return;
     const ae = document.activeElement;
     if (!/^(INPUT|SELECT|TEXTAREA)$/.test(ae && ae.tagName)) {
+      if (state.cardOpen && !state.simOpen) { e.preventDefault(); closeCard(); return; }
       const inCard = !!(ae && ($("#detail").contains(ae) || $("#dHead").contains(ae) || $("#dTraits").contains(ae))) || !!(ae && $("#keySel").contains(ae));
       select(null);
       if (inCard) focusCard();
