@@ -973,6 +973,9 @@ button, input, select { font: inherit; color: inherit; }
 .svm th.self, .svm td.self { background: var(--wash); font-weight: 700; }
 .svm tr.gap td, .svm tr.gap th { border-top: 1px solid var(--line); }
 .svm tr.avg td, .svm tr.avg th { color: var(--muted); font-style: italic; }
+.svm .pctv { display: inline-block; min-width: 2.4em; padding: 0 3px; border-radius: 3px; font-weight: 600; }
+.svm tr.locrow td { padding: 3px 2px; vertical-align: middle; }
+.svm svg.heatmini { display: block; width: 100%; max-width: 58px; height: auto; margin: 0 auto; border: 1px solid var(--line); border-radius: 3px; }
 @media (max-width: 1099px) { .card.sv { grid-template-columns: minmax(0, 1fr); grid-template-areas: "prof" "move" "flight" "all"; } .mcols { column-count: 1; } }
 /* similar pitchers inside the card column, under the four panels */
 .compsin { margin-top: 8px; padding-top: 8px; border-top: 2px solid var(--rule); scroll-margin-top: 8px; }
@@ -1949,6 +1952,8 @@ const TF = [
   ["whiff", "Whiff rate (per swing)", "%", 1, "Results"],
   ["csw", "Called + swinging strike rate", "%", 1, "Results"],
   ["xwoba_con", "xwOBA on contact", "", 3, "Results"],
+  ["gb_pct", "Ground-ball rate (share of balls in play)", "%", 1, "Results"],
+  ["fb_pct", "Fly-ball rate (share of balls in play)", "%", 1, "Results"],
   ["rv100", "Run value per 100 (+ good for pitcher)", "", 2, "Results", 1],
   ["whiff_vs_look", "Whiff rate vs. his lookalikes (+ more)", "pts", 1, "Results", 1],
   ["loc_height_vs_look", "Location height vs. his lookalikes (+ higher)", "in", 1, "Results", 1],
@@ -3729,6 +3734,34 @@ function compsPanel(view, j) {
   return h + `</div>`;
 }
 
+// ------------------------------------------ where a pitch crosses the plate (card heat map) and batted-ball shading
+// atlas_build.location_bb: a smoothed grid per pitch (catcher's view; feet; digits 0-9 scaled to that pitch's own busiest
+// cell, top row first). D.heat_grid gives the window and the average strike zone (MLB sz_bot / sz_top).
+const HEAT = Object.assign({ x: [-2, 2], z: [0.4, 4.4], n: 10, zone: [1.57, 3.37] }, D.heat_grid || {});
+const HEAT_RAMP = ["#ffffff", "#fde6de", "#fbcfc0", "#f7b29e", "#f1937d", "#e7735e", "#da5246", "#c5363c", "#a62334", "#82142b"];
+function heatSVG(r, side) {   // side "l" (vs left-handed batters) or "r"
+  const col = T["heat_" + side], s = col ? col[r] : null, n = HEAT.n, np = T["heat_n" + side] ? T["heat_n" + side][r] : null;
+  const vs = side === "l" ? "left-handed" : "right-handed";
+  if (!s || s.length !== n * n) return `<span class="tm" title="${isNum(np) ? `Only ${np} pitches` : "Too few pitches"} against ${vs} batters">—</span>`;
+  let cells = "";
+  for (let k = 0; k < n * n; k++) { const v = s.charCodeAt(k) - 48; if (v > 0) cells += `<rect x="${k % n}" y="${(k / n) | 0}" width="1.04" height="1.04" fill="${HEAT_RAMP[v]}"/>`; }
+  const gx = x => (x - HEAT.x[0]) / (HEAT.x[1] - HEAT.x[0]) * n, gz = z => (HEAT.z[1] - z) / (HEAT.z[1] - HEAT.z[0]) * n;
+  const x0 = gx(-0.83), x1 = gx(0.83), zt = gz(HEAT.zone[1]), zb = gz(HEAT.zone[0]), id = "hm" + side + r;
+  const tip = `${T.name[r]}, ${PTN[T.pitch_type[r]].toLowerCase()} ${T.season[r]}, against ${vs} batters: ${np} pitches. Catcher's view; the batter stands on the ${side === "l" ? "right" : "left"}.`;
+  return `<svg class="heatmini" viewBox="0 0 ${n} ${n}" role="img" aria-label="${esc(tip)}"><title>${esc(tip)}</title>`
+    + `<defs><filter id="${id}" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="0.4"/></filter></defs>`
+    + `<rect width="${n}" height="${n}" fill="#fff"/><g filter="url(#${id})">${cells}</g>`
+    + `<rect x="${x0.toFixed(2)}" y="${zt.toFixed(2)}" width="${(x1 - x0).toFixed(2)}" height="${(zb - zt).toFixed(2)}" fill="none" stroke="#1d2733" stroke-width="0.14"/>`
+    + `<text x="${side === "l" ? n - 0.5 : 0.5}" y="${n - 0.6}" text-anchor="${side === "l" ? "end" : "start"}" font-size="1.9" font-weight="700" fill="#5b6675" font-family="Arial, sans-serif">${side === "l" ? "L" : "R"}</text></svg>`;
+}
+// a value cell shaded by its percentile among MLB pitches of that row's own type (the movement-profile table mixes types)
+const typePctCell = (key, dec = 0) => r => {
+  const v = T[key][r], pt = T.pitch_type[r], pool = typeRows[pt];
+  if (!isNum(v) || !pool || !pool.length) return "—";
+  const p = pctRank(poolSorted("t" + pt, pool, VMAP.t["t:" + key]), v);
+  return `<span class="pctv" style="background:${savantColor(p)};color:${savantInk(p)}" title="${esc(`${fmt(v, 1, "%")}, ${ord(p)} percentile among MLB ${PTN[pt].toLowerCase()}s` + (isNum(T.bbe[r]) ? ` (${T.bbe[r]} balls in play)` : ""))}">${fmt(v, dec, "%")}</span>`;
+};
+
 // ------------------------------------------ same pitch, different location
 // Lookalikes are nearest on what the pitch is (ID_KEYS), so location is free to differ among them; on the
 // 2026-11-04 benchmark the location gap explains the whiff gap among such lookalikes twice as well as when location
@@ -5063,7 +5096,7 @@ const SHORT = { velo: "Velocity", ivb: "Ride (IVB)", hb: "Horizontal break", spi
   scaled_ext: "Extension ÷ height", loc_inside: "Location in / out", loc_height: "Location height", zone_pct: "Zone rate",
   release_sd: "Release scatter", movement_sd: "Movement scatter", velo_sd: "Velocity SD", usage: "Usage", usage_ahead: "Usage, ahead",
   usage_behind: "Usage, behind", usage_vs_lhb: "Usage vs. LHB", usage_vs_rhb: "Usage vs. RHB", whiff: "Whiff %", csw: "CSW %",
-  xwoba_con: "xwOBA on contact", rv100: "Run value / 100", n: "Pitches", uniq_z: "Uniqueness",
+  xwoba_con: "xwOBA on contact", gb_pct: "Ground-ball %", fb_pct: "Fly-ball %", rv100: "Run value / 100", n: "Pitches", uniq_z: "Uniqueness",
   whiff_vs_look: "Whiff vs. lookalikes", loc_height_vs_look: "Height vs. lookalikes", zone_vs_look: "Zone vs. lookalikes" };
 // Measures for the card: percentile within the pitch type, in Savant direction (flipped where lower is better)
 function measureItems(vars, r, poolName, rows) {
@@ -5206,7 +5239,9 @@ function typeCard(view, j) {
   h += `<h4>His ${PTN[t].toLowerCase()} <span class="tm">vs. all ${pool.length.toLocaleString()} ${PTN[t].toLowerCase()}s</span></h4>`
     + pbarRow("Whiff %", fmt(T.whiff[j], 1), pctOf(poolSorted(pName, pool, V["t:whiff"]), T.whiff[j]))
     + pbarRow("CSW %", fmt(T.csw[j], 1), pctOf(poolSorted(pName, pool, V["t:csw"]), T.csw[j]))
-    + pbarRow("xwOBA on contact", fmt(T.xwoba_con[j], 3), pctOf(poolSorted(pName, pool, V["t:xwoba_con"]), T.xwoba_con[j], true));
+    + pbarRow("xwOBA on contact", fmt(T.xwoba_con[j], 3), pctOf(poolSorted(pName, pool, V["t:xwoba_con"]), T.xwoba_con[j], true))
+    + pbarRow("Ground-ball %", fmt(T.gb_pct[j], 1), pctOf(poolSorted(pName, pool, V["t:gb_pct"]), T.gb_pct[j]), EXPLAIN.gb_pct)
+    + pbarRow("Fly-ball %", fmt(T.fb_pct[j], 1), pctOf(poolSorted(pName, pool, V["t:fb_pct"]), T.fb_pct[j]), EXPLAIN.fb_pct);
   h += `</div>`;
   h += `</section>`;
   // ---------------- right: movement chart + usage (overall, vs LHB, vs RHB), velo, whiff, CSW ----------------
@@ -5220,6 +5255,8 @@ function typeCard(view, j) {
       ${svmRows([["MPH", r => fmt(T.velo[r], 1)]], true)}
       <tr class="avg"><th title="League average velocity for ${R ? "right" : "left"}-handers within 5° of his arm angle">${R ? "RHP" : "LHP"} avg</th>${ars.map(([x]) => `<td>${fmt(peersV(x), 1)}</td>`).join("")}</tr>
       ${svmRows([["Whiff", r => fmt(T.whiff[r], 0, "%")], ["CSW", r => fmt(T.csw[r], 0, "%")]], true)}
+      ${svmRows([["GB", typePctCell("gb_pct")], ["FB", typePctCell("fb_pct")]], true)}
+      ${[["l", "LHB"], ["r", "RHB"]].map(([sd, lab], k) => `<tr class="${k ? "" : "gap "}locrow"><th title="Where each pitch crosses the plate against ${sd === "l" ? "left" : "right"}-handed batters, catcher's view (the letter marks the batter's side): darker means more of his pitches there, each map scaled to its own busiest spot. Box: the average strike zone. Shown once he has thrown at least 15 against that hand.">Location<br>vs ${lab}</th>${ars.map(([, r]) => `<td${r === j ? ' class="self"' : ""}>${heatSVG(r, sd)}</td>`).join("")}</tr>`).join("")}
     </tbody></table></section>`;
 
   // ---------------- flight: his arsenal in the air vs the league's mean version of this pitch ----------------
@@ -5674,6 +5711,8 @@ const EXPLAIN = {
   loc_inside: "Where the pitch crosses the plate side to side, in inches. Positive is inside to the batter, negative is away.",
   loc_height: "The average height at which the pitch crosses the plate, in feet.",
   zone_pct: "The share of these pitches that cross the plate in the strike zone.",
+  gb_pct: "The share of balls put in play off this pitch that were hit on the ground (Statcast batted-ball type), shown once at least 10 were put in play. Shaded by percentile among MLB pitches of its type: red more ground balls, blue fewer.",
+  fb_pct: "The share of balls put in play off this pitch that were fly balls (popups and line drives not counted), shown once at least 10 were put in play. Shaded by percentile among MLB pitches of its type: red more fly balls, blue fewer. A riding four-seamer is meant to get them.",
   whiff_vs_look: "His whiff rate minus the average of his lookalikes (pitches nearest his on shape, angles and delivery), in percentage points. Positive: more whiffs than pitches shaped like his.",
   loc_height_vs_look: "How much higher (+) or lower he throws the pitch than his lookalikes do, in inches. Lookalikes are matched on what the pitch is, so this is a choice of location, not a different pitch.",
   zone_vs_look: "His zone rate minus his lookalikes' average, in percentage points.",
@@ -6082,7 +6121,7 @@ const COL_SHORT = {
   loc_inside: "Inside", loc_height: "Loc. height", zone_pct: "Zone%",
   release_sd: "Release SD", movement_sd: "Move SD", velo_sd: "Velo SD",
   usage: "Usage", usage_ahead: "Ahead", usage_behind: "Behind", usage_vs_lhb: "vs LHB", usage_vs_rhb: "vs RHB",
-  whiff: "Whiff%", whiff_sv: "Whiff%", csw: "CSW%", xwoba_con: "xwOBAcon", xwoba: "xwOBA", rv100: "RV/100", uniq_z: "Unique", n: "Pitches",
+  whiff: "Whiff%", whiff_sv: "Whiff%", csw: "CSW%", xwoba_con: "xwOBAcon", gb_pct: "GB%", fb_pct: "FB%", xwoba: "xwOBA", rv100: "RV/100", uniq_z: "Unique", n: "Pitches",
   whiff_vs_look: "Whiff vs look.", loc_height_vs_look: "Ht vs look.", zone_vs_look: "Zone vs look.",
   xera: "xERA", era: "ERA", luck: "ERA − xERA", look_xera: "Lookalike xERA", look_gap: "xERA gap", look_gap_3y: "xERA gap 3y",
   look_era: "Lookalike ERA", look_era_gap: "ERA gap", k_pct: "K%", bb_pct: "BB%", k9: "K/9", bb9: "BB/9", ip: "IP",

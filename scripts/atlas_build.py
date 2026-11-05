@@ -70,6 +70,13 @@ ATLAS = paths.META / f"atlas_type_{RANGE}.parquet"
 MOVEMENT = paths.META / f"movement_sample_{RANGE}.parquet"
 TEAMS_URL = "https://statsapi.mlb.com/api/v1/teams?sportId={sport}&season={season}"
 MOVE_PER_ROW = 50          # pitches sampled per pitcher x season x pitch type for the movement chart
+LOCBB = paths.META / f"location_bb_{RANGE}.parquet"
+# Card heat map of where a pitch crosses the plate: a grid over HEAT_X x HEAT_Z (feet, catcher's view), HEAT_N cells a
+# side, built from HEAT_FINE x HEAT_FINE finer cells smoothed with a Gaussian of HEAT_SIGMA ft. Batted-ball shares need
+# BBE_MIN balls in play.
+HEAT_X, HEAT_Z, HEAT_N, HEAT_FINE, HEAT_SIGMA = (-2.0, 2.0), (0.4, 4.4), 10, 4, 0.3
+BBE_MIN = 10
+HEAT_MIN = 15   # pitches against a batter hand before its map is drawn
 TRAJ = paths.META / f"trajectory_{RANGE}.parquet"
 # Statcast's 9-parameter trajectory fit (quoted at y = 50 ft), raw Statcast frame: +x catcher's right,
 # +y toward the pitcher, +z up. Drives the card's flight animation.
@@ -234,6 +241,72 @@ def movement_sample(rebuild, level="mlb"):
     out = pd.concat(frames, ignore_index=True)
     out.to_parquet(path, index=False)
     log(f"movement sample {level}: {len(out):,} pitches")
+    return out
+
+
+def _heat_grids(df, keys):
+    """Smoothed HEAT_N x HEAT_N location grid per group of `keys`: catcher's view, scaled to the group's own peak,
+    HEAT_N * HEAT_N digits 0-9, top row (high) first, left to right; pitches outside the window are left out."""
+    from scipy.ndimage import gaussian_filter
+    nf = HEAT_N * HEAT_FINE
+    g = df.groupby(keys, observed=True, sort=True)
+    out = g.size().rename("n").reset_index()
+    code = g.ngroup().to_numpy()
+    x, z = df.plate_x.to_numpy(dtype="float64"), df.plate_z.to_numpy(dtype="float64")
+    ix = np.floor((x - HEAT_X[0]) / (HEAT_X[1] - HEAT_X[0]) * nf)
+    iz = np.floor((z - HEAT_Z[0]) / (HEAT_Z[1] - HEAT_Z[0]) * nf)
+    ok = np.isfinite(ix) & np.isfinite(iz) & (ix >= 0) & (ix < nf) & (iz >= 0) & (iz < nf)
+    H = np.zeros((len(out), nf, nf), dtype="float32")
+    np.add.at(H, (code[ok], iz[ok].astype(int), ix[ok].astype(int)), 1)
+    out["n"] = np.bincount(code[ok], minlength=len(out))          # pitches inside the window
+    H = gaussian_filter(H, sigma=(0, HEAT_SIGMA * nf / (HEAT_Z[1] - HEAT_Z[0]), HEAT_SIGMA * nf / (HEAT_X[1] - HEAT_X[0])),
+                        mode="constant")
+    B = H.reshape(len(out), HEAT_N, HEAT_FINE, HEAT_N, HEAT_FINE).mean(axis=(2, 4))[:, ::-1, :]   # top row = high
+    peak = B.max(axis=(1, 2), keepdims=True)
+    Q = (np.rint(9 * B / np.where(peak > 0, peak, 1)) + 48).astype("uint8")
+    out["heat"] = [bytes(q.ravel()).decode() if pk > 0 else None for q, pk in zip(Q, peak.ravel())]
+    return out
+
+
+def location_bb(rebuild, level="mlb"):
+    """Per pitcher x season x pitch type: where the pitch crosses the plate against left- and right-handed batters
+    (two smoothed HEAT_N x HEAT_N grids, `_heat_grids`; None under HEAT_MIN pitches against that hand) and its
+    batted-ball mix (ground-ball and fly-ball shares of balls in play, Statcast bb_type; NaN under BBE_MIN balls in
+    play). Mean sz_top / sz_bot ride along so the page can draw the strike zone."""
+    path = paths.meta_dir(level) / LOCBB.name
+    if path.exists() and not rebuild:
+        cached = pd.read_parquet(path)
+        if {"heat_l", "heat_r"} <= set(cached.columns):   # older caches had one map for both hands
+            return cached
+    frames = []
+    for season in level_seasons(level):
+        df = store.query("SELECT pitcher, pitch_type, stand, plate_x, plate_z, sz_top, sz_bot, bb_type FROM pitches "
+                         "WHERE pitch_type IS NOT NULL", season, level)
+        df["pitch_type"] = df.pitch_type.astype(str).replace(profiles.TYPE_MAP)
+        df = df[df.pitch_type.isin(profiles.PITCH_TYPES)].reset_index(drop=True)
+        df["stand"] = df.stand.astype(str)
+        bb = df.bb_type.astype(object)
+        df["bbe"], df["gb"], df["fb"] = bb.notna(), bb == "ground_ball", bb == "fly_ball"
+        k = ["pitcher", "pitch_type"]
+        out = df.groupby(k, observed=True, sort=True).agg(
+            n_loc=("plate_x", "count"), bbe=("bbe", "sum"), gb=("gb", "sum"), fb=("fb", "sum"),
+            sz_top=("sz_top", "mean"), sz_bot=("sz_bot", "mean")).reset_index()
+        hs = _heat_grids(df[df.stand.isin(["L", "R"])].reset_index(drop=True), k + ["stand"])
+        for side in ("L", "R"):
+            h = hs[hs.stand == side].drop(columns="stand")
+            h.loc[h.n < HEAT_MIN, "heat"] = None
+            out = out.merge(h.rename(columns={"n": f"heat_n{side.lower()}", "heat": f"heat_{side.lower()}"}), on=k, how="left")
+        bbe = out.bbe.to_numpy(dtype="float64")
+        out["gb_pct"] = np.where(bbe >= BBE_MIN, 100 * out.gb / np.maximum(bbe, 1), np.nan)
+        out["fb_pct"] = np.where(bbe >= BBE_MIN, 100 * out.fb / np.maximum(bbe, 1), np.nan)
+        out["season"] = season
+        frames.append(out[["pitcher", "season", "pitch_type", "n_loc", "bbe", "gb_pct", "fb_pct", "sz_top", "sz_bot",
+                           "heat_l", "heat_nl", "heat_r", "heat_nr"]])
+        del df
+    out = pd.concat(frames, ignore_index=True)
+    out.to_parquet(path, index=False)
+    log(f"location + batted balls {level}: {len(out):,} pitcher-season-types, {out.gb_pct.notna().mean():.0%} with >= {BBE_MIN} "
+        f"balls in play; maps vs LHB {out.heat_l.notna().mean():.0%}, vs RHB {out.heat_r.notna().mean():.0%}")
     return out
 
 
@@ -848,7 +921,7 @@ def comps_columnar(rows, pct):
             for rr, qq in zip(rows, pct)]
 
 
-def export(types, pitchers, t_space, lead, fa, spin, mv, tj, teams, levels, teams_aaa, quality=None):
+def export(types, pitchers, t_space, lead, fa, spin, mv, tj, teams, levels, teams_aaa, quality=None, lb=None):
     """`types`, `pitchers`, `t_space`, `mv`, `tj` and `teams` carry a `level` column; Savant outcomes and
     spin are MLB-only and join on level too, so a call-up's Triple-A row never borrows his big-league xERA."""
     key = profiles.KEYS + ["level"]
@@ -866,6 +939,22 @@ def export(types, pitchers, t_space, lead, fa, spin, mv, tj, teams, levels, team
                    "tcluster", "comp_tol", "gx3", "gy3", "gz3", "tx3", "ty3", "tz3"]
                   + (["comp_tol_aaa"] if "comp_tol_aaa" in types else [])].copy()
     t_out = pd.concat([t_out, type_display(types), look_deltas(types)], axis=1)
+    heat_grid = None
+    if lb is not None:   # location heat map + batted-ball mix (location_bb), by key, in the types' order
+        k = ["level", "pitcher", "season", "pitch_type"]
+        lb = lb.astype({"pitcher": "int64", "season": "int64"})
+        sub = lb.set_index(k).reindex(pd.MultiIndex.from_frame(types[k].astype({"pitcher": "int64", "season": "int64"})))
+        for c in ("gb_pct", "fb_pct", "bbe", "heat_nl", "heat_nr"):
+            t_out[c] = sub[c].to_numpy(dtype="float64")
+        for c in ("heat_l", "heat_r"):
+            t_out[c] = sub[c].to_numpy(dtype=object)
+        m = lb[lb.level == "mlb"].dropna(subset=["sz_top", "sz_bot"])
+        w = m.n_loc.to_numpy(dtype="float64")
+        heat_grid = {"x": list(HEAT_X), "z": list(HEAT_Z), "n": HEAT_N,
+                     "zone": [round(float(np.average(m.sz_bot, weights=w)), 2), round(float(np.average(m.sz_top, weights=w)), 2)]}
+        log(f"heat maps vs LHB for {pd.notna(t_out.heat_l).mean():.1%} and vs RHB for {pd.notna(t_out.heat_r).mean():.1%} of pitch rows; "
+            f"GB/FB for {t_out.gb_pct.notna().mean():.1%}; "
+            f"strike zone {heat_grid['zone']} ft")
     p_out = pitchers[["pitcher", "season", "level", "p_throws", "n", "primary_fb", "teams", "team_main"]].copy()
     p_out = pd.concat([p_out, pitcher_display(pitchers)], axis=1)
     p_out["name"] = pitchers.player_name.map(first_last)
@@ -891,6 +980,7 @@ def export(types, pitchers, t_space, lead, fa, spin, mv, tj, teams, levels, team
         "flight": trajectory_blob(types, tj),
         "archetypes": json.loads(PITCHER_TYPES.read_text()) if PITCHER_TYPES.exists() else [],
         **({"layout_quality": quality} if quality else {}),
+        **({"heat_grid": heat_grid} if heat_grid else {}),
         "fa_season": max(SEASONS),
         "fa_asof": free_agents_asof(),
         "data_through": {l: data_through(l) for l in levels},
@@ -938,7 +1028,7 @@ def main():
     levels = ["mlb"] + [l for l in LEVELS if l != "mlb" and level_seasons(l)]
     types, pitchers, t_space = [df.reset_index(drop=True).assign(level="mlb") for df in (types, pitchers, t_space)]
     parts = {"types": [types], "pitchers": [pitchers], "space": [t_space], "mv": [movement_sample(a.rebuild_profiles)],
-             "tj": [trajectory_means(a.rebuild_profiles)], "teams": [pitcher_teams()]}
+             "tj": [trajectory_means(a.rebuild_profiles)], "teams": [pitcher_teams()], "lb": [location_bb(a.rebuild_profiles)]}
     teams_aaa = {}
     for level in levels[1:]:
         t_l, p_l = season_profiles(a.rebuild_profiles, level)
@@ -946,12 +1036,14 @@ def main():
         parts["space"].append(place_level(types, t_space, t_l, cached_levels.get(level)).assign(level=level))
         parts["mv"].append(movement_sample(a.rebuild_profiles, level))
         parts["tj"].append(trajectory_means(a.rebuild_profiles, level))
+        parts["lb"].append(location_bb(a.rebuild_profiles, level))
         parts["teams"].append(pitcher_teams(level))
         if level == "aaa":
             teams_aaa = minor_teams(level)
     types, pitchers, t_space, teams = [pd.concat(parts[k], ignore_index=True) for k in ("types", "pitchers", "space", "teams")]
     mv = pd.concat([m.assign(level=l) for m, l in zip(parts["mv"], levels)], ignore_index=True)
     tj = pd.concat([t.assign(level=l) for t, l in zip(parts["tj"], levels)], ignore_index=True)
+    lb = pd.concat([x.assign(level=l) for x, l in zip(parts["lb"], levels)], ignore_index=True)
 
     # comps are cheap and rule-driven (same hand, similar arm angle): always recompute
     cr, cp, ctol = type_comps(types)
@@ -965,7 +1057,7 @@ def main():
     if not a.html_only:
         LAYOUT_META.write_text(json.dumps(layout_signature(), indent=1))
     spin = pd.concat([active_spin(s, a.refetch_leaders) for s in SEASONS], ignore_index=True)
-    export(types, pitchers, t_space, lead, free_agents(), spin, mv, tj, teams, levels, teams_aaa, quality)
+    export(types, pitchers, t_space, lead, free_agents(), spin, mv, tj, teams, levels, teams_aaa, quality, lb)
 
 
 if __name__ == "__main__":
