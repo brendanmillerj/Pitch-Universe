@@ -399,9 +399,10 @@ button, input, select { font: inherit; color: inherit; }
 .ctabtn[aria-pressed="true"] { background: var(--ink); color: var(--field); }
 .ctabtn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .ctabtn.primary:hover { background: #244e72; border-color: #244e72; }
-.cta-acts { display: flex; flex-direction: column; gap: 8px; }
+.cta-acts { display: flex; gap: 8px; }
+.cta-acts .ctabtn { flex: 1 1 0; min-width: 0; white-space: nowrap; }
 .cta-acts[hidden], .cta-look[hidden] { display: none; }
-/* Show Lookalikes: the card widens into his lookalike list */
+/* a pitcher picked on the map: the card is his lookalike list, Show Profile / Show Simulation on top */
 .selcta.look { width: min(380px, calc(100% - 2 * var(--mi))); max-height: calc(100% - 2 * var(--mi)); overflow-y: auto; overscroll-behavior: contain; }
 .lk-from { align-self: flex-start; font: 600 13px var(--font-ui); }
 .cta-look { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
@@ -1623,12 +1624,11 @@ tr.self td { font-weight: 600; background: none; }
           <button type="button" class="ctaclose" id="ctaClose" aria-label="Clear the selection" title="Clear">×</button></div>
         <button type="button" class="link lk-from" id="ctaFrom" hidden></button>
         <div class="cta-acts" id="ctaActs">
-          <button type="button" class="ctabtn primary" id="ctaOpen">Show Complete Profile</button>
-          <button type="button" class="ctabtn" id="ctaLook">Show Lookalikes</button>
-          <button type="button" class="ctabtn" id="ctaFly" aria-pressed="false">Pitch Simulation Lab</button>
+          <button type="button" class="ctabtn primary" id="ctaOpen" title="His full player card: every pitch, measure and season">Show Profile</button>
+          <button type="button" class="ctabtn" id="ctaFly" aria-pressed="false">Show Simulation</button>
         </div>
         <section class="cta-look" id="compBox" aria-label="Lookalikes of the selected pitcher" hidden>
-          <div class="lk-head"><button type="button" class="link" id="cbBack">← Back</button><b id="cbTitle"></b></div>
+          <div class="lk-head"><b id="cbTitle"></b></div>
           <div class="lk-chips" id="cbChips" role="group" aria-label="Lookalikes for which of his pitches"></div>
           <div id="cbPool" role="group" aria-label="Lookalikes among which pitchers" hidden></div>
           <div class="lk-acts"><button type="button" class="savebtn" id="cbTable" aria-pressed="false" title="A table of him and his lookalikes on every measure, in the map's place">Show table</button><button type="button" class="savebtn" id="cbSave" title="Keep him and his lookalikes as a named group">Save as group</button></div>
@@ -1665,7 +1665,7 @@ tr.self td { font-weight: 600; background: none; }
           </section>
           <div class="rp-head"><span id="svTitle">Your groups</span> <span class="rp-n" id="svCount"></span></div>
           <div class="rp-acts"><button type="button" class="obtn" id="svOnly" aria-pressed="false" title="Keep the pitchers in your groups in color and gray out everyone else">Highlight my groups</button></div>
-          <p class="rp-help" id="svEmpty">No groups yet. Save a pitcher’s lookalikes (Show Lookalikes on his card), or pick pitchers with Add (in the Pitchers list, on a profile or beside a lookalike) or Draw a group on the map; or save a highlighted pitcher list. A group is a region of the map: it is circled on the pitch type it was built on, and this panel lists everyone inside it, at either level.</p>
+          <p class="rp-help" id="svEmpty">No groups yet. Save a pitcher’s lookalikes (click him on the map), or pick pitchers with Add (in the Pitchers list, on a profile or beside a lookalike) or Draw a group on the map; or save a highlighted pitcher list. A group is a region of the map: it is circled on the pitch type it was built on, and this panel lists everyone inside it, at either level.</p>
           <ul id="svList"></ul>
           <p class="sv-undo" id="svUndo" hidden></p>
         </section>
@@ -2183,7 +2183,7 @@ const ord = n => { const k = Math.round(n), s = ["th", "st", "nd", "rd"], m = k 
 let GL_OK = null;
 const glOK = () => { if (GL_OK === null) { try { const c = document.createElement("canvas"); GL_OK = !!(c.getContext("webgl") || c.getContext("experimental-webgl")); } catch (e) { GL_OK = false; } } return GL_OK; };
 const SEL_DIM = 0.65;
-const LOOK_DIM = 0.22;   // Show Lookalikes: every other mark   // with a pitcher selected, every other mark is drawn at 65% strength
+const LOOK_DIM = 0.22;   // a pitcher's lookalikes on the map: every other mark   // with a pitcher selected, every other mark is drawn at 65% strength
 const plotEl = $("#plot");
 let plotReady = false;
 
@@ -2435,8 +2435,8 @@ function render() {
         customdata: same, hoverinfo: "text", hovertext: same.map(r => hoverHTML(r) + "<br>same pitcher, other season"),
         line: { color: pal.ink2, width: 1.5, dash: "dot" }, marker: { size: 12, color: pal.surface, line: { width: 2, color: pal.ink2 } }, showlegend: false });
     }
-    const comps = state.showComps ? compsOf(view, sel) : [];
-    if (comps.length && compsOnMap()) {   // Show Lookalikes: a spoke from him to each lookalike
+    const comps = state.showComps || compsOnMap() ? compsOf(view, sel) : [];
+    if (comps.length && compsOnMap()) {   // a spoke from him to each lookalike
       const [hx, hy] = xy(view, sel), X = [], Y = [];
       comps.forEach(([r]) => { const [x, y] = xy(view, r); X.push(hx, x, null); Y.push(hy, y, null); });
       traces.push({ meta: "spokes", type: "scatter", mode: "lines", x: X, y: Y, hoverinfo: "skip", showlegend: false, line: { color: pal.ink, width: 1.25 }, opacity: 0.6 });
@@ -2453,7 +2453,7 @@ function render() {
     // everything drawn so far (other dots, his other seasons, comps) drops to 65% strength...
     const srcOf = r => traces.find(t => Array.isArray(t.customdata) && t.marker && t.customdata.includes(r));
     const srcs = arsenal.map(srcOf);
-    // (with Show Lookalikes on, everything but him, the spokes and the numbered lookalikes fades further)
+    // (with his lookalikes shown, everything but him, the spokes and the numbered lookalikes fades further)
     const dimTo = compsOnMap() ? LOOK_DIM : SEL_DIM, keepLit = compsOnMap() ? new Set(["typelabels", "saved", "comps", "spokes"]) : new Set(["typelabels", "saved"]);
     traces.forEach(t => { if (!keepLit.has(t.meta) && t.fill !== "toself") { t.opacity = dimTo; t.dimK = dimTo; } });
     // ...and his pitch(es) are redrawn on top at full strength in their own colors; in All pitches each
@@ -5292,14 +5292,15 @@ function followLevel(r) {
   state.level = T.level[r]; syncLevel(); svRowCache.clear();
 }
 // A dot on the map: with a player card open, the card moves to him; otherwise he is shown the way a search shows
-// him (arsenal ringed, name bar at the bottom with the card, similar pitchers and the pitch simulation), and a
-// second click on one of his own dots opens his card.
+// him (arsenal ringed, his lookalikes card with Show Profile / Show Simulation), and a second click on one of his
+// own dots opens his profile. Clicking one of the numbered lookalikes keeps a way back to the first pitcher's list.
 function dotClick(r) {
   if (r === null || r === undefined) return;
   if (state.cardOpen) { select(r); return; }
   const s0 = state.sel;
   if (state.preview && !state.simOpen && s0 !== null && s0 !== undefined && T.pitcher[r] === T.pitcher[s0] && T.season[r] === T.season[s0] && T.level[r] === T.level[s0]) { openCard(); return; }
-  preview(r);   // with the simulation open, this swaps the pitcher in it
+  const from = compsOnMap() && compsOf(state.view, s0).some(([c]) => c === r) ? s0 : null;   // one of the numbered lookalikes
+  preview(r, { from });   // with the simulation open, this swaps the pitcher in it
 }
 function select(r) {
   followLevel(r);
@@ -5314,10 +5315,10 @@ function select(r) {
 }
 // Search shows the pitcher on the map first: his whole arsenal ringed and named, card closed, and a large
 // "See full player info" button. That opens the card on his most-used pitch, in that pitch's universe.
-function preview(r, opt = {}) {   // opt.look: open on his lookalikes; opt.from: the pitcher whose lookalike list this came from
+function preview(r, opt = {}) {   // opt.from: the pitcher whose lookalike list this came from
   followLevel(r);
   if (r !== state.sel) remember(state.view, state.sel, r);
-  state.preview = true; state.showComps = !!opt.look; state.lookFrom = opt.from ?? null; state.sel = r;
+  state.preview = true; state.showComps = true; state.lookFrom = opt.from ?? null; state.sel = r;
   if (state.lookTbl !== null && state.lookTbl !== undefined) state.lookTbl = r;   // an open lookalikes table follows the pitcher
   render(); renderDetail();
   if (state.simOpen) { renderSim(); return; }
@@ -5353,28 +5354,23 @@ function closeCard() {
   Object.assign(state, { view: f.view, sel: f.sel, preview: f.preview, showComps: f.showComps, lookFrom: f.lookFrom, zoomK: f.zoomK });
   writeHash(f.view); buildUniverse(); buildVarSelects(); buildSliders();
   render(); renderDetail();
-  const back = compsOnMap() ? $("#cbBack") : state.preview ? $("#ctaOpen") : null;
+  const back = state.preview ? $("#ctaOpen") : null;
   if (back && back.focus) back.focus({ preventScroll: true });
 }
 function openCard() {
   const r = state.sel; if (r === null || r === undefined) return;
   cardSnap();
   const m = mostUsedRow(r);
-  state.preview = false; closeSim(true);
+  state.preview = false; state.showComps = false; closeSim(true);
   setView(T.pitch_type[m], m);
   focusCard();
 }
 // "Show similar pitchers" on the search card: the ten comps appear as numbered dots on the map you are on,
 // with their list in the pitcher list's slot. The card stays closed. In All pitches the chips pick which of
 // his pitches the comps are for (search starts on his primary fastball).
-const compsOnMap = () => !!state.preview && !!state.showComps && state.sel !== null && state.sel !== undefined;
-// Show Lookalikes: the card turns into his ten closest lookalikes for one of his pitches. On the map everyone else
-// fades, a spoke runs from him to each lookalike, and the numbers match the list. Back returns to the four buttons.
-function setLook(on) {
-  if (state.sel === null || state.sel === undefined) return;
-  state.showComps = !!on; render();
-  const f = $(on ? "#cbBack" : "#ctaLook"); if (f) f.focus({ preventScroll: true });
-}
+// A pitcher picked on the map (dot, search, list, group) shows his ten closest lookalikes for one of his pitches straight
+// away: on the map everyone else fades, a spoke runs from him to each lookalike, and the numbers match the list.
+const compsOnMap = () => !!state.preview && state.sel !== null && state.sel !== undefined;
 // What he and his lookalikes have in common: the traits the Groups panel finds for a saved group (sharedTraits), shown
 // as short tags in the Savant colour of the group's median percentile (red high, blue low); numbers wait in the tooltip
 const lookShareCache = new Map();
@@ -5434,7 +5430,7 @@ function diffPhrase(r, c) {
 }
 function renderCompBox() {
   const r = state.sel, on = compsOnMap();
-  $("#ctaActs").hidden = on; $("#compBox").hidden = !on; $("#selCta").classList.toggle("look", on);
+  $("#compBox").hidden = !on; $("#selCta").classList.toggle("look", on);
   if (!on) { $("#cbList").innerHTML = ""; return; }
   const t = T.pitch_type[r], comps = compsOf(state.view, r);
   $("#cbTitle").textContent = `Pitchers whose ${PTN[t].toLowerCase()} looks like his`;
@@ -5460,13 +5456,13 @@ function syncCta() {
   box.hidden = !on; if (!on) return;
   const n = TYPES.filter(t => { const x = tRow(T.pitcher[r], T.season[r], t, T.level[r]); return x !== undefined && T.n[x] >= state.minN; }).length;
   $("#ctaName").textContent = T.name[r];
-  const from = state.lookFrom, fb = $("#ctaFrom"), showFrom = from !== null && from !== undefined && from !== r && !compsOnMap();
+  const from = state.lookFrom, fb = $("#ctaFrom"), showFrom = from !== null && from !== undefined && from !== r;
   fb.hidden = !showFrom; if (showFrom) fb.textContent = `← Back to ${lastName(T.name[from])}’s lookalikes`;
   $("#ctaSub").textContent = `${T.season[r]} · ${teamStr(r)} · ${n} pitch${n === 1 ? "" : "es"}`;
   const fly = $("#ctaFly"), canFly = !flightData().none && !!trajOf(r);
-  fly.textContent = state.simOpen ? "Close the Pitch Simulation Lab" : "Pitch Simulation Lab";
+  fly.textContent = state.simOpen ? "Close Simulation" : "Show Simulation";
   fly.setAttribute("aria-pressed", String(!!state.simOpen)); fly.disabled = !canFly && !state.simOpen;
-  fly.title = canFly ? "Fly his pitches, edit them, add any pitcher's" : "No tracked flight for this pitch";
+  fly.title = canFly ? "Open the Pitch Simulation Lab: fly his pitches, edit them, add any pitcher's" : "No tracked flight for this pitch";
 }
 // His lookalikes with a tracked flight: what Compare can fly beside him
 const labComps = j => compsOf(state.view, j).filter(([c]) => !!trajOf(c));
@@ -5504,7 +5500,7 @@ function closeSim(quiet) {
 function closeSimFocus() {   // × and Escape: focus goes back to whatever opened the lab
   const o = state.simOpener; closeSim();
   const usable = el => !!el && el.isConnected !== false && !el.disabled && !el.hidden && el.offsetParent !== null;
-  const tgt = usable(o) ? o : usable($("#labBtn")) ? $("#labBtn") : (usable($("#cbBack")) && !$("#compBox").hidden) ? $("#cbBack") : usable($("#ctaFly")) ? $("#ctaFly") : null;
+  const tgt = usable(o) ? o : usable($("#labBtn")) ? $("#labBtn") : usable($("#ctaFly")) ? $("#ctaFly") : null;
   if (tgt && tgt.focus) tgt.focus({ preventScroll: true });
 }
 
@@ -6151,7 +6147,7 @@ function buildStatic() {
     if (G3) dispose3D();
     plotReady = false; render();
   }));
-  $("#mbList").addEventListener("click", e => { const b = e.target.closest("[data-mb]"); if (b) dotClick(+b.dataset.mb); });   // like a dot: the card with its three buttons first
+  $("#mbList").addEventListener("click", e => { const b = e.target.closest("[data-mb]"); if (b) dotClick(+b.dataset.mb); });   // like a dot: his lookalikes card first
   $("#mbSearch").addEventListener("input", renderMatchList);
   // the rail: its tabs, its close button, and the pills that stand in for the tabs while it is closed
   $("#rail").querySelector(".railtabs").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b && !b.disabled) setRailTab(b.dataset.tab); });
@@ -6178,9 +6174,7 @@ function buildStatic() {
   $("#ctaOpen").addEventListener("click", openCard);
   $("#ctaFly").addEventListener("click", () => toggleSim($("#ctaFly")));
   document.addEventListener("keydown", e => { if (e.key === "Escape" && state.simOpen) { e.preventDefault(); closeSimFocus(); } });
-  $("#ctaLook").addEventListener("click", () => setLook(true));
-  $("#cbBack").addEventListener("click", () => setLook(false));
-  $("#ctaFrom").addEventListener("click", () => { const f = state.lookFrom; if (f !== null && f !== undefined) preview(f, { look: true }); });
+  $("#ctaFrom").addEventListener("click", () => { const f = state.lookFrom; if (f !== null && f !== undefined) preview(f); });
   $("#cbChips").addEventListener("click", e => { const b = e.target.closest("[data-cb]"); if (b) { state.sel = +b.dataset.cb; render(); } });
   $("#cbList").addEventListener("click", e => {
     const m = e.target.closest("[data-cmp]"); if (m) { if (!m.disabled) compareSim(+m.dataset.cmp, m); return; }
@@ -6384,7 +6378,7 @@ function buildStatic() {
     }
     cands.sort((a, b) => tab.season[b] - tab.season[a]);
     $("#searchMsg").textContent = "";
-    preview(cands[0]);   // on the map first, with Show Complete Profile / Show Lookalikes / Pitch Simulation Lab
+    preview(cands[0]);   // on the map first: his lookalikes, with Show Profile / Show Simulation
     e.target.value = "";
   });
 
