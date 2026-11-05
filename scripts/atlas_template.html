@@ -888,6 +888,10 @@ button, input, select { font: inherit; color: inherit; }
 .sv-hero { background: var(--field); border: 1px solid var(--line); border-radius: var(--r); padding: 6px 12px 4px; }
 .herohead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; padding-bottom: 4px; border-bottom: 1.5px solid var(--rule); }
 .herohead h3 { margin: 0; font: 700 17px var(--font-ui); color: var(--ink); }
+.herotags { display: flex; flex-direction: column; gap: 5px; padding: 8px 0 8px; border-bottom: 1px solid var(--line); }
+.herotags-h { margin: 0; font: 600 13px var(--font-ui); color: var(--ink2); }
+.herotags-none { margin: 0; font: 400 13px var(--font-ui); color: var(--ink2); }
+.herotags .lk-tag { min-height: 26px; font-size: 13px; }
 
 .herogrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; }
 .hrow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(90px, 0.8fr) auto; align-items: center; column-gap: 10px;
@@ -3592,6 +3596,7 @@ function renderDetail() {
     b.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(e); } });
   });
   const cs = dh.querySelector(".clearsel"); if (cs) cs.addEventListener("click", () => closeCard());
+  const lb = dh.querySelector("#labBtn"); if (lb) lb.addEventListener("click", () => toggleSim(lb));   // the lab opens over the card
   const bk = dh.querySelector(".backsel"); if (bk) bk.addEventListener("click", e => { goBack(); if (viaKeys(e)) focusCard(); });
   if (!had) try { window.scrollTo({ top: 0, behavior: "auto" }); } catch (e) {}   // the card replaced the map: start at its head
 }
@@ -5031,6 +5036,22 @@ function arsenalStrip(view, j, ars) {
   }).join("")}</div>`;
 }
 
+// What stands out about his pitch, in words: the same plain phrases and Savant colours as the lookalike pane's tags
+// (TRAIT_WORDS), for every measure where his pitch sits in the top or bottom fifth of MLB pitches of its type; raw
+// percentiles, so red means a high value and blue a low one; the numbers are in each tag's tooltip
+const STANDOUT_HI = 80, STANDOUT_LO = 20, STANDOUT_MAX = 6;
+function standoutTags(j) {
+  const t = T.pitch_type[j], pool = typeRows[t], tn = PTN[t].toLowerCase(); if (!pool || !pool.length) return "";
+  const tags = VARS.t.filter(v => !v.cat && v.key.startsWith("t:") && v.group !== "Results").map(v => {
+    const x = v.get(j); if (!isNum(x)) return null;
+    const p = pctRank(poolSorted("t" + t, pool, v), x); if (p > STANDOUT_LO && p < STANDOUT_HI) return null;
+    const w = traitWords(v, t, p >= 50); return w ? { v, x, p, w } : null;
+  }).filter(Boolean).sort((a, b) => Math.abs(b.p - 50) - Math.abs(a.p - 50)).slice(0, STANDOUT_MAX);
+  const body = tags.length ? `<div class="lk-tags">${tags.map(({ v, x, p, w }) =>
+      `<span class="lk-tag" style="background:${savantColor(p)};color:${savantInk(p)}" title="${esc(`${mName(v)}: ${fmt(x, v.dec, v.unit)}, ${ord(p)} percentile among MLB ${tn}s`)}">${esc(w)}</span>`).join("")}</div>`
+    : `<p class="herotags-none">A typical ${tn} on every measure: nothing in the top or bottom fifth.</p>`;
+  return `<div class="herotags"><p class="herotags-h">What stands out about his ${tn}</p>${body}</div>`;
+}
 function typeCard(view, j) {
   const t = T.pitch_type[j], pool = typeRows[t], V = VMAP.t, i = pRow(T.pitcher[j], T.season[j], T.level[j]);
   const pName = "t" + t, R = T.p_throws[j] === "R";
@@ -5047,6 +5068,7 @@ function typeCard(view, j) {
       <button type="button" class="bigbtn simbtn" id="simBtn" aria-expanded="${!!state.showComps}" aria-controls="comps">${state.showComps ? "Hide similar pitchers ↑" : "Show similar pitchers ↓"}</button>
       <button type="button" class="bigbtn pickbtn" data-pick="${j}" aria-pressed="${state.picks.has(j)}" title="Pick his ${PTN[T.pitch_type[j]].toLowerCase()} for a new group; name and save it in the Groups tab">${state.picks.has(j) ? `In new group (${state.picks.size})` : "Add to group"}</button>
       ${backTarget(j) ? `<button type="button" class="bigbtn backsel">← Go back to ${esc(T.name[backTarget(j).sel])}</button>` : ""}
+      ${!flightData().none && trajOf(j) ? `<button type="button" class="bigbtn labbtn" id="labBtn" title="Fly his pitches, edit them, compare them with a lookalike's">▶ Pitch Simulation Lab</button>` : ""}
       <button type="button" class="bigbtn clearsel backmap" aria-label="Close this pitcher and go back to the map">← Back to map</button></span>${headStats(view, j, i)}${arsenalStrip(view, j, ars)}</div>`;
   // ---------------- hero: what puts this pitch where it is in the 3D space ----------------
   // the measures on which his pitch sits farthest from a typical pitch of its type: these are what
@@ -5059,7 +5081,7 @@ function typeCard(view, j) {
   // every percentile on the card ranks his pitch among every pitch of its type on the atlas: all seasons, both hands
   const poolNote = `all ${pool.length.toLocaleString()} ${LEVELS.length > 1 ? "MLB " : ""}${PTN[t].toLowerCase()}s on the atlas, ${seasonSpan()}, both hands`;
   h += `<section class="sv-hero"><div class="herohead"><h3>Defining Traits</h3>
-    <span class="heropool">Percentiles among ${poolNote} · <button type="button" class="to-gloss">Glossary</button></span></div>
+    <span class="heropool">Percentiles among ${poolNote} · <button type="button" class="to-gloss">Glossary</button></span></div>${standoutTags(j)}
     <div class="herogrid">${hero.slice(0, HERO_MAX).map(it => heroRow(it, poolNote)).join("")}</div></section>`;
   // ---------------- left: profile, value percentiles, seasons, pitch usage ----------------
   h += `<section class="svp sv-prof"><h3>Profile</h3>${faLine(j)}${typesLine(j)}
@@ -5380,7 +5402,7 @@ function closeSim(quiet) {
 function closeSimFocus() {   // × and Escape: focus goes back to whatever opened the lab
   const o = state.simOpener; closeSim();
   const usable = el => !!el && el.isConnected !== false && !el.disabled && !el.hidden && el.offsetParent !== null;
-  const tgt = usable(o) ? o : (usable($("#cbBack")) && !$("#compBox").hidden) ? $("#cbBack") : usable($("#ctaFly")) ? $("#ctaFly") : null;
+  const tgt = usable(o) ? o : usable($("#labBtn")) ? $("#labBtn") : (usable($("#cbBack")) && !$("#compBox").hidden) ? $("#cbBack") : usable($("#ctaFly")) ? $("#ctaFly") : null;
   if (tgt && tgt.focus) tgt.focus({ preventScroll: true });
 }
 
@@ -6076,7 +6098,7 @@ function buildStatic() {
   // drag, scroll-zoom, modebar and margins differ on phones
   matchMedia("(max-width: 719px)").addEventListener("change", () => render());
   document.addEventListener("keydown", e => {
-    if (e.key !== "Escape" || e.defaultPrevented) return;
+    if (e.key !== "Escape" || e.defaultPrevented || state.simOpen) return;   // the lab's own handler closes it
     const ae = document.activeElement;
     if (!/^(INPUT|SELECT|TEXTAREA)$/.test(ae && ae.tagName)) {
       if (state.cardOpen && !state.simOpen) { e.preventDefault(); closeCard(); return; }
