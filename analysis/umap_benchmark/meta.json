@@ -1,0 +1,51 @@
+{
+ "rows": 7889,
+ "half_rows": 11799,
+ "types": [
+  "CH",
+  "CU",
+  "FC",
+  "FF",
+  "FS",
+  "SI",
+  "SL",
+  "ST"
+ ],
+ "fast": false,
+ "k": 10,
+ "seeds": [
+  0,
+  1,
+  2,
+  3,
+  4
+ ],
+ "n_boot": 1000,
+ "total_minutes": 27.315363331635794,
+ "features": [
+  "release_speed",
+  "release_spin_rate",
+  "spin_sin",
+  "spin_cos",
+  "pfx_x",
+  "pfx_z",
+  "vaa_above_avg",
+  "vra_above_avg",
+  "ddz_delta_ax",
+  "ddz_delta_az",
+  "ssw_dev",
+  "arm_angle",
+  "release_pos_x",
+  "release_pos_z",
+  "release_extension"
+ ],
+ "versions": {
+  "umap-learn": "0.5.12",
+  "openTSNE": "1.0.4",
+  "pacmap": "0.9.1",
+  "phate": "2.0.0",
+  "trimap": "1.2.0",
+  "scikit-learn": "1.9.0",
+  "numpy": "2.3.1"
+ }
+}

@@ -1,3 +1,7 @@
+> **Superseded 2026-11-04** by [umap_benchmark.md](umap_benchmark.md): the maps now leave usage out
+> (27 measures) and the new benchmark adds t-SNE, PaCMAP, held-out placement, outcome signal,
+> stability and a settings grid. Numbers below are from the 32-measure build.
+
 # Why the Pitch Universe uses UMAP
 
 **Short answer:** pitches differ on far more than movement. A ride-vs-break plot shows 2 of the 32

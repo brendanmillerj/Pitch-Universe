@@ -1,0 +1,225 @@
+type,n,truth,view,recall10_free
+CH,1021,block-weighted (default),Movement (ride x HB),0.09422135161606267
+CH,1021,block-weighted (default),PCA 2,0.12869735553379044
+CH,1021,block-weighted (default),t-SNE 2D,0.4311459353574926
+CH,1021,block-weighted (default),"UMAP 2D (15, 0.3)",0.30107737512242905
+CH,1021,block-weighted (default),"UMAP 2D (10, 0.1)",0.39275220372184133
+CH,1021,block-weighted (default),"UMAP 3D (15, 0.3)",0.40558276199804116
+CH,1021,block-weighted (default),PaCMAP 2D (15),0.2627815866797258
+CH,1021,"old atlas space (27: + location, scatter, duplicates)",Movement (ride x HB),0.07776689520078355
+CH,1021,"old atlas space (27: + location, scatter, duplicates)",PCA 2,0.07277179236043095
+CH,1021,"old atlas space (27: + location, scatter, duplicates)",t-SNE 2D,0.18256611165523998
+CH,1021,"old atlas space (27: + location, scatter, duplicates)","UMAP 2D (15, 0.3)",0.13976493633692458
+CH,1021,"old atlas space (27: + location, scatter, duplicates)","UMAP 2D (10, 0.1)",0.17277179236043094
+CH,1021,"old atlas space (27: + location, scatter, duplicates)","UMAP 3D (15, 0.3)",0.16709108716944174
+CH,1021,"old atlas space (27: + location, scatter, duplicates)",PaCMAP 2D (15),0.12801175318315375
+CH,1021,plain z-score (no block weights),Movement (ride x HB),0.10225269343780607
+CH,1021,plain z-score (no block weights),PCA 2,0.12908912830558278
+CH,1021,plain z-score (no block weights),t-SNE 2D,0.42948090107737513
+CH,1021,plain z-score (no block weights),"UMAP 2D (15, 0.3)",0.2987267384916748
+CH,1021,plain z-score (no block weights),"UMAP 2D (10, 0.1)",0.3905974534769834
+CH,1021,plain z-score (no block weights),"UMAP 3D (15, 0.3)",0.4107737512242899
+CH,1021,plain z-score (no block weights),PaCMAP 2D (15),0.265230166503428
+CH,1021,cosine on block-weighted,Movement (ride x HB),0.08364348677766896
+CH,1021,cosine on block-weighted,PCA 2,0.10146914789422135
+CH,1021,cosine on block-weighted,t-SNE 2D,0.4118511263467189
+CH,1021,cosine on block-weighted,"UMAP 2D (15, 0.3)",0.2842311459353575
+CH,1021,cosine on block-weighted,"UMAP 2D (10, 0.1)",0.38922624877571005
+CH,1021,cosine on block-weighted,"UMAP 3D (15, 0.3)",0.38658178256611164
+CH,1021,cosine on block-weighted,PaCMAP 2D (15),0.24476003917727718
+CU,789,block-weighted (default),Movement (ride x HB),0.12053231939163497
+CU,789,block-weighted (default),PCA 2,0.15462610899873258
+CU,789,block-weighted (default),t-SNE 2D,0.4506970849176173
+CU,789,block-weighted (default),"UMAP 2D (15, 0.3)",0.3531051964512041
+CU,789,block-weighted (default),"UMAP 2D (10, 0.1)",0.4278833967046895
+CU,789,block-weighted (default),"UMAP 3D (15, 0.3)",0.4487959442332066
+CU,789,block-weighted (default),PaCMAP 2D (15),0.3337135614702154
+CU,789,"old atlas space (27: + location, scatter, duplicates)",Movement (ride x HB),0.08910012674271231
+CU,789,"old atlas space (27: + location, scatter, duplicates)",PCA 2,0.09809885931558936
+CU,789,"old atlas space (27: + location, scatter, duplicates)",t-SNE 2D,0.20798479087452473
+CU,789,"old atlas space (27: + location, scatter, duplicates)","UMAP 2D (15, 0.3)",0.16730038022813692
+CU,789,"old atlas space (27: + location, scatter, duplicates)","UMAP 2D (10, 0.1)",0.19455006337135614
+CU,789,"old atlas space (27: + location, scatter, duplicates)","UMAP 3D (15, 0.3)",0.20595690747782003
+CU,789,"old atlas space (27: + location, scatter, duplicates)",PaCMAP 2D (15),0.16844106463878328
+CU,789,plain z-score (no block weights),Movement (ride x HB),0.13054499366286437
+CU,789,plain z-score (no block weights),PCA 2,0.1593155893536122
+CU,789,plain z-score (no block weights),t-SNE 2D,0.4448669201520912
+CU,789,plain z-score (no block weights),"UMAP 2D (15, 0.3)",0.35335868187579206
+CU,789,plain z-score (no block weights),"UMAP 2D (10, 0.1)",0.42395437262357416
+CU,789,plain z-score (no block weights),"UMAP 3D (15, 0.3)",0.4476552598225601
+CU,789,plain z-score (no block weights),PaCMAP 2D (15),0.33054499366286433
+CU,789,cosine on block-weighted,Movement (ride x HB),0.10544993662864385
+CU,789,cosine on block-weighted,PCA 2,0.1258555133079848
+CU,789,cosine on block-weighted,t-SNE 2D,0.4196451204055767
+CU,789,cosine on block-weighted,"UMAP 2D (15, 0.3)",0.33561470215462613
+CU,789,cosine on block-weighted,"UMAP 2D (10, 0.1)",0.41774397972116606
+CU,789,cosine on block-weighted,"UMAP 3D (15, 0.3)",0.42902408111533585
+CU,789,cosine on block-weighted,PaCMAP 2D (15),0.3133079847908745
+FC,722,block-weighted (default),Movement (ride x HB),0.11634349030470914
+FC,722,block-weighted (default),PCA 2,0.18185595567867038
+FC,722,block-weighted (default),t-SNE 2D,0.43490304709141275
+FC,722,block-weighted (default),"UMAP 2D (15, 0.3)",0.34265927977839333
+FC,722,block-weighted (default),"UMAP 2D (10, 0.1)",0.3997229916897507
+FC,722,block-weighted (default),"UMAP 3D (15, 0.3)",0.4221606648199445
+FC,722,block-weighted (default),PaCMAP 2D (15),0.2808864265927978
+FC,722,"old atlas space (27: + location, scatter, duplicates)",Movement (ride x HB),0.09030470914127424
+FC,722,"old atlas space (27: + location, scatter, duplicates)",PCA 2,0.09709141274238227
+FC,722,"old atlas space (27: + location, scatter, duplicates)",t-SNE 2D,0.18850415512465377
+FC,722,"old atlas space (27: + location, scatter, duplicates)","UMAP 2D (15, 0.3)",0.15664819944598338
+FC,722,"old atlas space (27: + location, scatter, duplicates)","UMAP 2D (10, 0.1)",0.17465373961218839
+FC,722,"old atlas space (27: + location, scatter, duplicates)","UMAP 3D (15, 0.3)",0.1857340720221607
+FC,722,"old atlas space (27: + location, scatter, duplicates)",PaCMAP 2D (15),0.13545706371191138
+FC,722,plain z-score (no block weights),Movement (ride x HB),0.12880886426592797
+FC,722,plain z-score (no block weights),PCA 2,0.18047091412742383
+FC,722,plain z-score (no block weights),t-SNE 2D,0.4235457063711911
+FC,722,plain z-score (no block weights),"UMAP 2D (15, 0.3)",0.33725761772853186
+FC,722,plain z-score (no block weights),"UMAP 2D (10, 0.1)",0.3912742382271468
+FC,722,plain z-score (no block weights),"UMAP 3D (15, 0.3)",0.4164819944598338
+FC,722,plain z-score (no block weights),PaCMAP 2D (15),0.2772853185595568
+FC,722,cosine on block-weighted,Movement (ride x HB),0.10221606648199448
+FC,722,cosine on block-weighted,PCA 2,0.1386426592797784
+FC,722,cosine on block-weighted,t-SNE 2D,0.4047091412742383
+FC,722,cosine on block-weighted,"UMAP 2D (15, 0.3)",0.33019390581717456
+FC,722,cosine on block-weighted,"UMAP 2D (10, 0.1)",0.39279778393351794
+FC,722,cosine on block-weighted,"UMAP 3D (15, 0.3)",0.40831024930747917
+FC,722,cosine on block-weighted,PaCMAP 2D (15),0.2488919667590028
+FF,1850,block-weighted (default),Movement (ride x HB),0.06394594594594595
+FF,1850,block-weighted (default),PCA 2,0.10627027027027028
+FF,1850,block-weighted (default),t-SNE 2D,0.41216216216216217
+FF,1850,block-weighted (default),"UMAP 2D (15, 0.3)",0.25654054054054054
+FF,1850,block-weighted (default),"UMAP 2D (10, 0.1)",0.3541621621621622
+FF,1850,block-weighted (default),"UMAP 3D (15, 0.3)",0.36675675675675673
+FF,1850,block-weighted (default),PaCMAP 2D (15),0.20551351351351355
+FF,1850,"old atlas space (27: + location, scatter, duplicates)",Movement (ride x HB),0.046
+FF,1850,"old atlas space (27: + location, scatter, duplicates)",PCA 2,0.055783783783783784
+FF,1850,"old atlas space (27: + location, scatter, duplicates)",t-SNE 2D,0.13524324324324324
+FF,1850,"old atlas space (27: + location, scatter, duplicates)","UMAP 2D (15, 0.3)",0.09221621621621623
+FF,1850,"old atlas space (27: + location, scatter, duplicates)","UMAP 2D (10, 0.1)",0.11718918918918919
+FF,1850,"old atlas space (27: + location, scatter, duplicates)","UMAP 3D (15, 0.3)",0.1227027027027027
+FF,1850,"old atlas space (27: + location, scatter, duplicates)",PaCMAP 2D (15),0.08140540540540542
+FF,1850,plain z-score (no block weights),Movement (ride x HB),0.06945945945945946
+FF,1850,plain z-score (no block weights),PCA 2,0.10800000000000001
+FF,1850,plain z-score (no block weights),t-SNE 2D,0.4051891891891892
+FF,1850,plain z-score (no block weights),"UMAP 2D (15, 0.3)",0.2544864864864865
+FF,1850,plain z-score (no block weights),"UMAP 2D (10, 0.1)",0.3488108108108108
+FF,1850,plain z-score (no block weights),"UMAP 3D (15, 0.3)",0.36502702702702705
+FF,1850,plain z-score (no block weights),PaCMAP 2D (15),0.20324324324324325
+FF,1850,cosine on block-weighted,Movement (ride x HB),0.04935135135135136
+FF,1850,cosine on block-weighted,PCA 2,0.07021621621621622
+FF,1850,cosine on block-weighted,t-SNE 2D,0.35718918918918924
+FF,1850,cosine on block-weighted,"UMAP 2D (15, 0.3)",0.2274054054054054
+FF,1850,cosine on block-weighted,"UMAP 2D (10, 0.1)",0.31945945945945947
+FF,1850,cosine on block-weighted,"UMAP 3D (15, 0.3)",0.32681081081081076
+FF,1850,cosine on block-weighted,PaCMAP 2D (15),0.16518918918918923
+FS,277,block-weighted (default),Movement (ride x HB),0.19891696750902527
+FS,277,block-weighted (default),PCA 2,0.28014440433212995
+FS,277,block-weighted (default),t-SNE 2D,0.4851985559566787
+FS,277,block-weighted (default),"UMAP 2D (15, 0.3)",0.43610108303249095
+FS,277,block-weighted (default),"UMAP 2D (10, 0.1)",0.4815884476534296
+FS,277,block-weighted (default),"UMAP 3D (15, 0.3)",0.5296028880866427
+FS,277,block-weighted (default),PaCMAP 2D (15),0.4093862815884477
+FS,277,"old atlas space (27: + location, scatter, duplicates)",Movement (ride x HB),0.17581227436823105
+FS,277,"old atlas space (27: + location, scatter, duplicates)",PCA 2,0.17942238267148017
+FS,277,"old atlas space (27: + location, scatter, duplicates)",t-SNE 2D,0.2696750902527076
+FS,277,"old atlas space (27: + location, scatter, duplicates)","UMAP 2D (15, 0.3)",0.2382671480144405
+FS,277,"old atlas space (27: + location, scatter, duplicates)","UMAP 2D (10, 0.1)",0.26353790613718414
+FS,277,"old atlas space (27: + location, scatter, duplicates)","UMAP 3D (15, 0.3)",0.27689530685920577
+FS,277,"old atlas space (27: + location, scatter, duplicates)",PaCMAP 2D (15),0.24115523465703975
+FS,277,plain z-score (no block weights),Movement (ride x HB),0.21624548736462096
+FS,277,plain z-score (no block weights),PCA 2,0.2916967509025271
+FS,277,plain z-score (no block weights),t-SNE 2D,0.4880866425992779
+FS,277,plain z-score (no block weights),"UMAP 2D (15, 0.3)",0.43971119133574
+FS,277,plain z-score (no block weights),"UMAP 2D (10, 0.1)",0.47833935018050544
+FS,277,plain z-score (no block weights),"UMAP 3D (15, 0.3)",0.540072202166065
+FS,277,plain z-score (no block weights),PaCMAP 2D (15),0.40938628158844764
+FS,277,cosine on block-weighted,Movement (ride x HB),0.1703971119133574
+FS,277,cosine on block-weighted,PCA 2,0.22888086642599278
+FS,277,cosine on block-weighted,t-SNE 2D,0.4527075812274368
+FS,277,cosine on block-weighted,"UMAP 2D (15, 0.3)",0.42888086642599277
+FS,277,cosine on block-weighted,"UMAP 2D (10, 0.1)",0.4761732851985559
+FS,277,cosine on block-weighted,"UMAP 3D (15, 0.3)",0.5223826714801444
+FS,277,cosine on block-weighted,PaCMAP 2D (15),0.3689530685920578
+SI,1235,block-weighted (default),Movement (ride x HB),0.08526315789473685
+SI,1235,block-weighted (default),PCA 2,0.1268016194331984
+SI,1235,block-weighted (default),t-SNE 2D,0.4238056680161943
+SI,1235,block-weighted (default),"UMAP 2D (15, 0.3)",0.26914979757085017
+SI,1235,block-weighted (default),"UMAP 2D (10, 0.1)",0.3817004048582996
+SI,1235,block-weighted (default),"UMAP 3D (15, 0.3)",0.39238866396761135
+SI,1235,block-weighted (default),PaCMAP 2D (15),0.23497975708502022
+SI,1235,"old atlas space (27: + location, scatter, duplicates)",Movement (ride x HB),0.0674493927125506
+SI,1235,"old atlas space (27: + location, scatter, duplicates)",PCA 2,0.07020242914979756
+SI,1235,"old atlas space (27: + location, scatter, duplicates)",t-SNE 2D,0.16502024291497977
+SI,1235,"old atlas space (27: + location, scatter, duplicates)","UMAP 2D (15, 0.3)",0.12242914979757084
+SI,1235,"old atlas space (27: + location, scatter, duplicates)","UMAP 2D (10, 0.1)",0.15506072874493926
+SI,1235,"old atlas space (27: + location, scatter, duplicates)","UMAP 3D (15, 0.3)",0.15757085020242914
+SI,1235,"old atlas space (27: + location, scatter, duplicates)",PaCMAP 2D (15),0.11376518218623481
+SI,1235,plain z-score (no block weights),Movement (ride x HB),0.09157894736842107
+SI,1235,plain z-score (no block weights),PCA 2,0.12720647773279353
+SI,1235,plain z-score (no block weights),t-SNE 2D,0.4238056680161944
+SI,1235,plain z-score (no block weights),"UMAP 2D (15, 0.3)",0.26987854251012144
+SI,1235,plain z-score (no block weights),"UMAP 2D (10, 0.1)",0.38040485829959514
+SI,1235,plain z-score (no block weights),"UMAP 3D (15, 0.3)",0.3907692307692308
+SI,1235,plain z-score (no block weights),PaCMAP 2D (15),0.23684210526315788
+SI,1235,cosine on block-weighted,Movement (ride x HB),0.0708502024291498
+SI,1235,cosine on block-weighted,PCA 2,0.09190283400809716
+SI,1235,cosine on block-weighted,t-SNE 2D,0.38834008097165995
+SI,1235,cosine on block-weighted,"UMAP 2D (15, 0.3)",0.24639676113360326
+SI,1235,cosine on block-weighted,"UMAP 2D (10, 0.1)",0.3575708502024292
+SI,1235,cosine on block-weighted,"UMAP 3D (15, 0.3)",0.36291497975708503
+SI,1235,cosine on block-weighted,PaCMAP 2D (15),0.2091497975708502
+SL,1253,block-weighted (default),Movement (ride x HB),0.0913806863527534
+SL,1253,block-weighted (default),PCA 2,0.12362330407023145
+SL,1253,block-weighted (default),t-SNE 2D,0.4412609736632084
+SL,1253,block-weighted (default),"UMAP 2D (15, 0.3)",0.3025538707102953
+SL,1253,block-weighted (default),"UMAP 2D (10, 0.1)",0.3874700718276137
+SL,1253,block-weighted (default),"UMAP 3D (15, 0.3)",0.4103750997605747
+SL,1253,block-weighted (default),PaCMAP 2D (15),0.26831604150039906
+SL,1253,"old atlas space (27: + location, scatter, duplicates)",Movement (ride x HB),0.06935355147645651
+SL,1253,"old atlas space (27: + location, scatter, duplicates)",PCA 2,0.06456504389465284
+SL,1253,"old atlas space (27: + location, scatter, duplicates)",t-SNE 2D,0.18236233040702315
+SL,1253,"old atlas space (27: + location, scatter, duplicates)","UMAP 2D (15, 0.3)",0.13942537909018354
+SL,1253,"old atlas space (27: + location, scatter, duplicates)","UMAP 2D (10, 0.1)",0.1679169992019154
+SL,1253,"old atlas space (27: + location, scatter, duplicates)","UMAP 3D (15, 0.3)",0.17581803671189147
+SL,1253,"old atlas space (27: + location, scatter, duplicates)",PaCMAP 2D (15),0.12609736632083002
+SL,1253,plain z-score (no block weights),Movement (ride x HB),0.09808459696727853
+SL,1253,plain z-score (no block weights),PCA 2,0.12162809257781325
+SL,1253,plain z-score (no block weights),t-SNE 2D,0.43711093375897847
+SL,1253,plain z-score (no block weights),"UMAP 2D (15, 0.3)",0.30039904229848363
+SL,1253,plain z-score (no block weights),"UMAP 2D (10, 0.1)",0.38260175578611333
+SL,1253,plain z-score (no block weights),"UMAP 3D (15, 0.3)",0.407901037509976
+SL,1253,plain z-score (no block weights),PaCMAP 2D (15),0.26280925778132486
+SL,1253,cosine on block-weighted,Movement (ride x HB),0.0799680766161213
+SL,1253,cosine on block-weighted,PCA 2,0.09577015163607343
+SL,1253,cosine on block-weighted,t-SNE 2D,0.4136472466081405
+SL,1253,cosine on block-weighted,"UMAP 2D (15, 0.3)",0.2826815642458101
+SL,1253,cosine on block-weighted,"UMAP 2D (10, 0.1)",0.3689545091779729
+SL,1253,cosine on block-weighted,"UMAP 3D (15, 0.3)",0.38371907422186746
+SL,1253,cosine on block-weighted,PaCMAP 2D (15),0.24708699122106945
+ST,742,block-weighted (default),Movement (ride x HB),0.12331536388140162
+ST,742,block-weighted (default),PCA 2,0.16873315363881403
+ST,742,block-weighted (default),t-SNE 2D,0.440566037735849
+ST,742,block-weighted (default),"UMAP 2D (15, 0.3)",0.35080862533692714
+ST,742,block-weighted (default),"UMAP 2D (10, 0.1)",0.43396226415094347
+ST,742,block-weighted (default),"UMAP 3D (15, 0.3)",0.44878706199460916
+ST,742,block-weighted (default),PaCMAP 2D (15),0.3067385444743936
+ST,742,"old atlas space (27: + location, scatter, duplicates)",Movement (ride x HB),0.09204851752021563
+ST,742,"old atlas space (27: + location, scatter, duplicates)",PCA 2,0.09851752021563344
+ST,742,"old atlas space (27: + location, scatter, duplicates)",t-SNE 2D,0.192722371967655
+ST,742,"old atlas space (27: + location, scatter, duplicates)","UMAP 2D (15, 0.3)",0.1646900269541779
+ST,742,"old atlas space (27: + location, scatter, duplicates)","UMAP 2D (10, 0.1)",0.19110512129380056
+ST,742,"old atlas space (27: + location, scatter, duplicates)","UMAP 3D (15, 0.3)",0.19595687331536388
+ST,742,"old atlas space (27: + location, scatter, duplicates)",PaCMAP 2D (15),0.1509433962264151
+ST,742,plain z-score (no block weights),Movement (ride x HB),0.13221024258760106
+ST,742,plain z-score (no block weights),PCA 2,0.1702156334231806
+ST,742,plain z-score (no block weights),t-SNE 2D,0.4311320754716981
+ST,742,plain z-score (no block weights),"UMAP 2D (15, 0.3)",0.35202156334231804
+ST,742,plain z-score (no block weights),"UMAP 2D (10, 0.1)",0.4289757412398921
+ST,742,plain z-score (no block weights),"UMAP 3D (15, 0.3)",0.44272237196765496
+ST,742,plain z-score (no block weights),PaCMAP 2D (15),0.30566037735849055
+ST,742,cosine on block-weighted,Movement (ride x HB),0.10579514824797843
+ST,742,cosine on block-weighted,PCA 2,0.13180592991913748
+ST,742,cosine on block-weighted,t-SNE 2D,0.4
+ST,742,cosine on block-weighted,"UMAP 2D (15, 0.3)",0.33584905660377357
+ST,742,cosine on block-weighted,"UMAP 2D (10, 0.1)",0.419811320754717
+ST,742,cosine on block-weighted,"UMAP 3D (15, 0.3)",0.4200808625336927
+ST,742,cosine on block-weighted,PaCMAP 2D (15),0.27951482479784373
