@@ -5620,7 +5620,7 @@ function buildStatic() {
     if (G3) dispose3D();
     plotReady = false; render();
   }));
-  $("#mbList").addEventListener("click", e => { const b = e.target.closest("[data-mb]"); if (b) select(+b.dataset.mb); });
+  $("#mbList").addEventListener("click", e => { const b = e.target.closest("[data-mb]"); if (b) dotClick(+b.dataset.mb); });   // like a dot: the card with its three buttons first
   $("#mbSearch").addEventListener("input", renderMatchList);
   // the rail: its tabs, its close button, and the pills that stand in for the tabs while it is closed
   $("#rail").querySelector(".railtabs").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b && !b.disabled) setRailTab(b.dataset.tab); });
