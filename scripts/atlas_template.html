@@ -612,6 +612,14 @@ button, input, select { font: inherit; color: inherit; }
 #simBox .sctab thead th:not(:first-child) { text-align: right; }
 #simBox .schead { color: var(--ink); }
 #simBox .dlt { background: var(--wash); color: var(--ink); }
+#simBox .scleg { display: flex; flex-direction: column; gap: 3px; margin: 8px 0 2px; font: 400 12px/1.35 var(--font-ui); color: var(--ink2); }
+#simBox .scleg-t { font-weight: 600; color: var(--ink2); }
+#simBox .scleg-bar { display: block; height: 10px; border-radius: 5px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1); }
+#simBox .scleg-ticks { position: relative; height: 15px; margin: 0 4px; }
+#simBox .scleg-ticks span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; font-size: 11px; color: var(--muted); }
+#simBox .scleg-ticks span:first-child { transform: none; margin-left: -4px; }
+#simBox .scleg-ticks span:last-child { transform: translateX(-100%); margin-left: 4px; }
+#simBox .scleg-n { color: var(--muted); }
 #simBox .simview { border-top-color: var(--line); }
 /* the stage: a light bar, the dark canvas, the key and note under it, all on one left edge and as wide as the canvas */
 #simBox .simfit { width: min-content; max-width: 100%; display: flex; flex-direction: column; gap: 8px; }
@@ -4271,15 +4279,35 @@ function simScoreCards(j, S) {
   const order = [...byT.keys()].sort((a, b) => (b === T.pitch_type[j]) - (a === T.pitch_type[j]));   // the pitch he was opened on first, then his usage order
   return order.map(t => { const cols = byT.get(t).slice().sort((a, b) => (b.who === j) - (a.who === j) || a.dashed - b.dashed); return { t, cols: cols.slice(0, 3), more: cols.length - 3 }; });
 }
-// Δ colour: the Savant scale, red where the second pitcher's value is higher and blue where it is lower, deeper for a
-// bigger gap measured in league spreads (SD among same-handed MLB pitchers' pitches of that type; full colour at 1.5)
+// Δ colour: the Savant scale, red where the second pitcher's value is higher and blue where it is lower. The depth is
+// how the gap ranks among the gaps between every two same-handed MLB pitchers throwing that pitch type: pale = smaller
+// than most such pairs, the light tint = a typical (median) gap, full colour = among the league's largest. Exact,
+// from all pairs (a sorted array and two pointers), so it needs no bell-curve assumption and compares across units.
 const SC_COL = { mph: "velo", ivb: "ivb", hb: "hb", relH: "rel_height", relS: "rel_side", ext: "extension", arm: "arm_angle", spin: "spin", vaa: "vaa" };
-const SC_FULL = 1.5;
-function scSD(t, hand, k) {
-  const c = SC_COL[k]; if (!c || !T[c] || !typeRows[t]) return null;
-  const rows = typeRows[t].filter(r => T.p_throws[r] === hand);
-  return leagueSD(`sc|${t}|${hand}|${k}`, rows, k === "relS" ? r => isNum(T[c][r]) ? Math.abs(T[c][r]) : null : r => T[c][r]);
+const pairCache = new Map();
+function pairVals(t, hand, k) {   // the league's values for this measure, sorted
+  const key = `${NT}|${t}|${hand}|${k}`;
+  if (!pairCache.has(key)) {
+    const c = SC_COL[k], rows = c && T[c] && typeRows[t] ? typeRows[t].filter(r => T.p_throws[r] === hand) : [];
+    const v = rows.map(r => T[c][r]).filter(isNum).map(x => k === "relS" ? Math.abs(x) : x).sort((a, b) => a - b);
+    pairCache.set(key, { v, med: null });
+  }
+  return pairCache.get(key);
 }
+function pairShare(v, d) {   // the share of all pairs whose gap is no bigger than d
+  const n = v.length; if (n < 2) return null;
+  let cnt = 0, jj = 0;
+  for (let i = 0; i < n; i++) { if (jj < i + 1) jj = i + 1; while (jj < n && v[jj] - v[i] <= d) jj++; cnt += jj - i - 1; }
+  return cnt / (n * (n - 1) / 2);
+}
+function pairMedian(P) {   // the median gap between two of them
+  if (P.med !== null) return P.med;
+  const v = P.v; if (v.length < 2) return (P.med = NaN);
+  let lo = 0, hi = v[v.length - 1] - v[0];
+  for (let it = 0; it < 40; it++) { const mid = (lo + hi) / 2; if (pairShare(v, mid) < 0.5) lo = mid; else hi = mid; }
+  return (P.med = (lo + hi) / 2);
+}
+const scGradient = () => `linear-gradient(90deg, ${SAVANT_STOPS.map(([q, c]) => `rgb(${c.join(",")}) ${q}%`).join(", ")})`;
 function simScoreHTML(j, S) {
   const cards = simScoreCards(j, S);
   if (!cards.length) return `<p class="labnote">Nothing to show: turn on a pitch above.</p>`;
@@ -4293,8 +4321,10 @@ function simScoreHTML(j, S) {
       if (two && isNum(a.v[k]) && isNum(b.v[k])) {
         if ((k === "relH" || k === "relS") && b.matched && normAxis(k)) dlt = `<span class="dlt">matched</span>`;
         else {
-          const dv = b.v[k] - a.v[k], hand = T.p_throws[j], sd = scSD(t, hand, k), z = sd ? dv / sd : 0, pp = 50 + 50 * Math.max(-1, Math.min(1, z / SC_FULL));
-          const tip = `${lastName(T.name[b.who])} ${Math.abs(dv).toFixed(d)} ${u} ${dv >= 0 ? "higher" : "lower"} than ${lastName(T.name[a.who])}: ${Math.abs(z).toFixed(1)} league SD among ${hand}HP ${PTN[t].toLowerCase()}s`;
+          const dv = b.v[k] - a.v[k], hand = T.p_throws[j], P = pairVals(t, hand, k), share = pairShare(P.v, Math.abs(dv));
+          const pp = share === null ? 50 : 50 + 50 * Math.sign(dv) * share, med = share === null ? NaN : pairMedian(P), tn = `${hand}HP ${PTN[t].toLowerCase()}s`;
+          const tip = `${lastName(T.name[b.who])} ${Math.abs(dv).toFixed(d)} ${u} ${dv >= 0 ? "higher" : "lower"} than ${lastName(T.name[a.who])}`
+            + (share === null ? "" : `: a bigger gap than ${Math.round(share * 100)}% of the gaps between any two MLB ${tn} (the typical gap is ${med.toFixed(d)} ${u})`);
           dlt = `<span class="dlt" style="background:${savantColor(pp)};color:${savantInk(pp)}" title="${esc(tip)}">${dv >= 0 ? "+" : "−"}${Math.abs(dv).toFixed(d)}</span>`;
         }
       }
@@ -4304,7 +4334,11 @@ function simScoreHTML(j, S) {
     if (more > 0) foot += `<p class="scfoot">${more} more ${PTN[t].toLowerCase()}${more > 1 ? "s" : ""} in the table below.</p>`;
     const widths = two ? [34, 24, 24, 18] : [40, ...cols.map(() => Math.floor(60 / cols.length))];   // percent: label, values, Δ
     const colg = `<colgroup>${widths.map(w => `<col style="width:${w}%">`).join("")}</colgroup>`;
-    return `<div class="simsc"><div class="schead"><i class="psw" style="background:${SAVANT_PITCH[t]}"></i><b>${PTN[t]}</b></div><table class="simtab sctab">${colg}<thead><tr><th scope="col"></th>${cols.map(head).join("")}${two ? `<th scope="col" title="The second minus the first. Red: higher; blue: lower; deeper colour: a bigger gap for this pitch type (in league spreads among same-handed pitchers)">Δ</th>` : ""}</tr></thead><tbody>${body}</tbody></table>${foot}</div>`;
+    const leg = two ? `<div class="scleg" aria-label="Colour key for Δ"><span class="scleg-t">Δ colour: this gap against the gap between any two same-handed MLB ${PTN[t].toLowerCase()}s</span>
+      <span class="scleg-bar" style="background:${scGradient()}"></span>
+      <span class="scleg-ticks"><span style="left:0">lower</span><span style="left:25%">typical</span><span style="left:50%">same</span><span style="left:75%">typical</span><span style="left:100%">higher</span></span>
+      <span class="scleg-n">Pale: smaller than most pairs. Full colour: among the league’s largest.</span></div>` : "";
+    return `<div class="simsc"><div class="schead"><i class="psw" style="background:${SAVANT_PITCH[t]}"></i><b>${PTN[t]}</b></div><table class="simtab sctab">${colg}<thead><tr><th scope="col"></th>${cols.map(head).join("")}${two ? `<th scope="col" title="The second minus the first; the colour key is under the table">Δ</th>` : ""}</tr></thead><tbody>${body}</tbody></table>${leg}${foot}</div>`;
   }).join("") + (cards.length > 3 ? `<p class="labnote">More pitch types are in the table below.</p>` : "");
 }
 function simLiveText(j, S) {   // the same comparison as one sentence, for screen readers
