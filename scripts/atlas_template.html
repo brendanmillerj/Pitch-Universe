@@ -534,6 +534,7 @@ button, input, select { font: inherit; color: inherit; }
 /* ---- the Pitch Simulation Lab in the site's own look: pale chrome with ink-outlined controls, only the canvas dark
    (like the profile card's flight panel). Scoped to #simBox so it outranks the older on-map rules above. */
 #simBox { background: var(--bg); color: var(--ink); border: 1px solid var(--rule); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35); }
+#simBox { scrollbar-gutter: stable; }   /* a scrollbar coming or going must not change the canvas's width */
 #simBox .sim-name { color: var(--ink); }
 #simBox .simsub, #simBox .simyr { color: var(--ink2); }
 #simBox .simvsword { color: var(--muted); }
@@ -3910,19 +3911,28 @@ function fitSimBox(cv, asp) {
   if (!lab || vw <= 900) { box.style.inset = ""; return; }
   const lc = lab.firstElementChild, left = (lc && lc.getBoundingClientRect && lc.getBoundingClientRect().width) || 400;
   const top = cv.getBoundingClientRect ? cv.getBoundingClientRect().top : 0, H = Math.max(300, (window.innerHeight || 800) - Math.max(top, 0) - 36);
-  const need = Math.ceil(left + 20 + H * asp + 38);   // left column + grid gap + canvas + the box's padding and border
+  const sb = Math.max(0, (box.offsetWidth || 0) - (box.clientWidth || 0));   // the box's border plus its reserved scrollbar gutter
+  const need = Math.ceil(left + 20 + H * asp + 36 + sb);   // left column + grid gap + canvas + the box's padding, border and gutter
   box.style.inset = `16px ${Math.max(16, Math.floor((vw - need) / 2))}px`;
 }
 function flightSetup() {
   const F = FLS, cv = flCv(); if (!F || !cv) return;
   const col = cv.closest ? cv.closest(".simstage") : null, asp = (F.aspects && F.aspects[F.cam]) || FL.ASPECT;
-  if (F.fit) { fitSimBox(cv, asp); fitSimBox(cv, asp); }
-  let W = Math.max((col && col.clientWidth) || cv.clientWidth || (cv.parentElement && cv.parentElement.clientWidth) || 480, 240), H = Math.round(W / asp);
-  if (F.fit) {
-    const top = cv.getBoundingClientRect ? cv.getBoundingClientRect().top : 0, avail = Math.max(300, (window.innerHeight || 800) - Math.max(top, 0) - 36);
-    if (H > avail) { H = Math.round(avail); W = Math.max(240, Math.min(W, Math.round(H * asp))); }
-    cv.style.width = W + "px";
+  // The lab measures its canvas once per window size and camera and keeps that size: Replay, Loop and a frame
+  // redraw must never resize it (re-measuring after the first layout settled made the canvas creep on each Replay).
+  const vw = window.innerWidth || 0, vh = window.innerHeight || 0, kept = F.fit ? cv._fit : null;
+  let W, H;
+  if (kept && kept.vw === vw && kept.vh === vh && kept.asp === asp) { W = kept.W; H = kept.H; }
+  else {
+    if (F.fit) { fitSimBox(cv, asp); fitSimBox(cv, asp); }
+    W = Math.max((col && col.clientWidth) || cv.clientWidth || (cv.parentElement && cv.parentElement.clientWidth) || 480, 240); H = Math.round(W / asp);
+    if (F.fit) {
+      const top = cv.getBoundingClientRect ? cv.getBoundingClientRect().top : 0, avail = Math.max(300, (window.innerHeight || 800) - Math.max(top, 0) - 36);
+      if (H > avail) { H = Math.round(avail); W = Math.max(240, Math.min(W, Math.round(H * asp))); }
+      cv._fit = { vw, vh, asp, W, H };
+    }
   }
+  if (F.fit) cv.style.width = W + "px";
   const dpr = window.devicePixelRatio || 1;
   cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.height = H + "px";
   if (!F.zoneFt) F.zoneFt = F.zone;   // the zone in feet; F.zone becomes its projection below, so a resize must not reread it
