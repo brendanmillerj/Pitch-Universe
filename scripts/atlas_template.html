@@ -379,9 +379,9 @@ button, input, select { font: inherit; color: inherit; }
 .simtype .psw.dash { border: 2px dashed; box-sizing: border-box; }
 .simtype .psw.ring { box-shadow: 0 0 0 2px #ffffff, 0 0 0 3px var(--map-panel); }
 /* pitch lab: sliders on the left, the flight on the right (stacked when narrow) */
-.lab { display: grid; grid-template-columns: minmax(280px, 380px) minmax(0, 1fr); gap: 14px 20px; align-items: start; }
+.lab { display: grid; grid-template-columns: minmax(280px, 400px) minmax(0, 1fr); gap: 14px 20px; align-items: start; }
 @media (max-width: 900px) { .lab { grid-template-columns: minmax(0, 1fr); } }
-.labsliders { display: flex; flex-direction: column; gap: 8px; }
+.labsliders { display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow-x: auto; }
 .labrow { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "l v" "s s" "r r"; gap: 2px 8px; font: 500 14px var(--font-ui); color: var(--map-ink); }
 .labl { grid-area: l; font-weight: 600; } .labv { grid-area: v; font-variant-numeric: tabular-nums; font-weight: 700; }
 .labrow input[type=range] { grid-area: s; width: 100%; accent-color: #ffffff; }
@@ -507,11 +507,13 @@ button, input, select { font: inherit; color: inherit; }
 /* the scorecard and the view settings in the left column */
 .simsc { padding-bottom: 6px; }
 .schead { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font: 600 15px var(--font-ui); color: var(--map-ink); }
-.sctab th[scope=row] { font: 500 13px var(--font-ui); color: var(--map-ink2); white-space: nowrap; padding: 5px 6px; border-bottom: 1px solid var(--map-hair); }
-.sctab thead th { white-space: nowrap; padding: 4px 6px; }
-.sctab thead th .psw { width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; }
-.sctab td { padding: 5px 6px; white-space: nowrap; }
+.sctab { table-layout: fixed; width: 100%; }   /* never wider than its column: the Δ column stays in view */
+.sctab th[scope=row] { font: 500 13px var(--font-ui); color: var(--map-ink2); white-space: normal; padding: 5px 4px; border-bottom: 1px solid var(--map-hair); }
+.sctab thead th { white-space: normal; overflow-wrap: anywhere; padding: 4px 4px; vertical-align: bottom; }
+.sctab thead th .psw { width: 12px; height: 12px; margin-right: 5px; vertical-align: -1px; }
+.sctab td { padding: 5px 4px; white-space: nowrap; overflow: hidden; }
 .sctab td:last-child, .sctab td:nth-child(2) { min-width: 0; white-space: nowrap; }
+.sctab .dlt { min-width: 0; padding: 1px 5px; }
 .scfoot { margin: 6px 0 0; font: 400 13px/1.4 var(--font-ui); color: var(--map-ink2); }
 .scfoot b { color: var(--map-ink); }
 .simview { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--map-hair); }
@@ -4183,7 +4185,9 @@ function simScoreHTML(j, S) {
     }).join("");
     let foot = "";
     if (more > 0) foot += `<p class="scfoot">${more} more ${PTN[t].toLowerCase()}${more > 1 ? "s" : ""} in the table below.</p>`;
-    return `<div class="simsc"><div class="schead"><i class="psw" style="background:${SAVANT_PITCH[t]}"></i><b>${PTN[t]}</b></div><table class="simtab sctab"><thead><tr><th scope="col"></th>${cols.map(head).join("")}${two ? `<th scope="col">Δ</th>` : ""}</tr></thead><tbody>${body}</tbody></table>${foot}</div>`;
+    const widths = two ? [34, 24, 24, 18] : [40, ...cols.map(() => Math.floor(60 / cols.length))];   // percent: label, values, Δ
+    const colg = `<colgroup>${widths.map(w => `<col style="width:${w}%">`).join("")}</colgroup>`;
+    return `<div class="simsc"><div class="schead"><i class="psw" style="background:${SAVANT_PITCH[t]}"></i><b>${PTN[t]}</b></div><table class="simtab sctab">${colg}<thead><tr><th scope="col"></th>${cols.map(head).join("")}${two ? `<th scope="col">Δ</th>` : ""}</tr></thead><tbody>${body}</tbody></table>${foot}</div>`;
   }).join("") + (cards.length > 3 ? `<p class="labnote">More pitch types are in the table below.</p>` : "");
 }
 function simLiveText(j, S) {   // the same comparison as one sentence, for screen readers
