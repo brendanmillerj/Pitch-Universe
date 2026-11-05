@@ -618,6 +618,10 @@ button, input, select { font: inherit; color: inherit; }
 #simBox .scleg-row { display: flex; align-items: center; gap: 8px; }
 #simBox .scleg-sw { display: inline-flex; flex: none; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12); border-radius: 3px; overflow: hidden; }
 #simBox .scleg-sw i { display: block; width: 14px; height: 13px; }
+#simBox .sctab .scgap { text-align: left; padding-left: 10px; white-space: nowrap; }
+#simBox .scgap-w { font: 500 12px var(--font-ui); }
+#simBox .scgap-w.g0 { color: var(--muted); } #simBox .scgap-w.g1 { color: var(--ink2); }
+#simBox .scgap-w.g2 { color: var(--ink); font-weight: 600; } #simBox .scgap-w.g3 { color: var(--ink); font-weight: 700; }
 #simBox .simview { border-top-color: var(--line); }
 /* the stage: a light bar, the dark canvas, the key and note under it, all on one left edge and as wide as the canvas */
 #simBox .simfit { width: min-content; max-width: 100%; display: flex; flex-direction: column; gap: 8px; }
@@ -4294,6 +4298,10 @@ function simScoreCards(j, S) {
 // how the gap ranks among the gaps between every two same-handed MLB pitchers throwing that pitch type: pale = smaller
 // than most such pairs, the light tint = a typical (median) gap, full colour = among the league's largest. Exact,
 // from all pairs (a sorted array and two pointers), so it needs no bell-curve assumption and compares across units.
+// the Gap column and the key: four bands of that ranking, with no holes between them
+const GAP_BANDS = [[0.25, "Small", "smaller than 3 in 4 pairs", 0.12], [0.75, "Typical", "in the middle half of pairs", 0.5],
+  [0.9, "Large", "bigger than 3 in 4 pairs", 0.82], [Infinity, "Very large", "bigger than 9 in 10 pairs", 0.95]];
+const gapBand = share => GAP_BANDS.find(([hi]) => share < hi);
 const SC_COL = { mph: "velo", ivb: "ivb", hb: "hb", relH: "rel_height", relS: "rel_side", ext: "extension", arm: "arm_angle", spin: "spin", vaa: "vaa" };
 const pairCache = new Map();
 function pairVals(t, hand, k) {   // the league's values for this measure, sorted
@@ -4328,22 +4336,25 @@ function simScoreHTML(j, S) {
   return cards.slice(0, 3).map(({ t, cols, more }) => {
     const two = cols.length === 2, a = cols[0], b = cols[1];
     const body = SC_ROWS.map(([k, l, d, u]) => {
-      let dlt = "";
+      let dlt = "", gap = "";
       if (two && isNum(a.v[k]) && isNum(b.v[k])) {
-        if ((k === "relH" || k === "relS") && b.matched && normAxis(k)) dlt = `<span class="dlt">matched</span>`;
+        if ((k === "relH" || k === "relS") && b.matched && normAxis(k)) { dlt = `<span class="dlt">matched</span>`; gap = `<span class="scgap-w g0">matched</span>`; }
         else {
           const dv = b.v[k] - a.v[k], hand = T.p_throws[j], P = pairVals(t, hand, k), share = pairShare(P.v, Math.abs(dv));
           const pp = share === null ? 50 : 50 + 50 * Math.sign(dv) * share, med = share === null ? NaN : pairMedian(P), tn = `${hand === "R" ? "right" : "left"}-handed MLB ${PTN[t].toLowerCase()}s`;
           const tip = `${lastName(T.name[b.who])} is ${Math.abs(dv).toFixed(d)} ${u} ${dv >= 0 ? "higher" : "lower"} than ${lastName(T.name[a.who])}.`
-            + (share === null ? "" : ` ${Math.round(share * 100)}% of pairs of ${tn} differ by less; the typical pair differs by ${med.toFixed(d)} ${u}.`);
+            + (share === null ? "" : ` ${share < 0.01 ? "Fewer than 1%" : `${Math.round(share * 100)}%`} of pairs of ${tn} differ by less; the typical pair differs by ${med.toFixed(d)} ${u}.`);
           dlt = `<span class="dlt" style="background:${savantColor(pp)};color:${savantInk(pp)}" title="${esc(tip)}">${dv >= 0 ? "+" : "−"}${Math.abs(dv).toFixed(d)}</span>`;
+          if (share !== null) { const bi = GAP_BANDS.indexOf(gapBand(share)), bd = GAP_BANDS[bi];
+            const pct = share < 0.01 ? "fewer than 1%" : `${Math.round(share * 100)}%`;
+            gap = `<span class="scgap-w g${bi}" title="${esc(`${bd[1]} gap: ${pct} of pairs of ${tn} differ by less`)}">${bd[1]}</span>`; }
         }
       }
-      return `<tr><th scope="row">${l} <span class="tm">${u}</span></th>${cols.map(o => `<td class="num">${num(o.v[k], d)}</td>`).join("")}${two ? `<td class="num">${dlt}</td>` : ""}</tr>`;
+      return `<tr><th scope="row">${l} <span class="tm">${u}</span></th>${cols.map(o => `<td class="num">${num(o.v[k], d)}</td>`).join("")}${two ? `<td class="num">${dlt}</td><td class="scgap">${gap || "–"}</td>` : ""}</tr>`;
     }).join("");
     let foot = "";
     if (more > 0) foot += `<p class="scfoot">${more} more ${PTN[t].toLowerCase()}${more > 1 ? "s" : ""} in the table below.</p>`;
-    const widths = two ? [34, 24, 24, 18] : [40, ...cols.map(() => Math.floor(60 / cols.length))];   // percent: label, values, Δ
+    const widths = two ? [28, 17, 17, 17, 21] : [40, ...cols.map(() => Math.floor(60 / cols.length))];   // percent: label, values, Δ, Gap
     const colg = `<colgroup>${widths.map(w => `<col style="width:${w}%">`).join("")}</colgroup>`;
     let leg = "";
     if (two) {
@@ -4352,11 +4363,9 @@ function simScoreHTML(j, S) {
       leg = `<div class="scleg" role="note" aria-label="Key for the Δ column">
         <p><b>Δ = ${bn} minus ${an}.</b> Red: ${bn} higher. Blue: ${bn} lower.</p>
         <p>Compared with every pair of ${hand}-handed MLB ${PTN[t].toLowerCase()}s:</p>
-        <p class="scleg-row">${pair(0.12)}<span><b>Small gap:</b> smaller than 3 in 4 pairs</span></p>
-        <p class="scleg-row">${pair(0.5)}<span><b>Typical gap:</b> about half of pairs differ more</span></p>
-        <p class="scleg-row">${pair(0.95)}<span><b>Large gap:</b> bigger than 9 in 10 pairs</span></p></div>`;
+        ${GAP_BANDS.map(([, w, txt, mid]) => `<p class="scleg-row">${pair(mid)}<span><b>${w}:</b> ${txt}</span></p>`).join("")}</div>`;
     }
-    return `<div class="simsc"><div class="schead"><i class="psw" style="background:${SAVANT_PITCH[t]}"></i><b>${PTN[t]}</b></div><table class="simtab sctab">${colg}<thead><tr><th scope="col"></th>${cols.map(head).join("")}${two ? `<th scope="col" title="The second pitcher minus the first; the key is under the table">Δ</th>` : ""}</tr></thead><tbody>${body}</tbody></table>${leg}${foot}</div>`;
+    return `<div class="simsc"><div class="schead"><i class="psw" style="background:${SAVANT_PITCH[t]}"></i><b>${PTN[t]}</b></div><table class="simtab sctab">${colg}<thead><tr><th scope="col"></th>${cols.map(head).join("")}${two ? `<th scope="col" title="The second pitcher minus the first; the key is under the table">Δ</th><th scope="col" class="scgap" title="How big the Δ is next to every pair of same-handed MLB ${PTN[t].toLowerCase()}s; the key is under the table">Gap</th>` : ""}</tr></thead><tbody>${body}</tbody></table>${leg}${foot}</div>`;
   }).join("") + (cards.length > 3 ? `<p class="labnote">More pitch types are in the table below.</p>` : "");
 }
 function simLiveText(j, S) {   // the same comparison as one sentence, for screen readers
