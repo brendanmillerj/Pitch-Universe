@@ -322,12 +322,13 @@ button, input, select { font: inherit; color: inherit; }
 #cbPool .poolseg { margin: 0; }
 .lk-help { margin: 0; font: 400 13px/1.4 var(--font-ui); color: var(--ink2); }
 .lk-help:empty { display: none; }
-/* under the list: what he and his lookalikes share, like a saved group's read in the Groups panel (light card colours) */
-.lk-share { border-top: 1px solid var(--line); padding-top: 8px; font: 400 13px/1.45 var(--font-ui); color: var(--ink); }
+/* above the list: what he and his lookalikes have in common, as Savant-coloured tags (numbers in the tooltips) */
+.lk-share { display: flex; flex-direction: column; gap: 5px; }
 .lk-share:empty { display: none; }
-.lk-share .sv-tr-head { margin: 0 0 4px; font: 700 14px var(--font-ui); color: var(--ink); }
-.lk-share .sv-tr li { display: block; padding: 3px 0; border-top: 1px solid var(--line); }
-.lk-share .sv-tr .tm, .lk-share .sv-tr-note { color: var(--ink2); }
+.lk-share-h { margin: 0; font: 600 13px var(--font-ui); color: var(--ink2); }
+.lk-share-none { margin: 0; font: 400 13px var(--font-ui); color: var(--ink2); }
+.lk-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.lk-tag { display: inline-flex; align-items: center; min-height: 24px; padding: 0 9px; border-radius: 999px; font: 600 12px var(--font-ui); white-space: nowrap; cursor: default; }
 .lk-list { list-style: none; margin: 0; padding: 0; }
 .lk-list li { display: flex; align-items: center; gap: 6px; border-top: 1px solid var(--line); }
 .lk-row { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 6px 4px; border: 0; background: none; color: var(--ink); text-align: left; cursor: pointer; border-radius: var(--r); }
@@ -336,7 +337,7 @@ button, input, select { font: inherit; color: inherit; }
 .lk-who { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
 .lk-name { font: 600 14px var(--font-ui); overflow-wrap: break-word; }
 .lk-yr { font-weight: 400; color: var(--ink2); }
-.lk-nums { font: 400 12px var(--font-ui); color: var(--ink2); font-variant-numeric: tabular-nums; }
+.lk-diff { font: 400 12px var(--font-ui); color: var(--ink2); }
 .lk-fit { flex: none; white-space: nowrap; font: 600 12px var(--font-ui); padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink2); }
 .lk-fit.lk-close { color: var(--ink); border-color: var(--ink); }
 .lk-acts { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1515,9 +1516,9 @@ tr.self td { font-weight: 600; background: none; }
           <div class="lk-chips" id="cbChips" role="group" aria-label="Lookalikes for which of his pitches"></div>
           <div id="cbPool" role="group" aria-label="Lookalikes among which pitchers" hidden></div>
           <div class="lk-acts"><button type="button" class="savebtn" id="cbTable" aria-pressed="false" title="A table of him and his lookalikes on every measure, in the map's place">Show table</button><button type="button" class="savebtn" id="cbSave" title="Keep him and his lookalikes as a named group">Save as group</button></div>
+          <div class="lk-share" id="cbShare" aria-label="What he and his lookalikes have in common"></div>
           <p class="lk-help" id="cbHelp"></p>
           <ol class="lk-list" id="cbList"></ol>
-          <div class="lk-share" id="cbShare" aria-label="What he and his lookalikes share"></div>
         </section>
       </div>
       </div>
@@ -5100,16 +5101,62 @@ function setLook(on) {
   state.showComps = !!on; render();
   const f = $(on ? "#cbBack" : "#ctaLook"); if (f) f.focus({ preventScroll: true });
 }
-// What he and his lookalikes share: the same read the Groups panel gives a saved group (sharedTraitsHTML), for
-// him plus the lookalikes on screen, without saving them first
+// What he and his lookalikes have in common: the traits the Groups panel finds for a saved group (sharedTraits), shown
+// as short tags in the Savant colour of the group's median percentile (red high, blue low); numbers wait in the tooltip
 const lookShareCache = new Map();
+// plain baseball words for each measure, [high, low]; null = left out (it restates another measure or has no plain
+// reading). Horizontal break is run on fastballs and changeups but sweep on breaking balls, where low means more sweep.
+const BREAKING = new Set(["SL", "ST", "CU", "FC"]);
+const TRAIT_WORDS = {
+  velo: ["Thrown hard", "Thrown soft"], ivb: ["Lots of ride", "Little ride"], hb: t => BREAKING.has(t) ? ["Less sweep", "More sweep"] : ["Lots of run", "Little run"],
+  spin: ["High spin", "Low spin"], spin_eff: ["Efficient spin", "Gyro-heavy spin"], spin_axis: null, ax: null, az: null, ssw: null,
+  ddz_az: ["More ride than his slot predicts", "Less ride than his slot predicts"], ddz_az_velo: null, ddz_ax: null,
+  vaa: ["Flat approach angle", "Steep approach angle"], haa: null, vra: null, hra: null,
+  arm_angle: ["High arm slot", "Low arm slot"], rel_height: ["High release", "Low release"], rel_side: ["Wide release", "Tight release"],
+  extension: ["Long extension", "Short extension"], scaled_ext: null,
+  loc_inside: ["Located inside", "Located away"], loc_height: ["Thrown up", "Kept down"], zone_pct: ["In the zone often", "Out of the zone often"],
+  release_sd: ["Scattered release", "Repeatable release"], movement_sd: ["Uneven movement", "Steady movement"], velo_sd: ["Velocity varies", "Steady velocity"],
+  usage: ["Thrown often", "Thrown rarely"], usage_ahead: ["Used more when ahead", "Used less when ahead"], usage_behind: ["Used more when behind", "Used less when behind"],
+  usage_vs_lhb: ["Used more vs lefties", "Used less vs lefties"], usage_vs_rhb: ["Used more vs righties", "Used less vs righties"] };
+const TAGS_MAX = 5;
+function traitWords(v, t, high) {
+  const k = baseKey(v.key); if (!(k in TRAIT_WORDS)) return `${high ? "High" : "Low"} ${mName(v)}`;   // a measure added later: its own name
+  const w = typeof TRAIT_WORDS[k] === "function" ? TRAIT_WORDS[k](t) : TRAIT_WORDS[k];
+  return w ? w[high ? 0 : 1] : null;
+}
 function lookShareHTML(r, comps) {
   const key = `${NT}|${r}|${compPoolOf(r)}|${comps.map(c => c[0]).join(",")}`;
   if (lookShareCache.has(key)) return lookShareCache.get(key);
-  const tol = compTolOf(r), t = T.pitch_type[r];
-  const e = { keys: [...new Set([r, ...comps.map(c => c[0])].map(x => T.pitcher[x] + "|" + T.season[x] + "|" + T.level[x]))], pt: t,
-    comps: { pt: t, tol: isNum(tol) && isFinite(tol) ? tol : null } };
-  const h = sharedTraitsHTML(e); lookShareCache.set(key, h); return h;
+  const t = T.pitch_type[r], tn = PTN[t].toLowerCase();
+  const e = { keys: [...new Set([r, ...comps.map(c => c[0])].map(x => T.pitcher[x] + "|" + T.season[x] + "|" + T.level[x]))], pt: t };
+  const s = sharedTraits(e);
+  let h = "";
+  if (s && s.traits && !s.traits.length) h = `<p class="lk-share-h">What they have in common</p><p class="lk-share-none">Nothing stands out beyond looking alike.</p>`;
+  else if (s && s.traits) {
+    const tags = s.traits.map(o => ({ ...o, w: traitWords(o.v, t, o.med >= 50) })).filter(o => o.w).slice(0, TAGS_MAX);
+    h = `<p class="lk-share-h">What they have in common</p>` + (tags.length ? `<div class="lk-tags">${tags.map(({ v, med, lo, hi, w }) =>
+      `<span class="lk-tag" style="background:${savantColor(med)};color:${savantInk(med)}" title="${esc(`${mName(v)}: ${ord(med)} percentile among MLB ${tn}s (they range ${fmt(lo, v.dec)} to ${fmt(hi, v.dec, v.unit)})`)}">${esc(w)}</span>`).join("")}</div>`
+      : `<p class="lk-share-none">Nothing stands out beyond looking alike.</p>`);
+  }
+  lookShareCache.set(key, h); return h;
+}
+// a lookalike's row says in words where he differs most from the selected pitcher: the biggest gap, measured in
+// league spreads (SD among same-handed MLB pitches of that type); the numbers wait in the tooltip
+const DIFF_WORDS = [["velo", "Throws harder", "Throws softer", 1, "mph"], ["ivb", "More ride", "Less ride", 1, "in"], ["hb", t => BREAKING.has(t) ? ["Less sweep", "More sweep"] : ["More run", "Less run"], null, 1, "in"],
+  ["arm_angle", "Higher arm slot", "Lower arm slot", 0, "°"], ["rel_height", "Higher release", "Lower release", 2, "ft"], ["extension", "Longer extension", "Shorter extension", 2, "ft"], ["spin", "More spin", "Less spin", 0, "rpm"]];
+function diffPhrase(r, c) {
+  const t = T.pitch_type[r], hand = T.p_throws[r], pool = (typeRows[t] || []).filter(x => T.p_throws[x] === hand);
+  let best = null;
+  for (const [col, up, down, dec, unit] of DIFF_WORDS) {
+    if (!T[col] || !isNum(T[col][r]) || !isNum(T[col][c])) continue;
+    const z = (T[col][c] - T[col][r]) / leagueSD(`df|${t}|${hand}|${col}`, pool, x => T[col][x]);
+    const ws = typeof up === "function" ? up(t) : [up, down];
+    if (!best || Math.abs(z) > Math.abs(best.z)) best = { z, w: z > 0 ? ws[0] : ws[1], col, dec, unit };
+  }
+  const him = lastName(T.name[r]);
+  if (!best || Math.abs(best.z) < 0.35) return { text: `Very close to ${him} on every measure`, tip: "No measure differs by more than a third of the league's spread" };
+  const fx = x => `${T[best.col][x].toFixed(best.dec)} ${best.unit}`;
+  return { text: `${best.w} than ${him}`, tip: `${T.name[c]} ${fx(c)} vs ${T.name[r]} ${fx(r)}` };
 }
 function renderCompBox() {
   const r = state.sel, on = compsOnMap();
@@ -5127,11 +5174,10 @@ function renderCompBox() {
   $("#cbHelp").textContent = comps.length ? "" : "No lookalikes for this pitch.";
   $("#cbShare").innerHTML = comps.length ? lookShareHTML(r, comps) : "";
   $("#cbSave").hidden = !comps.length; $("#cbTable").hidden = !comps.length; syncCompsSaveButtons();
-  const num = (v, d, u) => isNum(v) ? `${v.toFixed(d)}${u}` : "–";
-  $("#cbList").innerHTML = comps.map(([c, q], k) => { const [fc, ft] = fitOf(q);
+  $("#cbList").innerHTML = comps.map(([c, q], k) => { const [fc, ft] = fitOf(q), df = diffPhrase(r, c);
     return `<li><button type="button" class="lk-row" data-cbp="${c}"><span class="lk-n">${k + 1}</span>`
-      + `<span class="lk-who"><span class="lk-name">${esc(T.name[c])} <span class="lk-yr">’${String(T.season[c]).slice(2)}${T.level[c] === "mlb" ? "" : " AAA"}</span></span>`
-      + `<span class="lk-nums">${num(T.velo[c], 1, " mph")} · ${num(T.ivb[c], 1, "″ ride")} · ${num(T.hb[c], 1, "″ run")} · arm ${num(T.arm_angle[c], 0, "°")}</span></span>`
+      + `<span class="lk-who"><span class="lk-name">${esc(T.name[c])} <span class="lk-yr">’${String(T.season[c]).slice(2)} · ${esc(teamStr(c))}${T.level[c] === "mlb" ? "" : " · AAA"}</span></span>`
+      + `<span class="lk-diff"${df.tip ? ` title="${esc(df.tip)}"` : ""}>${esc(df.text)}</span></span>`
       + `<span class="lk-fit lk-${fc}">${ft}</span></button>`
       + (canFly ? `<button type="button" class="lk-cmp" data-cmp="${c}"${trajOf(c) ? "" : " disabled"} title="${trajOf(c) ? `Open the Pitch Simulation Lab: ${esc(lastName(T.name[r]))}’s ${PTN[t].toLowerCase()} flying beside ${esc(T.name[c])}’s` : "No tracked flight for this pitch"}"><span aria-hidden="true">▶</span> Simulate</button>` : "") + `</li>`; }).join("");
 }
