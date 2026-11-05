@@ -471,7 +471,7 @@ button, input, select { font: inherit; color: inherit; }
 .simrows { display: grid; grid-template-columns: minmax(150px, max-content) minmax(0, 1fr); column-gap: 16px; row-gap: 10px; align-items: center; }
 .srl { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; max-width: 260px; font: 500 14px var(--font-ui); color: var(--map-ink2); }
 .srl .psw { width: 12px; height: 12px; }
-.simpairs { display: grid; gap: 8px 6px; align-items: center; overflow-x: auto; padding-bottom: 2px; }
+.simpairs { display: grid; gap: 8px 6px; align-items: center; overflow-x: auto; padding-bottom: 2px; flex: none; }   /* a scroll container in a flex column would otherwise shrink to nothing */
 .simpairs .srl { margin-right: 10px; }
 .simnone { color: var(--map-muted); text-align: center; }
 .simhint { font-weight: 500; }
@@ -510,10 +510,13 @@ button, input, select { font: inherit; color: inherit; }
 .sctab th[scope=row] { font: 500 13px var(--font-ui); color: var(--map-ink2); white-space: nowrap; padding: 5px 6px; border-bottom: 1px solid var(--map-hair); }
 .sctab thead th { white-space: nowrap; padding: 4px 6px; }
 .sctab thead th .psw { width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; }
-.sctab td { padding: 5px 6px; }
+.sctab td { padding: 5px 6px; white-space: nowrap; }
+.sctab td:last-child, .sctab td:nth-child(2) { min-width: 0; white-space: nowrap; }
 .scfoot { margin: 6px 0 0; font: 400 13px/1.4 var(--font-ui); color: var(--map-ink2); }
 .scfoot b { color: var(--map-ink); }
 .simview { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--map-hair); }
+.simview .simrows { grid-template-columns: minmax(0, 1fr); row-gap: 6px; }
+.simnorm button { padding: 0 9px; font-size: 13px; white-space: nowrap; }
 .labhead { font: 500 14px var(--font-ui); color: var(--map-ink); }
 .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 900px) { .lab { display: flex; flex-direction: column; } .labstage { order: -1; } }
@@ -3926,16 +3929,13 @@ function flightDraw(frame) {
     ctx.globalAlpha = 0.28; ctx.fillStyle = p.color; ctx.fill(); ctx.globalAlpha = 1;
     ctx.strokeStyle = p.color; ctx.lineWidth = 2 * k; ctx.setLineDash([4 * k, 3 * k]); ctx.stroke(); ctx.setLineDash([]);
   }
-  // landed (the lab): mph beside each ball, and who got there first when two pitches share a type
+  // landed (the lab): the mph beside each ball
   if (F.tags && landed) {
-    const firstOf = {}, nOf = {};
-    for (const [p] of ends) if (!p.avg) { firstOf[p.type] = Math.min(firstOf[p.type] ?? Infinity, p.tEnd); nOf[p.type] = (nOf[p.type] || 0) + 1; }
     const font = `600 ${Math.round(12 * k)}px ${uiFont}`;
     for (const [p, jj] of ends) {
       if (p.avg) continue;
-      const r = ballR(p, jj), x = sx(p.s, jj), y = sy(p.s, jj), left = !!p.ghost, dt = Math.round((p.tEnd - firstOf[p.type]) * 1000);
-      const tail = nOf[p.type] > 1 ? (dt >= 1 ? ` · +${dt} ms` : " · first") : "";
-      halo(`${fmt(p.velo, 1)}${tail}`, x + (left ? -(r + 6 * k) : r + 6 * k), y, font, pal.ink, left ? "right" : "left");
+      const r = ballR(p, jj), x = sx(p.s, jj), y = sy(p.s, jj), left = !!p.ghost;
+      halo(fmt(p.velo, 1), x + (left ? -(r + 6 * k) : r + 6 * k), y, font, pal.ink, left ? "right" : "left");
     }
   }
   if (F.empty) halo("Nothing to show — turn on a pitch above", W / 2, H / 2, `500 ${Math.round(15 * k)}px ${uiFont}`, pal.ink2, "center");
@@ -4159,9 +4159,9 @@ function simCSV(j, S) {
   return [head.map(csvQ).join(","), ...lines].join("\r\n") + "\r\n";
 }
 // the scorecard beside the canvas: one small table per pitch type in the air, his pitch first, a Δ column when
-// exactly two pitches of that type fly, and who arrives first
+// exactly two pitches of that type fly
 const SC_ROWS = [["mph", "Velocity", 1, "mph"], ["ivb", "Ride", 1, "in"], ["hb", "Run", 1, "in"], ["relH", "Release height", 2, "ft"], ["relS", "Release side", 2, "ft"],
-  ["ext", "Extension", 2, "ft"], ["arm", "Arm angle", 0, "°"], ["spin", "Spin", 0, "rpm"], ["ms", "Flight time", 0, "ms"], ["vaa", "Arrival angle", 1, "°"]];
+  ["ext", "Extension", 2, "ft"], ["arm", "Arm angle", 0, "°"], ["spin", "Spin", 0, "rpm"], ["vaa", "Arrival angle", 1, "°"]];
 function simScoreCards(j, S) {
   const rows = simTableRows(j, S), byT = new Map();
   rows.forEach(o => { if (!byT.has(o.t)) byT.set(o.t, []); byT.get(o.t).push(o); });
@@ -4183,10 +4183,6 @@ function simScoreHTML(j, S) {
       return `<tr><th scope="row">${l} <span class="tm">${u}</span></th>${cols.map(o => `<td class="num">${num(o.v[k], d)}</td>`).join("")}${two ? `<td class="num">${dlt}</td>` : ""}</tr>`;
     }).join("");
     let foot = "";
-    if (two && isNum(a.v.ms) && isNum(b.v.ms)) {
-      const dt = b.v.ms - a.v.ms, first = dt < 0 ? b : a, ft = Math.abs(dt) / 1000 * (first.v.vEnd || 120);
-      foot = Math.abs(dt) < 1 ? `<p class="scfoot">Both arrive together.</p>` : `<p class="scfoot">${esc(lastName(T.name[first.who]))} arrives <b>${Math.abs(Math.round(dt))} ms</b> (${ft.toFixed(1)} ft) earlier.</p>`;
-    }
     if (more > 0) foot += `<p class="scfoot">${more} more ${PTN[t].toLowerCase()}${more > 1 ? "s" : ""} in the table below.</p>`;
     return `<div class="simsc"><div class="schead"><i class="psw" style="background:${SAVANT_PITCH[t]}"></i><b>${PTN[t]}</b></div><table class="simtab sctab"><thead><tr><th scope="col"></th>${cols.map(head).join("")}${two ? `<th scope="col">Δ</th>` : ""}</tr></thead><tbody>${body}</tbody></table>${foot}</div>`;
   }).join("") + (cards.length > 3 ? `<p class="labnote">More pitch types are in the table below.</p>` : "");
@@ -4194,9 +4190,7 @@ function simScoreHTML(j, S) {
 function simLiveText(j, S) {   // the same comparison as one sentence, for screen readers
   const cards = simScoreCards(j, S); if (!cards.length) return "Nothing to show: turn on a pitch above.";
   const c = cards[0], d = o => `${whoOf(o.who)}: ${fmt(o.v.mph, 1)} mph, ${fmt(o.v.ivb, 1)} in ride, ${fmt(o.v.hb, 1)} in run, released ${fmt(o.v.relH, 2)} ft high`;
-  let s = `${PTN[c.t]}. ` + c.cols.map(d).join(". ") + ".";
-  if (c.cols.length === 2) { const dt = c.cols[1].v.ms - c.cols[0].v.ms; if (Math.abs(dt) >= 1) s += ` ${lastName(T.name[(dt < 0 ? c.cols[1] : c.cols[0]).who])} arrives ${Math.abs(Math.round(dt))} ms earlier.`; }
-  return s;
+  return `${PTN[c.t]}. ` + c.cols.map(d).join(". ") + ".";
 }
 function simKeyLines(j, S) {   // the key on the canvas: only what is in the air
   const F = labFocus(S), out = [], ink2 = css("--map-ink2") || "#9aa4b1";
