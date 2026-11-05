@@ -168,7 +168,7 @@ button, input, select { font: inherit; color: inherit; }
 .maptoast.show { opacity: 1; }
 .maptoast[hidden] { display: none; }
 /* the rail */
-.mrail { flex: none; width: var(--rw); max-width: 48%; display: flex; flex-direction: column; min-height: 0; background: var(--map-panel); color: var(--map-ink);
+.mrail { flex: none; width: var(--rw); max-width: 48%; display: flex; flex-direction: column; min-height: 0; background: var(--map-panel); color: var(--map-ink);   /* beside the plot, under the toolbar */
   border-radius: var(--r-lg); overflow: hidden; }
 .mrail[hidden] { display: none; }
 .railtabs { flex: none; display: flex; align-items: stretch; border-bottom: 1px solid var(--map-line); }
@@ -1610,40 +1610,40 @@ tr.self td { font-weight: 600; background: none; }
         </section>
       </div>
       </div>
+      <aside class="mrail" id="rail" aria-label="Pitchers and groups" hidden>
+        <div class="railtabs" role="tablist">
+          <button type="button" class="railtab" role="tab" id="tabPitchers" data-tab="pitchers" aria-selected="false" aria-controls="matchBox">Pitchers</button>
+          <button type="button" class="railtab" role="tab" id="tabGroups" data-tab="groups" aria-selected="false" aria-controls="savedBox">Groups</button>
+          <select class="railsel" id="onlySel" aria-label="Show only one group's pitchers on the map" title="Show only one group's pitchers on the map"></select>
+          <button type="button" class="railx" id="railClose" aria-label="Close the panel" title="Close">×</button>
+        </div>
+        <section class="railpane" id="matchBox" role="tabpanel" aria-label="Highlighted pitchers" hidden>
+          <div class="rp-head" id="mbTitle"></div>
+          <p class="rp-def" id="mbDef"></p>
+          <div class="rp-acts">
+            <button type="button" class="obtn" id="svBtn" hidden title="Keep these pitchers as a named group: a region on the map, circled on the pitch type it is built on, with everyone inside it listed">Save as group</button>
+            <button type="button" class="obtn" id="dlBtn" hidden>Download CSV</button>
+          </div>
+          <p class="rp-msg" id="dlMsg" role="status" aria-live="polite"></p>
+          <input id="mbSearch" type="search" placeholder="Filter names" autocomplete="off" aria-label="Filter the list by name">
+          <ol class="rp-list" id="mbList"></ol>
+        </section>
+        <section class="railpane" id="savedBox" role="tabpanel" aria-labelledby="svTitle" hidden>
+          <section class="svnew" id="svNew" aria-label="New group" hidden>
+            <div class="svnew-head"><b>New group</b> <span class="rp-n" id="svNewN"></span></div>
+            <ul class="svnew-list" id="svNewList"></ul>
+            <div class="svnew-acts"><input type="text" class="svnew-name" id="svNewName" maxlength="60" aria-label="Name for the new group" placeholder="Name it">
+              <button type="button" class="obtn" id="svNewSave">Save as group</button><button type="button" class="obtn" id="svNewClear">Clear</button></div>
+          </section>
+          <div class="rp-head"><span id="svTitle">Your groups</span> <span class="rp-n" id="svCount"></span></div>
+          <div class="rp-acts"><button type="button" class="obtn" id="svOnly" aria-pressed="false" title="Keep the pitchers in your groups in color and gray out everyone else">Highlight my groups</button></div>
+          <p class="rp-help" id="svEmpty">No groups yet. Save a pitcher’s lookalikes (Show Lookalikes on his card), or pick pitchers with Add (in the Pitchers list, on a profile or beside a lookalike) or Draw a group on the map; or save a highlighted pitcher list. A group is a region of the map: it is circled on the pitch type it was built on, and this panel lists everyone inside it, at either level.</p>
+          <ul id="svList"></ul>
+          <p class="sv-undo" id="svUndo" hidden></p>
+        </section>
+      </aside>
       </div>
     </div>
-    <aside class="mrail" id="rail" aria-label="Pitchers and groups" hidden>
-      <div class="railtabs" role="tablist">
-        <button type="button" class="railtab" role="tab" id="tabPitchers" data-tab="pitchers" aria-selected="false" aria-controls="matchBox">Pitchers</button>
-        <button type="button" class="railtab" role="tab" id="tabGroups" data-tab="groups" aria-selected="false" aria-controls="savedBox">Groups</button>
-        <select class="railsel" id="onlySel" aria-label="Show only one group's pitchers on the map" title="Show only one group's pitchers on the map"></select>
-        <button type="button" class="railx" id="railClose" aria-label="Close the panel" title="Close">×</button>
-      </div>
-      <section class="railpane" id="matchBox" role="tabpanel" aria-label="Highlighted pitchers" hidden>
-        <div class="rp-head" id="mbTitle"></div>
-        <p class="rp-def" id="mbDef"></p>
-        <div class="rp-acts">
-          <button type="button" class="obtn" id="svBtn" hidden title="Keep these pitchers as a named group: a region on the map, circled on the pitch type it is built on, with everyone inside it listed">Save as group</button>
-          <button type="button" class="obtn" id="dlBtn" hidden>Download CSV</button>
-        </div>
-        <p class="rp-msg" id="dlMsg" role="status" aria-live="polite"></p>
-        <input id="mbSearch" type="search" placeholder="Filter names" autocomplete="off" aria-label="Filter the list by name">
-        <ol class="rp-list" id="mbList"></ol>
-      </section>
-      <section class="railpane" id="savedBox" role="tabpanel" aria-labelledby="svTitle" hidden>
-        <section class="svnew" id="svNew" aria-label="New group" hidden>
-          <div class="svnew-head"><b>New group</b> <span class="rp-n" id="svNewN"></span></div>
-          <ul class="svnew-list" id="svNewList"></ul>
-          <div class="svnew-acts"><input type="text" class="svnew-name" id="svNewName" maxlength="60" aria-label="Name for the new group" placeholder="Name it">
-            <button type="button" class="obtn" id="svNewSave">Save as group</button><button type="button" class="obtn" id="svNewClear">Clear</button></div>
-        </section>
-        <div class="rp-head"><span id="svTitle">Your groups</span> <span class="rp-n" id="svCount"></span></div>
-        <div class="rp-acts"><button type="button" class="obtn" id="svOnly" aria-pressed="false" title="Keep the pitchers in your groups in color and gray out everyone else">Highlight my groups</button></div>
-        <p class="rp-help" id="svEmpty">No groups yet. Save a pitcher’s lookalikes (Show Lookalikes on his card), or pick pitchers with Add (in the Pitchers list, on a profile or beside a lookalike) or Draw a group on the map; or save a highlighted pitcher list. A group is a region of the map: it is circled on the pitch type it was built on, and this panel lists everyone inside it, at either level.</p>
-        <ul id="svList"></ul>
-        <p class="sv-undo" id="svUndo" hidden></p>
-      </section>
-    </aside>
   </main>
 
   <div class="caption">
