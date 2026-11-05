@@ -671,6 +671,53 @@ def build_type_space(types, prev=None):
 
 
 # -------------------------------------------------------------------- export
+LQ_K = 10   # neighbourhood size for "true neighbours kept", as in analysis/umap_benchmark.md (Table 3)
+
+
+def layout_quality(types, space):
+    """True neighbours kept (the benchmark's self-free recall@10), for the page's "Information projected" line: of each
+    pitch's ten nearest pitches in the space a map is built from (global_space for all pitches, type_input per type),
+    leaving out the same pitcher's other seasons, the share that are also among its ten nearest dots on the map. Scored
+    for the t-SNE layouts (2D and 3D) and for the movement chart as the page draws it (arm-side HB x IVB, inches).
+    `types` and `space` are the MLB rows, in the same order."""
+    from sklearn.neighbors import NearestNeighbors
+
+    pid = types.pitcher.to_numpy()
+
+    def near_free(X, ids, k=LQ_K):
+        kq = min(len(X) - 1, k + 12)
+        nb = NearestNeighbors(n_neighbors=kq + 1).fit(X).kneighbors(X, return_distance=False)[:, 1:]
+        out = np.full((len(X), k), -1)
+        for r in range(len(X)):
+            o = nb[r][ids[nb[r]] != ids[r]][:k]
+            out[r, :len(o)] = o
+        return out
+
+    def kept(a, b):
+        return round(float(np.mean([len(set(x[x >= 0]) & set(y[y >= 0])) / max(1, (x >= 0).sum()) for x, y in zip(a, b)])), 3)
+
+    mv = pd.DataFrame({"hb": -12 * types.pfx_x, "ivb": 12 * types.pfx_z})
+    mv = mv.fillna(mv.groupby(types.pitch_type.to_numpy()).transform("median")).to_numpy()
+
+    def score(rows, X, c2, c3):
+        ids = pid[rows]
+        truth = near_free(np.asarray(X), ids)
+        out = {"tsne": kept(truth, near_free(space.loc[rows, c2].to_numpy(), ids)), "move": kept(truth, near_free(mv[rows], ids))}
+        if set(c3) <= set(space.columns):
+            out["tsne3"] = kept(truth, near_free(space.loc[rows, c3].to_numpy(), ids))
+        return out
+
+    allrows = np.arange(len(types))
+    maps = {"all": score(allrows, global_space(types), ["gx", "gy"], ["gx3", "gy3", "gz3"])}
+    for pt, rows in types.groupby("pitch_type").indices.items():
+        if len(rows) > LQ_K + 13:
+            maps[pt] = score(rows, type_input(types, rows), ["tx", "ty"], ["tx3", "ty3", "tz3"])
+    a = maps["all"]
+    log(f"true neighbours kept (k={LQ_K}, self-free), all pitches: t-SNE 2D {a['tsne']:.0%}, 3D {a.get('tsne3', float('nan')):.0%}, "
+        f"movement chart {a['move']:.0%}")
+    return {"k": LQ_K, "maps": maps}
+
+
 def first_last(name):
     last, _, first = str(name).partition(", ")
     return f"{first} {last}".strip()
@@ -801,7 +848,7 @@ def comps_columnar(rows, pct):
             for rr, qq in zip(rows, pct)]
 
 
-def export(types, pitchers, t_space, lead, fa, spin, mv, tj, teams, levels, teams_aaa):
+def export(types, pitchers, t_space, lead, fa, spin, mv, tj, teams, levels, teams_aaa, quality=None):
     """`types`, `pitchers`, `t_space`, `mv`, `tj` and `teams` carry a `level` column; Savant outcomes and
     spin are MLB-only and join on level too, so a call-up's Triple-A row never borrows his big-league xERA."""
     key = profiles.KEYS + ["level"]
@@ -843,6 +890,7 @@ def export(types, pitchers, t_space, lead, fa, spin, mv, tj, teams, levels, team
         "movement": movement_blob(types, mv),
         "flight": trajectory_blob(types, tj),
         "archetypes": json.loads(PITCHER_TYPES.read_text()) if PITCHER_TYPES.exists() else [],
+        **({"layout_quality": quality} if quality else {}),
         "fa_season": max(SEASONS),
         "fa_asof": free_agents_asof(),
         "data_through": {l: data_through(l) for l in levels},
@@ -883,6 +931,9 @@ def main():
         for c in u3.columns:
             t_space[c] = u3[c].to_numpy()
 
+    # how much each map keeps of the true neighbourhoods (the page's "Information projected" line)
+    quality = layout_quality(types.reset_index(drop=True), t_space.reset_index(drop=True))
+
     # other levels ride on the MLB maps: placed among their nearest big-league pitches, never refitted
     levels = ["mlb"] + [l for l in LEVELS if l != "mlb" and level_seasons(l)]
     types, pitchers, t_space = [df.reset_index(drop=True).assign(level="mlb") for df in (types, pitchers, t_space)]
@@ -914,7 +965,7 @@ def main():
     if not a.html_only:
         LAYOUT_META.write_text(json.dumps(layout_signature(), indent=1))
     spin = pd.concat([active_spin(s, a.refetch_leaders) for s in SEASONS], ignore_index=True)
-    export(types, pitchers, t_space, lead, free_agents(), spin, mv, tj, teams, levels, teams_aaa)
+    export(types, pitchers, t_space, lead, free_agents(), spin, mv, tj, teams, levels, teams_aaa, quality)
 
 
 if __name__ == "__main__":
