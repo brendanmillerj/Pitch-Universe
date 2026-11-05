@@ -866,8 +866,8 @@ button, input, select { font: inherit; color: inherit; }
 .simbtn[aria-expanded="true"] { background: var(--ink); color: var(--field); }
 /* Savant-style card: profile | percentile rankings | movement profile */
 .card.sv { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px;
-  grid-template-areas: "prof move" "prof flight" "all all"; align-items: start; }
-@media (min-width: 1300px) { .card.sv { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "prof move flight" "all all all"; } }
+  grid-template-areas: "prof move" "prof flight" "prof loc" "all all"; grid-template-rows: auto auto 1fr auto; align-items: start; }
+@media (min-width: 1300px) { .card.sv { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "prof move flight" "prof move loc" "all all all"; grid-template-rows: auto 1fr auto; } }
 /* card header and Defining Traits are rows of the page grid above the card body */
 .dhead, .dtraits { display: none; }
 .app.has-sel .dhead, .app.has-sel .dtraits { display: block; min-width: 0; background: var(--panel); }
@@ -973,10 +973,16 @@ button, input, select { font: inherit; color: inherit; }
 .svm th.self, .svm td.self { background: var(--wash); font-weight: 700; }
 .svm tr.gap td, .svm tr.gap th { border-top: 1px solid var(--line); }
 .svm tr.avg td, .svm tr.avg th { color: var(--muted); font-style: italic; }
-.svm .pctv { display: inline-block; min-width: 2.4em; padding: 0 3px; border-radius: 3px; font-weight: 600; }
-.svm tr.locrow td { padding: 3px 2px; vertical-align: middle; }
-.svm svg.heatmini { display: block; width: 100%; max-width: 58px; height: auto; margin: 0 auto; border: 1px solid var(--line); border-radius: 3px; }
-@media (max-width: 1099px) { .card.sv { grid-template-columns: minmax(0, 1fr); grid-template-areas: "prof" "move" "flight" "all"; } .mcols { column-count: 1; } }
+.sv-loc { grid-area: loc; min-width: 0; }
+.svloc { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 4px; }
+.svloc thead th { font: 700 13px var(--font-ui); color: var(--ink); white-space: nowrap; padding: 2px 4px 4px; text-align: center; }
+.svloc tbody th { width: 64px; text-align: left; font: 700 13px var(--font-ui); color: var(--ink2); padding: 0 4px 0 0; }
+.svloc td { padding: 3px; text-align: center; vertical-align: middle; }
+.svloc th.self, .svloc td.self { background: var(--wash); }
+.svloc svg.heatmini { display: block; width: 100%; max-width: 124px; height: auto; margin: 0 auto; border: 1px solid var(--line); border-radius: 4px; }
+.svloc .tm { color: var(--muted); }
+.locnote { margin: 6px 0 0; font: 400 13px var(--font-ui); color: var(--ink2); line-height: 1.35; }
+@media (max-width: 1099px) { .card.sv { grid-template-columns: minmax(0, 1fr); grid-template-areas: "prof" "move" "flight" "loc" "all"; grid-template-rows: none; } .mcols { column-count: 1; } }
 /* similar pitchers inside the card column, under the four panels */
 .compsin { margin-top: 8px; padding-top: 8px; border-top: 2px solid var(--rule); scroll-margin-top: 8px; }
 .compsin .card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: start; }
@@ -3751,15 +3757,15 @@ function heatSVG(r, side) {   // side "l" (vs left-handed batters) or "r"
   return `<svg class="heatmini" viewBox="0 0 ${n} ${n}" role="img" aria-label="${esc(tip)}"><title>${esc(tip)}</title>`
     + `<defs><filter id="${id}" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="0.4"/></filter></defs>`
     + `<rect width="${n}" height="${n}" fill="#fff"/><g filter="url(#${id})">${cells}</g>`
-    + `<rect x="${x0.toFixed(2)}" y="${zt.toFixed(2)}" width="${(x1 - x0).toFixed(2)}" height="${(zb - zt).toFixed(2)}" fill="none" stroke="#1d2733" stroke-width="0.14"/>`
-    + `<text x="${side === "l" ? n - 0.5 : 0.5}" y="${n - 0.6}" text-anchor="${side === "l" ? "end" : "start"}" font-size="1.9" font-weight="700" fill="#5b6675" font-family="Arial, sans-serif">${side === "l" ? "L" : "R"}</text></svg>`;
+    + `<rect x="${x0.toFixed(2)}" y="${zt.toFixed(2)}" width="${(x1 - x0).toFixed(2)}" height="${(zb - zt).toFixed(2)}" fill="none" stroke="#1d2733" stroke-width="0.12"/>`
+    + `<path d="M${x0.toFixed(2)} 9.25H${x1.toFixed(2)}V9.5L${((x0 + x1) / 2).toFixed(2)} 9.8L${x0.toFixed(2)} 9.5Z" fill="#fff" stroke="#5b6675" stroke-width="0.08"/></svg>`;
 }
-// a value cell shaded by its percentile among MLB pitches of that row's own type (the movement-profile table mixes types)
+// a plain value whose tooltip gives its percentile among MLB pitches of that row's own type (the movement table mixes types)
 const typePctCell = (key, dec = 0) => r => {
   const v = T[key][r], pt = T.pitch_type[r], pool = typeRows[pt];
   if (!isNum(v) || !pool || !pool.length) return "—";
   const p = pctRank(poolSorted("t" + pt, pool, VMAP.t["t:" + key]), v);
-  return `<span class="pctv" style="background:${savantColor(p)};color:${savantInk(p)}" title="${esc(`${fmt(v, 1, "%")}, ${ord(p)} percentile among MLB ${PTN[pt].toLowerCase()}s` + (isNum(T.bbe[r]) ? ` (${T.bbe[r]} balls in play)` : ""))}">${fmt(v, dec, "%")}</span>`;
+  return `<span title="${esc(`${fmt(v, 1, "%")}, ${ord(p)} percentile among MLB ${PTN[pt].toLowerCase()}s` + (isNum(T.bbe[r]) ? ` (${T.bbe[r]} balls in play)` : ""))}">${fmt(v, dec, "%")}</span>`;
 };
 
 // ------------------------------------------ same pitch, different location
@@ -5256,7 +5262,6 @@ function typeCard(view, j) {
       <tr class="avg"><th title="League average velocity for ${R ? "right" : "left"}-handers within 5° of his arm angle">${R ? "RHP" : "LHP"} avg</th>${ars.map(([x]) => `<td>${fmt(peersV(x), 1)}</td>`).join("")}</tr>
       ${svmRows([["Whiff", r => fmt(T.whiff[r], 0, "%")], ["CSW", r => fmt(T.csw[r], 0, "%")]], true)}
       ${svmRows([["GB", typePctCell("gb_pct")], ["FB", typePctCell("fb_pct")]], true)}
-      ${[["l", "LHB"], ["r", "RHB"]].map(([sd, lab], k) => `<tr class="${k ? "" : "gap "}locrow"><th title="Where each pitch crosses the plate against ${sd === "l" ? "left" : "right"}-handed batters, catcher's view (the letter marks the batter's side): darker means more of his pitches there, each map scaled to its own busiest spot. Box: the average strike zone. Shown once he has thrown at least 15 against that hand.">Location<br>vs ${lab}</th>${ars.map(([, r]) => `<td${r === j ? ' class="self"' : ""}>${heatSVG(r, sd)}</td>`).join("")}</tr>`).join("")}
     </tbody></table></section>`;
 
   // ---------------- flight: his arsenal in the air vs the league's mean version of this pitch ----------------
@@ -5266,6 +5271,13 @@ function typeCard(view, j) {
     <canvas id="flightCv" role="img" aria-label="Animated flight of each of ${esc(T.name[j])}'s pitch types, released together, beside the league-average ${PTN[t].toLowerCase()}"></canvas>
     <div class="flkey"></div>
     <p class="flnote">Season-average path per pitch type, from Statcast's release and acceleration parameters, not a single thrown pitch. Every pitch leaves at the same instant, so the slower ones arrive later. Dashed: the league's ${PTN[t].toLowerCase()} from ${R ? "right" : "left"}-handers.</p></section>`;
+
+  // ---------------- location: where each pitch crosses the plate, against each batter hand ----------------
+  h += `<section class="svp sv-loc"><h3>${T.season[j]} location</h3>
+    <table class="svloc"><thead><tr><th></th>${ars.map(([x, r]) => `<th${r === j ? ' class="self"' : ""}><i class="psw" style="background:${SAVANT_PITCH[x]}"></i> ${x}</th>`).join("")}</tr></thead><tbody>
+      ${[["l", "LHB", "left"], ["r", "RHB", "right"]].map(([sd, lab, w]) => `<tr><th title="Against ${w}-handed batters, who stand on the ${w === "left" ? "right" : "left"} of these maps">vs ${lab}</th>${ars.map(([, r]) => `<td${r === j ? ' class="self"' : ""}>${heatSVG(r, sd)}</td>`).join("")}</tr>`).join("")}
+    </tbody></table>
+    <p class="locnote">Catcher's view. Darker is where more of his pitches cross the plate; each map is scaled to its own busiest spot, so it shows where, not how often. Box: the average strike zone. A map needs 15 pitches against that hand.</p></section>`;
 
   // ---------------- panel 4: every measure, by category, sorted within ----------------
   const groups = [...new Set(items.map(it => it.v.group))];
