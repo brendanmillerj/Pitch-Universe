@@ -81,8 +81,9 @@ button, input, select { font: inherit; color: inherit; }
 .cardx:hover { background: var(--wash); }
 .app:not(.has-sel) .cardx { display: none; }
 
-/* masthead, two rows: the title, the level and the three finders; then the measure filter, the pitch-type
-   switch and the coloring. A gray band edge to edge: bleed through the page gutters, then pad back in. */
+/* masthead, one row: the title, the search, the map view (2D/3D, Movement/t-SNE, how well similar pitches stay
+   together) and the Pitch clusters switch, bottoms level with the search box. Everything else sits left of the map.
+   A gray band edge to edge: bleed through the page gutters, then pad back in. */
 .head { grid-area: head; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 10px 0 8px;
   background: var(--panel); border-bottom: 1px solid var(--line);
   margin: 0 calc(-1 * var(--gr)) 0 calc(-1 * var(--gl)); padding-left: var(--gl); padding-right: var(--gr); }
@@ -91,6 +92,10 @@ button, input, select { font: inherit; color: inherit; }
   background: var(--field); color: var(--ink); font: 600 14px var(--font-ui); cursor: pointer; white-space: nowrap; }
 .restart:hover { background: var(--wash); }
 .brand { display: flex; flex-direction: column; gap: 2px; }
+.hview { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.hview .lqual { margin-left: 4px; }
+.hcl { display: flex; flex-direction: column; gap: 4px; }
+.hcl[hidden] { display: none; }
 .head h1 { font: 600 40px/1.02 var(--font-serif); font-optical-sizing: auto; letter-spacing: -0.01em; margin: 0; color: var(--ink); white-space: nowrap; }
 .controls { grid-area: controls; min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 6px 0; }
 
@@ -109,31 +114,41 @@ button, input, select { font: inherit; color: inherit; }
 #plot > canvas:active { cursor: grabbing; }
 #plot.dot-hover > canvas { cursor: pointer; }
 .plotarea :focus-visible, .mrail :focus-visible { outline-color: var(--map-ink); }   /* the page's blue focus ring vanishes on slate */
-/* toolbar: one line on the light page above the map, in the page's own buttons (filled = chosen, outline otherwise) */
-.maptool { flex: none; position: relative; z-index: 20; display: flex; flex-direction: column; gap: 6px; padding: 0 0 8px; }
-.tline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
-.tright { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
-.tlbl, .maptool .colorlbl { font: 600 14px var(--font-ui); color: var(--ink2); white-space: nowrap; }
 .mselect { border: 1.5px solid var(--ink); border-radius: var(--r); background: var(--field); color: var(--ink); }
 .mselect:hover { background: var(--wash); }
 .mselect select { font: 600 14px var(--font-ui); color: var(--ink); background: transparent; border: 0; min-height: calc(var(--ctl) - 3px);
   padding: 0 32px 0 12px; max-width: min(28ch, 100%); }
 .mselect::after { border-color: var(--ink); }
-.maptool .facount { font: 400 13px var(--font-ui); color: var(--ink2); }
-.maptool .facount:empty { display: none; }
-/* left of the map: the pitch types, then Season and Hand */
+.typecol .facount { font: 400 13px/1.35 var(--font-ui); color: var(--ink2); }
+.typecol .facount:empty { display: none; }
+/* left of the map, on the light page in the page's own buttons (filled = chosen, outline otherwise): MLB | Triple-A,
+   the measure filter, the pitch types, Color pitchers by with Team colors, ellipses and Draw a group, then who is
+   shown (free agents, season, hand, innings). It scrolls on its own when taller than the map. */
 .mapbody { flex: 1 1 auto; min-height: 0; display: flex; gap: 10px; }
-.typecol { flex: none; width: 168px; display: flex; flex-direction: column; align-items: stretch; gap: 6px; overflow-y: auto; overscroll-behavior: contain; }
+.typecol { flex: none; width: 200px; display: flex; flex-direction: column; align-items: stretch; gap: 6px; overflow-y: auto; overscroll-behavior: contain; }
+.typecol > .lvlseg { display: flex; align-self: stretch; flex: none; }
+.typecol > .lvlseg button { flex: 1 1 0; padding: 0 6px; }
+/* the measure filter: the dark button over its Reset (side by side does not fit the column) */
+.typecol .measseg { flex-direction: column; }
+.typecol .measbtn { white-space: normal; text-align: left; line-height: 1.25; padding: 8px 10px; min-height: var(--ctl); }
+.typecol .resetbtn { border-left: 0; border-top: 1.5px solid var(--ink); min-height: 30px; }
+.typecol .grp { display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 6px; }
+.typecol .tchead { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; margin-top: 8px; }
+.typecol .tchead .tcsub { margin-top: 0; }
+.typecol #colorAWrap { max-width: none; }
+.typecol .combo { flex-direction: column; align-items: stretch; }
+.typecol .combo select { width: 100%; }
+.typecol .explbtn, .typecol .resetcolor { white-space: normal; text-align: left; line-height: 1.25; padding: 6px 10px; }
+.typecol > .mbtn, .typecol .ellrow .mbtn { width: 100%; text-align: left; }
+.typecol .ellrow { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+.typecol .ellp { display: flex; }
+.typecol .ellp button { flex: 1 1 0; padding: 0 4px; }
 .typecol .universe { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
 .typecol .ubtn { width: 100%; justify-content: flex-start; }
 .typecol .udiv { width: 100%; height: 1px; margin: 2px 0; background: var(--line); }
 .tcsub { margin-top: 8px; font: 600 13px var(--font-ui); color: var(--ink2); }
 .typecol .mseg { display: flex; }
 .typecol .mseg button { flex: 1 1 0; padding: 0 4px; }
-/* Pitch clusters: Off / Clusters / Subclusters stacked (three side by side do not fit the column) */
-.typecol #clusterSeg { flex-direction: column; }
-.typecol #clusterSeg button { min-height: 30px; }
-.typecol #clusterSeg button + button { border-left: 0; border-top: 1.5px solid var(--ink); }
 .typecol .tcsel { display: block; }
 .typecol .tcsel select { width: 100%; max-width: none; padding: 0 28px 0 10px; }
 .typecol .tcsel select:disabled { color: var(--muted); cursor: default; }
@@ -149,18 +164,16 @@ button, input, select { font: inherit; color: inherit; }
 .lqual .lq-on { color: var(--ink); font-weight: 700; }
 .lq-bar.lq-on i { background: var(--ink); }
 .dimseg button:disabled { color: var(--muted); cursor: default; }
-/* map controls off the map: light outline buttons, the chosen one filled in ink */
-.maptool .dimseg, .maptool .ellp, .typecol .mseg { border-color: var(--ink); background: var(--field); }
-.maptool .dimseg button, .maptool .ellp button, .typecol .mseg button { color: var(--ink); }
-.maptool .dimseg button + button, .maptool .ellp button + button, .typecol .mseg button + button { border-left-color: var(--ink); }
-.maptool .dimseg button:hover:not([aria-pressed="true"]), .maptool .ellp button:hover:not([aria-pressed="true"]), .typecol .mseg button:hover:not([aria-pressed="true"]) { background: var(--wash); }
-.maptool .dimseg button[aria-pressed="true"], .maptool .ellp button[aria-pressed="true"], .typecol .mseg button[aria-pressed="true"] { background: var(--ink); color: var(--field); }
-.maptool .mbtn { border-color: var(--ink); background: var(--field); color: var(--ink); }
-.maptool .mbtn:hover { background: var(--wash); }
-.maptool .mbtn[aria-pressed="true"] { background: var(--ink); color: var(--field); border-color: var(--ink); }
+/* map controls off the map (header and left column): light outline buttons, the chosen one filled in ink */
+:is(.head, .typecol) :is(.dimseg, .ellp, .mseg) { border-color: var(--ink); background: var(--field); }
+:is(.head, .typecol) :is(.dimseg, .ellp, .mseg) button { color: var(--ink); }
+:is(.head, .typecol) :is(.dimseg, .ellp, .mseg) button + button { border-left-color: var(--ink); }
+:is(.head, .typecol) :is(.dimseg, .ellp, .mseg) button:hover:not([aria-pressed="true"]) { background: var(--wash); }
+:is(.head, .typecol) :is(.dimseg, .ellp, .mseg) button[aria-pressed="true"] { background: var(--ink); color: var(--field); }
+.typecol .mbtn { border-color: var(--ink); background: var(--field); color: var(--ink); }
+.typecol .mbtn:hover { background: var(--wash); }
+.typecol .mbtn[aria-pressed="true"] { background: var(--ink); color: var(--field); border-color: var(--ink); }
 .typecol #seasonChips button[aria-pressed="false"] { color: var(--muted); }
-.grp-fa { display: flex; align-items: center; gap: 6px 8px; }
-.tgroup { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .ellrow { display: inline-flex; align-items: center; gap: 4px; }
 /* dark buttons on the map: outline, and the chosen one filled */
 .dimseg, .mseg, .ellp, .mk-scale { display: inline-flex; border: 1.5px solid var(--map-muted); border-radius: var(--r); overflow: hidden; background: var(--map-chrome); }
@@ -757,7 +770,7 @@ button, input, select { font: inherit; color: inherit; }
 .right { grid-area: detail; overflow: visible; padding: 8px 0 32px; min-width: 0; background: var(--panel); }
 
 /* ------------------------------------------------------------------ finders */
-.finders { flex: 1 1 520px; max-width: 920px; display: grid; grid-template-columns: minmax(14rem, 1.3fr) minmax(12rem, 1fr); gap: 8px 16px; min-width: 0; }
+.finders { flex: 1 1 300px; max-width: 520px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px 16px; min-width: 0; }
 @media (max-width: 719px) { .finders { grid-template-columns: minmax(0, 1fr); } }
 .find { display: flex; flex-direction: column; gap: 4px; margin: 0; min-width: 0; }
 .find-lbl { font: 600 13px/1.2 var(--font-ui); color: var(--ink2); }
@@ -805,10 +818,6 @@ button, input, select { font: inherit; color: inherit; }
 .lvlseg button:disabled { color: var(--muted); cursor: progress; }
 .lvlseg button:focus-visible { outline: 2px solid var(--focus); outline-offset: -3px; }
 .lvlseg[hidden] { display: none; }
-.ptype-meta { margin: 0; display: flex; gap: 10px; align-items: baseline; font-size: 13px; }
-.ptype-meta:has(#ptypeCount:empty), .ptype-meta:has(#faCount:empty) { display: none; }
-.find-type #ptypeDef { margin: 0; font-size: 13px; }
-.find-type #ptypeDef:empty { display: none; }
 /* second row: Filter by measures (a split button: the arrow points where the drawer opens; Reset stays grayed
    until something is filtered), the pitch-type switch, Color pitchers by */
 .measseg { display: inline-flex; flex: none; min-height: var(--ctl); border: 1.5px solid var(--ink); border-radius: var(--r); overflow: hidden; background: var(--field); }
@@ -889,6 +898,9 @@ button, input, select { font: inherit; color: inherit; }
 .dhead .cname { font: 600 40px/1.02 var(--font-serif); font-optical-sizing: auto; letter-spacing: -0.01em; margin: 6px 0 0; color: var(--ink); }
 .lvlbadge { display: inline-block; vertical-align: middle; margin-left: 10px; font: 600 13px/1 var(--font-ui); letter-spacing: 0.04em; text-transform: uppercase;
   color: var(--ink2); border: 1.5px solid var(--ink2); border-radius: 999px; padding: 4px 8px; }
+.cltag { display: inline-flex; align-items: center; gap: 8px; vertical-align: middle; max-width: 100%; margin-left: 12px; padding: 5px 12px 5px 8px;
+  font: 600 15px/1.25 var(--font-ui); letter-spacing: 0; color: var(--ink); background: var(--field); border: 1.5px solid var(--line); border-radius: 999px; }
+.cltag i { width: 14px; height: 14px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.25); }
 .hstats { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; width: 100%; padding-top: 10px; border-top: 1.5px solid var(--rule); }
 .hs-seasons { display: inline-flex; border: 1.5px solid var(--ink); border-radius: var(--r); overflow: hidden; }
 .hs-seasons button { font: 600 14px/1 var(--font-ui); min-height: calc(var(--ctl) - 3px); padding: 0 12px; border: 0; background: var(--field); color: var(--ink); cursor: pointer; font-variant-numeric: tabular-nums; }
@@ -1441,6 +1453,13 @@ tr.self td { font-weight: 600; background: none; }
 .mk-item { display: inline-flex; align-items: center; gap: 6px; font: 600 14px var(--font-ui); color: var(--map-ink); white-space: nowrap; }
 .mk-item i { width: 14px; height: 14px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1.5px var(--map-ring); }
 .mk-item.muted { color: var(--map-muted); }
+/* pitch clusters in the key are buttons: click one to light up only its pitches, click it again (or Show all) to undo */
+.mk-pick { border: 0; margin: 0; padding: 3px 9px 3px 6px; border-radius: 999px; background: none; cursor: pointer; text-align: left;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2); }
+.mk-pick:hover { background: var(--map-hover); }
+.mk-pick[aria-pressed="true"] { background: var(--field); color: var(--ink); box-shadow: none; }
+.mk-pick[aria-pressed="true"] .mk-n { color: var(--ink2); }
+.mk-pick:focus-visible { outline: 2px solid var(--map-ink); outline-offset: 1px; }
 .mk-n { font-weight: 400; font-size: 13px; color: var(--map-muted); font-variant-numeric: tabular-nums; }
 .combo { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .combo[hidden] { display: none; }
@@ -1452,7 +1471,6 @@ tr.self td { font-weight: 600; background: none; }
 /* ------------------------------------------------------------------- phone */
 @media (max-width: 719px) {
   .head h1 { font-size: 30px; line-height: 1.05; }
-  .maptool .grp-color, .tright { margin-left: 0; }
   #colorAWrap, #colorBtn { width: 100%; max-width: 100%; }
   .colormenu { position: fixed; top: auto; bottom: 0; left: 0; width: 100vw; max-height: 80vh; border-radius: var(--r-lg) var(--r-lg) 0 0; }
   .teamcodes { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); width: 100%; }
@@ -1476,6 +1494,9 @@ tr.self td { font-weight: 600; background: none; }
   .typecol .universe { flex-direction: row; flex-wrap: wrap; }
   .typecol .ubtn { width: auto; }
   .typecol .udiv { width: 1px; height: 24px; margin: 0; align-self: center; }
+  .typecol > .lvlseg, .typecol > .measseg, .typecol > .grp, .typecol .universe { flex: 1 1 100%; }
+  .typecol > .mbtn, .typecol .ellrow .mbtn { width: auto; }
+  .typecol .ellrow { flex-direction: row; }
   .tcsub { margin-top: 0; }
   .plotarea { min-height: 340px; }
   .mrail { width: auto; max-width: none; max-height: 44vh; }
@@ -1521,9 +1542,6 @@ tr.self td { font-weight: 600; background: none; }
   <header class="head">
     <div class="hdrow hdrow1">
       <div class="brand"><h1>Pitch Universe</h1></div>
-      <div class="lvlseg" id="lvlSeg" role="group" aria-label="Level shown" hidden>
-        <button type="button" data-v="mlb" aria-pressed="true" title="Major-league pitchers">MLB</button><button type="button" data-v="aaa" aria-pressed="false" title="Triple-A pitchers on the same maps, every number measured against big-league norms">Triple-A</button>
-      </div>
       <div class="finders">
         <form class="find" role="search" id="findForm">
           <label class="find-lbl" for="search">Search for pitcher by name</label>
@@ -1534,11 +1552,26 @@ tr.self td { font-weight: 600; background: none; }
           </div>
           <span class="help" id="searchMsg" role="status" aria-live="polite"></span>
         </form>
-        <div class="find find-type">
-          <label class="find-lbl" for="ptype">Find a type of pitch</label>
-          <div class="find-box"><select id="ptype"></select><button type="button" class="boxclear" id="ptypeClear" aria-label="Clear the type of pitch" title="Clear" hidden>×</button></div>
-          <p class="ptype-meta"><span class="count" id="ptypeCount" aria-live="polite"></span></p>
-          <p class="help" id="ptypeDef"></p>
+      </div>
+      <!-- the map's view: flat or 3D, movement chart or t-SNE, and how well each layout keeps similar pitches together -->
+      <div class="hview" role="group" aria-label="Map view">
+        <div class="dimseg" id="dimSeg" role="group" aria-label="Map view">
+          <button type="button" id="dim2" data-v="2" title="Flat map">2D</button>
+          <button type="button" id="dim3" data-v="3" title="Drag to rotate">3D</button>
+        </div>
+        <div class="dimseg layseg" id="laySeg" role="group" aria-label="Map layout">
+          <button type="button" data-lay="move" title="The plain movement chart: horizontal break across, induced vertical break up">Movement</button>
+          <button type="button" data-lay="tsne" title="The universe: pitches placed by everything that defines them (t-SNE)">t-SNE</button>
+        </div>
+        <div class="lqual" id="lqual" hidden></div>
+      </div>
+      <!-- Pitch clusters Off / Clusters / Subclusters; a cluster is picked by clicking it in the map's key -->
+      <div class="hcl" id="clWrap">
+        <span class="find-lbl" id="clLbl">Pitch clusters</span>
+        <div class="mseg" id="clusterSeg" role="group" aria-labelledby="clLbl">
+          <button type="button" data-cl="off" aria-pressed="true" title="No cluster colors: pitches colored as chosen under Color pitchers by">Off</button>
+          <button type="button" data-cl="cat:cluster" aria-pressed="false" title="Color every pitch by its cluster, found from the data within its pitch type (letters mark each cluster; faint dots sit between two). Click a cluster in the key to light up only its pitches.">Clusters</button>
+          <button type="button" data-cl="cat:subcluster" aria-pressed="false" title="Color every pitch by its subcluster, in shades of its cluster's color. Click one in the key to light up only its pitches.">Subclusters</button>
         </div>
       </div>
       <button type="button" class="restart" id="startOver" title="Back to how the page opens: All pitches, MLB, no one selected, no filters, colored by pitch type. Your saved groups stay.">↺ Start over</button>
@@ -1559,14 +1592,19 @@ tr.self td { font-weight: 600; background: none; }
 
   <main class="map" aria-label="Map">
     <div class="plotwrap" id="plotWrap">
-      <div class="maptool" id="mapTool">
-        <div class="tline">
-      <div class="measseg" role="group" aria-label="Filter by measures &amp; show tables">
-        <button type="button" class="measbtn" id="slOpen" aria-expanded="false" aria-controls="sliders"><span class="measarr" aria-hidden="true">‹</span><span id="slOpenTxt">Filter by measures &amp; show tables</span></button>
-        <button type="button" class="resetbtn" id="resetAll" disabled title="Reset filters: measures, pitcher type, free agents, the color-key range, season and hand">Reset</button>
-      </div>
-      <div class="grp grp-color">
-        <label class="colorlbl" id="colorLbl" for="colorBtn">Color pitchers by</label>
+      <div class="mapbody">
+      <!-- left of the map: level, the measure filter, the pitch types, coloring and map tools, then who is shown -->
+      <div class="typecol" id="typeCol">
+        <div class="lvlseg" id="lvlSeg" role="group" aria-label="Level shown" hidden>
+          <button type="button" data-v="mlb" aria-pressed="true" title="Major-league pitchers">MLB</button><button type="button" data-v="aaa" aria-pressed="false" title="Triple-A pitchers on the same maps, every number measured against big-league norms">Triple-A</button>
+        </div>
+        <div class="measseg" role="group" aria-label="Filter by measures &amp; show tables">
+          <button type="button" class="measbtn" id="slOpen" aria-expanded="false" aria-controls="sliders"><span class="measarr" aria-hidden="true">‹</span><span id="slOpenTxt">Filter by measures &amp; show tables</span></button>
+          <button type="button" class="resetbtn" id="resetAll" disabled title="Reset filters: measures, the pitch cluster, free agents, the color-key range, season and hand">Reset</button>
+        </div>
+        <nav class="universe" id="universe" aria-label="Choose a map: all pitches or one pitch type"></nav>
+        <div class="grp grp-color">
+          <label class="tcsub" id="colorLbl" for="colorBtn">Color pitchers by</label>
         <span class="sel" id="colorAWrap">
           <button type="button" class="colorbtn" id="colorBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="colorMenu"><span id="colorBtnTxt">Pitch type</span></button>
           <div class="colormenu" id="colorMenu" hidden>
@@ -1582,34 +1620,11 @@ tr.self td { font-weight: 600; background: none; }
           </select></span>
           <span class="sel" id="colorBWrap" hidden><select id="colorB" aria-label="Second measure"></select></span>
         </span>
-        <button type="button" class="explbtn" id="explBtn" aria-expanded="false" aria-controls="explBox" hidden>Explain the meaning of this</button>
-        <button type="button" class="resetcolor" id="colorReset" title="Color by pitch type again"><span aria-hidden="true">↺</span> Reset to pitch type</button>
-      </div>
-          <div class="grp grp-fa">
-            <label class="tlbl" for="fa">Free agents</label>
-            <span class="sel mselect" id="faWrap"><select id="fa" aria-label="Which free agents to show">
-              <option value="all">Off</option>
-              <option value="unsigned">Unsigned</option>
-              <option value="open">Unsigned MLB</option>
-              <option value="minor">Unsigned minor-league</option>
-              <option value="signed-mlb">Signed MLB</option>
-              <option value="signed-minor">Signed minor-league</option>
-              <option value="fa">All free agents</option>
-            </select></span>
-            <span class="asof" id="faAsOf"></span><span class="count facount" id="faCount" aria-live="polite"></span>
-          </div>
-          <div class="tright">
-        <div class="tgroup">
-          <div class="dimseg" id="dimSeg" role="group" aria-label="Map view">
-            <button type="button" id="dim2" data-v="2" title="Flat map">2D</button>
-            <button type="button" id="dim3" data-v="3" title="Drag to rotate">3D</button>
-          </div>
-          <div class="dimseg layseg" id="laySeg" role="group" aria-label="Map layout">
-            <button type="button" data-lay="move" title="The plain movement chart: horizontal break across, induced vertical break up">Movement</button>
-            <button type="button" data-lay="tsne" title="The universe: pitches placed by everything that defines them (t-SNE)">t-SNE</button>
-          </div>
-          <div class="lqual" id="lqual" hidden></div>
-          <div class="ellrow">
+          <button type="button" class="explbtn" id="explBtn" aria-expanded="false" aria-controls="explBox" hidden>Explain the meaning of this</button>
+          <button type="button" class="resetcolor" id="colorReset" title="Color by pitch type again"><span aria-hidden="true">↺</span> Reset to pitch type</button>
+        </div>
+        <button type="button" class="mbtn" id="teamOn" aria-pressed="false">Team colors</button>
+        <div class="ellrow">
             <button type="button" class="mbtn" id="ellOn" aria-pressed="false">Show ellipses</button>
             <div class="ellp" id="ellP" role="group" aria-label="Ellipse coverage" hidden>
               <button type="button" data-v="50" title="Covers about half of each group">50%</button>
@@ -1617,20 +1632,19 @@ tr.self td { font-weight: 600; background: none; }
               <button type="button" data-v="95" title="Covers nearly all of each group">95%</button>
             </div>
           </div>
-          <button type="button" class="mbtn" id="teamOn" aria-pressed="false">Team colors</button>
-          <button type="button" class="mbtn" id="lassoOn" aria-pressed="false" title="Drag a loop around dots on the 2D map to pick them for a new group">Draw a group</button>
-        </div>
-          </div>
-        </div>
-      </div>
-      <div class="mapbody">
-      <div class="typecol" id="typeCol">
-        <nav class="universe" id="universe" aria-label="Choose a map: all pitches or one pitch type"></nav>
-        <span class="tcsub" id="clLbl">Pitch clusters</span>
-        <div class="mseg" id="clusterSeg" role="group" aria-labelledby="clLbl">
-          <button type="button" data-cl="off" aria-pressed="true" title="No cluster colors: pitches colored as chosen under Color pitchers by">Off</button>
-          <button type="button" data-cl="cat:cluster" aria-pressed="false" title="Color every pitch by its cluster, found from the data within its pitch type (letters mark each cluster; faint dots sit between two)">Clusters</button>
-          <button type="button" data-cl="cat:subcluster" aria-pressed="false" title="Color every pitch by its subcluster, in shades of its cluster's color">Subclusters</button>
+        <button type="button" class="mbtn" id="lassoOn" aria-pressed="false" title="Drag a loop around dots on the 2D map to pick them for a new group">Draw a group</button>
+        <div class="grp grp-fa">
+          <div class="tchead"><label class="tcsub" for="fa">Free agents</label><span class="asof" id="faAsOf"></span></div>
+          <span class="sel mselect tcsel" id="faWrap"><select id="fa" aria-label="Which free agents to show">
+              <option value="all">Off</option>
+              <option value="unsigned">Unsigned</option>
+              <option value="open">Unsigned MLB</option>
+              <option value="minor">Unsigned minor-league</option>
+              <option value="signed-mlb">Signed MLB</option>
+              <option value="signed-minor">Signed minor-league</option>
+              <option value="fa">All free agents</option>
+          </select></span>
+          <span class="count facount" id="faCount" aria-live="polite"></span>
         </div>
         <span class="tcsub" id="seasonLbl">Season</span>
         <div class="mseg" id="seasonChips" role="group" aria-labelledby="seasonLbl"></div>
@@ -1773,7 +1787,7 @@ const SING = { FF: "four-seam fastball", SI: "sinker", FC: "cutter", SL: "slider
 const MIN_IP = [0, 20, 50, 100, 150];
 let tIP = [];   // innings per type row (its pitcher-season); filled by indexData
 let pOfT = new Int32Array(0);   // pitcher-season row of each type row (-1 = none); filled by indexData
-const NOT_IN_LIST = new Set(["cat:pitch_type", "cat:team", "cat:fa", "cat:cluster", "cat:subcluster"]);   // pitch type leads the list; team is the map button; clusters are the left column's switch
+const NOT_IN_LIST = new Set(["cat:pitch_type", "cat:team", "cat:fa", "cat:cluster", "cat:subcluster"]);   // pitch type leads the list; team is its own button; clusters are the header's switch
 
 // ------------------------------------------------------------------ indexes
 // Everything derived from T and P row by row is built by indexData(): at load, and again when a level that
@@ -1936,7 +1950,7 @@ function mergeLevel(part) {
   // what is already on screen and can include the new level's rows (a selected pitcher's other-seasons path,
   // counts, the groups' regions); an open card is redrawn only if its pitcher types changed, keeping its place
   if (typeof render !== "function" || !state.booted) return;
-  syncArchetype(); renderSaved();
+  renderSaved();
   if (state.slidersOpen) buildSliders();
   render();
   if (cardOpen && typesLine(state.sel) !== typesBefore) { const y = window.scrollY; renderDetail(); try { window.scrollTo(0, y); } catch (e) {} }
@@ -2040,7 +2054,7 @@ function buildTypeVars(all) {
         subs.forEach((x, q) => { c2.push(x.id); n2.push(`${PTN[pt]} ${x.id.split("-")[1]} · ${x.name}`); k2.push([i, subs.length > 1 ? q / (subs.length - 1) : 0.5]); });
       });
     });
-    v.push({ ...cat("cat:cluster", "Pitch cluster (Find a type of pitch)", c1, j => T.cl1 ? T.cl1[j] : null), names: n1, clusterLevel: 1,
+    v.push({ ...cat("cat:cluster", "Pitch cluster", c1, j => T.cl1 ? T.cl1[j] : null), names: n1, clusterLevel: 1,
       colors: pal => k1.map(i => pal.cat[i % pal.cat.length]) });
     v.push({ ...cat("cat:subcluster", "Pitch subcluster", c2, j => T.cl2 ? T.cl2[j] : null), names: n2, clusterLevel: 2,
       colors: pal => k2.map(([i, f]) => shadeHex(pal.cat[i % pal.cat.length], 0.45 - 0.9 * f)) });
@@ -2085,7 +2099,7 @@ const state = {
   scale: "pct",       // color scale for measures: within-type percentile by default
   ranges: {},          // key -> [lo, hi] in the current slider scale; one set shared by every map
   rangeMode: "pct",
-  archetype: "",      // id from D.archetypes; "" = none
+  archetype: "",      // the pitch cluster picked in the map's key ("pc:FF-A", "pc:FF-A1"); "" = none
   slidersOpen: false,
   tblQuery: "",             // name search inside the measure table
   tblGroup: null,            // measure category shown in the table (null = no table)
@@ -2288,6 +2302,82 @@ function setLayout(lay) {
   if (!plotReady || is3D() || reduced() || !plotEl.data || !plotEl.data.length) { state.zoomK = 1; render(); return; }
   morphLayout();
 }
+// Switching between All pitches and one pitch type (2D, from the pitch-type buttons) morphs the same way: that type's dots
+// glide between its island on the all-pitches map and its own map, growing or shrinking to the new dot size, the view
+// zooming along, while the other types fade out (into one type) or fade in where they sit (back to All pitches).
+// The new map is drawn first; afterPlot then rewinds it to where its dots were and plays it forward.
+const isRowTrace = t => { const cd = t.customdata; return Array.isArray(cd) && cd.length > 0 && !!t.x && t.x.length === cd.length && typeof cd[0] === "number"; };
+let afterPlot = null;   // { view, run }: once, right after the next 2D map draw for that view
+function goView(view) {
+  const prev = state.view;
+  const fl = plotEl._fullLayout;
+  const ok = prev !== view && (prev === "all" || view === "all") && plotReady && !is3D() && !reduced() && !state.morphing
+    && !state.cardOpen && plotEl.data && plotEl.data.length && fl && fl.xaxis && fl.xaxis.range && glOK();
+  if (!ok) { setView(view); return; }
+  const one = prev === "all" ? view : prev;   // the pitch type both maps show
+  const xr0 = fl.xaxis.range.slice(), yr0 = fl.yaxis.range.slice();
+  const ratio = ((prev === "all" ? 6 : 9) * (state.zoomK || 1)) / (view === "all" ? 6 : 9);
+  // going into one type: the other types' dots exactly as drawn now (colour, size), to fade out where they are
+  const ghosts = [];
+  if (prev === "all") plotEl.data.forEach(t => {
+    if (!isRowTrace(t) || t.visible === false || !t.marker) return;
+    const n = t.customdata.length, keep = [];
+    t.customdata.forEach((r, k) => { if (T.pitch_type[r] !== one) keep.push(k); });
+    if (!keep.length) return;
+    const sub = v => Array.isArray(v) && v.length === n ? keep.map(k => v[k]) : v, marker = {};
+    Object.keys(t.marker).forEach(k => { marker[k] = sub(t.marker[k]); });
+    if (t.marker.line) marker.line = { ...t.marker.line, width: sub(t.marker.line.width), color: sub(t.marker.line.color) };
+    marker.showscale = false; delete marker.colorbar;
+    ghosts.push({ type: t.type, mode: "markers", x: keep.map(k => t.x[k]), y: keep.map(k => t.y[k]), hoverinfo: "skip", showlegend: false, marker });
+  });
+  afterPlot = { view, run: () => morphView(prev, one, xr0, yr0, ratio, ghosts) };
+  setView(view);
+}
+function morphView(prev, one, xr0, yr0, ratio, ghosts) {
+  const fl = plotEl._fullLayout;
+  if (!fl || !fl.xaxis || !fl.xaxis.range || !plotEl.data) return;
+  const xr1 = fl.xaxis.range.slice(), yr1 = fl.yaxis.range.slice();
+  state.morphing = true;   // before any relayout, so the zoom handler leaves it alone
+  if (ghosts.length) Plotly.addTraces(plotEl, ghosts, ghosts.map((g, i) => i));   // under everything
+  const idx = [], X0 = [], Y0 = [], X1 = [], Y1 = [], OP = [], SZ = [], hide = [];
+  plotEl.data.forEach((t, k) => {
+    if (!isRowTrace(t) && !(k < ghosts.length)) { if (t.visible !== false) hide.push(k); return; }
+    const m = t.marker || {}, base = m.opacity ?? 1, at = i => Array.isArray(base) ? base[i] : base;
+    idx.push(k);
+    if (k < ghosts.length) {   // a ghost: stays put, fades out
+      X0.push(t.x); Y0.push(t.y); X1.push(t.x); Y1.push(t.y);
+      OP.push(s => Array.isArray(base) ? base.map(b => b * (1 - s)) : base * (1 - s)); SZ.push(null); return;
+    }
+    const x1 = Array.from(t.x), y1 = Array.from(t.y), x0 = [], y0 = [], fade = [];
+    t.customdata.forEach((r, i) => {
+      const shared = T.pitch_type[r] === one, q = shared ? xy(prev, r) : [x1[i], y1[i]];
+      x0.push(isFinite(q[0]) ? q[0] : x1[i]); y0.push(isFinite(q[1]) ? q[1] : y1[i]); fade.push(!shared);
+    });
+    X0.push(x0); Y0.push(y0); X1.push(x1); Y1.push(y1);
+    const nFade = fade.filter(Boolean).length;
+    OP.push(!nFade ? () => base
+      : nFade === fade.length && !Array.isArray(base) ? s => base * s
+      : s => fade.map((f, i) => f ? at(i) * s : at(i)));
+    SZ.push(!nFade && typeof m.size === "number" ? m.size : null);   // whole-trace size eases between the two maps' dot sizes
+  });
+  if (hide.length) Plotly.restyle(plotEl, { visible: false }, hide);
+  Plotly.relayout(plotEl, { annotations: [], shapes: [], "xaxis.visible": false, "yaxis.visible": false, "yaxis.scaleanchor": null });
+  const t0 = performance.now(), dur = 950, ease = s => s < 0.5 ? 4 * s * s * s : 1 - Math.pow(-2 * s + 2, 3) / 2;
+  const frame = s => {
+    const L = (a, b) => a + (b - a) * s, d = { x: X0.map((a, i) => a.map((v, k) => L(v, X1[i][k]))), y: Y0.map((a, i) => a.map((v, k) => L(v, Y1[i][k]))),
+      "marker.opacity": OP.map(f => f(s)) };
+    if (SZ.some(z => z !== null)) d["marker.size"] = SZ.map((z, i) => z === null ? plotEl.data[idx[i]].marker.size : L(z * ratio, z));
+    Plotly.update(plotEl, d, { "xaxis.range": [L(xr0[0], xr1[0]), L(xr0[1], xr1[1])], "yaxis.range": [L(yr0[0], yr1[0]), L(yr0[1], yr1[1])] }, idx);
+  };
+  frame(0);   // rewound before the browser paints the new map
+  const step = now => {
+    if (!state.morphing) return;
+    const s = ease(Math.min(1, (now - t0) / dur));
+    frame(s);
+    if (s < 1) requestAnimationFrame(step); else { state.morphing = false; render(); }
+  };
+  requestAnimationFrame(step);
+}
 function morphLayout() {
   const view = state.view, data = plotEl.data, idx = [], X0 = [], Y0 = [], X1 = [], Y1 = [], hide = [];
   data.forEach((t, k) => {
@@ -2380,15 +2470,22 @@ function render() {
         if (key) key.tail = { name: "Other teams", n: rest.length, color: pal.gray };
       }
     }
+    // pitch clusters: each entry in the key is a button that picks that cluster (state.archetype, as the old finder did).
+    // Once one is picked, every cluster the other filters leave stays listed (counted over those dots), so another can be
+    // picked straight away; the ones not lit are dimmed.
+    const clArch = cg.v.clusterLevel ? c => "pc:" + c : null, clPicked = !!clArch && isCluster(state.archetype), clN = new Map();
+    if (clPicked) (others ? rows.filter(others) : rows).forEach(r => { const c = cg.get(r); clN.set(c, (clN.get(c) || 0) + 1); });
     cats.forEach((c, k) => {
       if (isTeam && !state.teamPick.has(c)) return;
       const rs = on.filter(r => cg.get(r) === c);
-      if (!rs.length) return;
-      const xy2 = pt(rs);
+      if (!rs.length && !(clPicked && clN.get(c))) return;
       const nm = cg.v.names ? cg.v.names[k] : PTN[c] || (c === "R" ? "RHP" : c === "L" ? "LHP" : c);
       const muted = cg.v.muted && cg.v.muted.includes(c);
       const color = cg.v.colors ? cg.v.colors(pal)[k] : pal.cat[k % pal.cat.length];
-      if (key) key.items.push({ name: nm, n: rs.length, color, muted });
+      if (key) key.items.push(clPicked ? { name: nm, n: clN.get(c), color, muted: !rs.length, arch: clArch(c), on: state.archetype === clArch(c) }
+        : { name: nm, n: rs.length, color, muted, arch: clArch ? clArch(c) : null });
+      if (!rs.length) return;
+      const xy2 = pt(rs);
       if (cg.v.clusterLevel) {   // a cluster's edge members (between two clusters): faint, under its core
         const conf = cg.v.clusterLevel === 1 ? T.conf1 : T.conf2, isEdge = r => isNum(conf[r]) && conf[r] < PCL.core;
         const er = rs.filter(isEdge);
@@ -2407,6 +2504,10 @@ function render() {
         marker: { size: muted ? fadeSize : size + (cg.v.key === "cat:fa" ? 2 : 0), color, opacity: muted ? FADE : 0.92,
           line: { width: muted ? 0 : 0.75, color: pal.surface } } });
     });
+    if (key && clArch && isCluster(state.archetype)) {   // the picked cluster, under the key's title, with a way back
+      const a = ARCH_BY_ID[state.archetype], h = clusterHits(a.id);
+      key.pick = `${a.name}: ${h.rows.size.toLocaleString()} core pitches, ${h.edge.size.toLocaleString()} at the edge (gray)`;
+    }
   } else {
     const withV = [], noV = [], vals = [];
     on.forEach(r => { const v = cg.get(r); if (isNum(v)) { withV.push(r); vals.push(v); } else noV.push(r); });
@@ -2661,6 +2762,7 @@ function render() {
     outLayout = { ...outLayout, annotations: [...anns, ...(outLayout.annotations || [])], shapes: [...(outLayout.shapes || []), ...shapes] };
   }
   Plotly.react(plotEl, outTraces, outLayout, config).then(() => {
+    if (afterPlot) { const a = afterPlot; afterPlot = null; if (a.view === state.view && !is3D() && !state.morphing) a.run(); }
     if (!plotReady) {
       plotEl.on("plotly_click", e => { const p = e.points && e.points[0]; if (p && p.customdata !== undefined) dotClick(p.customdata); });
       // a pointing hand over anything clickable, an open hand (drag to pan) everywhere else
@@ -3186,7 +3288,7 @@ function valueHits() {
   return (VAL = { rows, keys, cut, pitchers: picked.size, eligible: best.size });
 }
 const ARCH_BY_ID = Object.fromEntries(ARCH.map(a => [a.id, a]));
-// "Find a type of pitch" (scripts/pitch_subclusters.py, replacing the hand-written types 2026-11-05): consensus clusters and
+// Pitch clusters (scripts/pitch_subclusters.py, replacing the hand-written types 2026-11-05; picked from the map's key): consensus clusters and
 // subclusters within each pitch type, on what the pitch is. Ids "pc:FF-A" (cluster), "pc:FF-A1" (subcluster). Core members
 // (confidence >= PCL.core) light up; edge members, which sit between two clusters, show in mid-gray. Triple-A pitches carry
 // the subcluster most of their MLB lookalikes are in.
@@ -3303,8 +3405,15 @@ function clusterName(j) {   // his pitch's cluster and subcluster, e.g. "Four-se
   const edge = isNum((c2 ? T.conf2 : T.conf1)[j]) && (c2 ? T.conf2 : T.conf1)[j] < PCL.core;
   return (c2 ? c2.name : c1.name) + (edge ? " (edge)" : "");
 }
-function typesLine(j) {
-  const names = [clusterName(j), ...archNames(j)].filter(Boolean);
+// the card's cluster tag, beside his name: his pitch's subcluster (or cluster), with its cluster's colour from the cluster map
+function clusterTag(j) {
+  const nm = clusterName(j); if (!nm) return "";
+  const v = VMAP.t["cat:cluster"], k = v ? v.cats.indexOf(T.cl1[j]) : -1, col = k >= 0 && v.colors ? v.colors(mapPalette())[k] : null;
+  const a = ARCH_BY_ID["pc:" + (T.cl2 && T.cl2[j] ? T.cl2[j] : T.cl1[j])];
+  return `<span class="cltag" title="${esc(a && a.def ? a.def : "")}">${col ? `<i style="background:${col}" aria-hidden="true"></i>` : ""}${esc(nm)}</span>`;
+}
+function typesLine(j) {   // pronator, supinator, unicorn, best value (the cluster is beside his name)
+  const names = archNames(j);
   return names.length ? `<p class="ctypes">${names.map(esc).join(" · ")}</p>` : "";
 }
 function archNames(j) {   // pitcher types this pitcher-season belongs to (unicorns name their pitches)
@@ -3314,23 +3423,6 @@ function archNames(j) {   // pitcher types this pitcher-season belongs to (unico
     const pts = TYPES.filter(pt => { const r = tRow(T.pitcher[j], T.season[j], pt, T.level[j]); return r !== undefined && unicornHits().rows.has(r); });
     return `Unique unicorn (${pts.map(pt => PTN[pt].toLowerCase()).join(", ")})`;
   });
-}
-function buildArchetypes() {
-  const sel = $("#ptype");
-  const groups = TYPES.map(pt => [pt, PCL_ITEMS.filter(a => a.pt === pt)]).filter(([, its]) => its.length);
-  sel.innerHTML = `<option value="">Any</option>`
-    + groups.map(([pt, its]) => `<optgroup label="${esc(PTN[pt])}">${its.map(a => `<option value="${esc(a.id)}" title="${esc(a.def)}">${a.level === 2 ? "\u00a0\u00a0\u00a0↳ " : ""}${esc(a.short)} (${a.n.toLocaleString()})</option>`).join("")}</optgroup>`).join("")
-    + (ARCH.length ? `<optgroup label="Other">${ARCH.map(a => `<option value="${esc(a.id)}" title="${esc(a.def || "")}">${esc(a.name)}</option>`).join("")}</optgroup>` : "");
-  sel.value = state.archetype;
-  syncArchetype();
-}
-function syncArchetype() {
-  const a = ARCH_BY_ID[state.archetype];
-  $("#ptypeClear").hidden = !a;
-  $("#ptypeDef").textContent = a ? a.def || "" : "";
-  const hits = a ? archetypeHits(a.id) : null;
-  $("#ptypeCount").textContent = !a ? "" : isCluster(a.id) ? `${hits.rows.size.toLocaleString()} core pitches, ${hits.edge.size.toLocaleString()} at the edge (gray)` : hits.pitchers !== undefined
-    ? `${hits.pitchers.toLocaleString()} pitchers (${hits.keys.size.toLocaleString()} seasons)` : `${hits.keys.size.toLocaleString()} pitcher-seasons`;
 }
 
 function ellipseHelp() {
@@ -3609,7 +3701,7 @@ function keyDOM() {
       <div class="mk-ticks" id="mkTicks"></div><div class="mk-range" id="mkRange"></div>
       <div class="mk-scale" role="group" aria-label="Color scale"><button type="button" data-scale="pct">Percentile</button><button type="button" data-scale="value">Raw</button></div>
       <div class="mk-note" id="mkNote"></div></div>
-    <div class="mk-items" id="mkItems"></div>`;
+    <div class="mk-range" id="mkPick" hidden></div><div class="mk-items" id="mkItems"></div>`;
   box.dataset.built = "1";
   // handles: keep at least 1% apart, redraw at most once per frame
   let queued = false;
@@ -3643,9 +3735,15 @@ function drawKey(k) {
     box.querySelectorAll("[data-scale]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.scale === state.scale)));
     $("#mkNote").textContent = k.missing ? `Open gray rings: no data (${k.missing.toLocaleString()})` : "";
     $("#mkNote").hidden = !k.missing;
+    $("#mkPick").hidden = true;
   } else {
     const items = k.items.concat(k.tail ? [k.tail] : []);
-    $("#mkItems").innerHTML = items.map(it => `<span class="mk-item${it.muted ? " muted" : ""}"><i style="background:${it.color}"></i>${esc(it.name)}<span class="mk-n">${it.n.toLocaleString()}</span></span>`).join("");
+    const inner = it => `<i style="background:${it.color}"></i>${esc(it.name)}<span class="mk-n">${it.n.toLocaleString()}</span>`;
+    $("#mkItems").innerHTML = items.map(it => it.arch
+      ? `<button type="button" class="mk-item mk-pick${it.muted ? " muted" : ""}" data-arch="${esc(it.arch)}" aria-pressed="${!!it.on}" title="${esc((ARCH_BY_ID[it.arch] || {}).def || "")}">${inner(it)}</button>`
+      : `<span class="mk-item${it.muted ? " muted" : ""}">${inner(it)}</span>`).join("");
+    $("#mkPick").hidden = !k.pick;
+    $("#mkPick").innerHTML = k.pick ? `${esc(k.pick)} <button type="button" class="link" data-archclear>Show all</button>` : "";
   }
 }
 
@@ -5334,7 +5432,7 @@ function typeCard(view, j) {
   // ---------------- header bar ----------------
   // header (moved into the page grid beside "Pitch Universe" by renderDetail): the name, then the actions
   let h = `<div class="card sv"><div class="sv-bar">
-    <h2 class="cname" tabindex="-1">${esc(T.name[j])}${T.level[j] === "aaa" ? `<span class="lvlbadge">Triple-A</span>` : ""}</h2>
+    <h2 class="cname" tabindex="-1">${esc(T.name[j])}${T.level[j] === "aaa" ? `<span class="lvlbadge">Triple-A</span>` : ""}${clusterTag(j)}</h2>
     <span class="sv-barr">
       <button type="button" class="bigbtn simbtn" id="simBtn" aria-expanded="${!!state.showComps}" aria-controls="comps">${state.showComps ? "Hide similar pitchers ↑" : "Show similar pitchers ↓"}</button>
       <button type="button" class="bigbtn pickbtn" data-pick="${j}" aria-pressed="${state.picks.has(j)}" title="Pick his ${PTN[T.pitch_type[j]].toLowerCase()} for a new group; name and save it in the Groups tab">${state.picks.has(j) ? `In new group (${state.picks.size})` : "Add to group"}</button>
@@ -5746,7 +5844,7 @@ function viewSpan(view) {
   return fullSpan[key];
 }
 function onZoom(e) {
-  if (!e) return;
+  if (!e || state.morphing) return;
   let k = state.zoomK || 1;
   if (e["xaxis.autorange"] || e.autosize) k = 1;
   else {
@@ -5832,7 +5930,7 @@ function buildUniverse() {
   const nav = $("#universe"), v = state.view;
   const btn = (key, label) => `<button type="button" class="ubtn" data-view="${key}" data-label="${esc(label)}"${key !== "all" ? ` title="${key}"` : ""} aria-pressed="${v === key}"><span class="ul">${SAVANT_PITCH[key] ? `<i class="psw" style="background:${SAVANT_PITCH[key]}"></i>` : ""}${label}</span></button>`;
   nav.innerHTML = btn("all", "All pitches") + `<span class="udiv" aria-hidden="true"></span>` + TYPES.map(t => btn(t, PTN[t])).join("");
-  nav.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => setView(b.dataset.view)));
+  nav.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => goView(b.dataset.view)));
 }
 
 // "Color pitchers by": the drawer's categories as headed sections (Groups, Shape, Dynamic Dead Zone, Angles,
@@ -5843,7 +5941,7 @@ function colorMenuHTML(pick, cur, filter) {
   const hit = v => !f.length || f.every(w => (v.label + " " + v.group).toLowerCase().includes(w));
   const head = [{ key: "cat:pitch_type", label: "Pitch type", group: "Groups" }]
     .concat(cur === "cat:team" ? [{ key: "cat:team", label: "Team (turn off on the map)", group: "Groups" }] : [])
-    .concat(cur === "cat:cluster" || cur === "cat:subcluster" ? [{ key: cur, label: `${cur === "cat:cluster" ? "Clusters" : "Subclusters"} (turn off at left)`, group: "Groups" }] : []);
+    .concat(cur === "cat:cluster" || cur === "cat:subcluster" ? [{ key: cur, label: `${cur === "cat:cluster" ? "Clusters" : "Subclusters"} (turn off at top)`, group: "Groups" }] : []);
   let html = "", g = null;
   head.concat(pick).forEach(v => {
     if (!hit(v)) return;
@@ -5930,7 +6028,7 @@ const EXPLAIN = {
   "P:ip": "Innings pitched that season.",
   "P:release_spread": "How far apart his release points are across his pitch types, in inches. Smaller means his pitches look more alike out of the hand.",
   "cat:season": "Colors each dot by season.",
-  "cat:cluster": "Colors each pitch by its cluster under “Find a type of pitch” (found from the data, within its pitch type); letters mark each cluster’s core, faint dots are edge members between two clusters.",
+  "cat:cluster": "Colors each pitch by its cluster (found from the data, within its pitch type); letters mark each cluster’s core, faint dots are edge members between two clusters.",
   "cat:subcluster": "Colors each pitch by its subcluster, in shades of its cluster’s color; letters mark each subcluster’s core, faint dots are edge members.",
   "cat:throws": "Colors each dot by throwing hand.",
 };
@@ -5958,7 +6056,7 @@ const TERMS = () => [
   ["Uniqueness", EXPLAIN.uniq_z],
   ["Comps, lookalikes, similar pitchers", "The ten other pitchers whose version of the pitch sits nearest his on what the pitch is: shape (velocity, spin, break), angles, dead-zone and seam-shifted-wake residuals, and delivery. Location, release and movement scatter, and usage are left out, so lookalikes can differ in how they use the same pitch. Same hand, arm angle within 7.5° (widened only when too few qualify), any season."],
   ["Fit (Close, Loose, Very Loose)", FIT_TIP.replace(/^Fit: /, "")],
-  ["Types of pitch", "Under “Find a type of pitch”: clusters and subclusters within each pitch type, found from the data (consensus Leiden clustering on what the pitch is), named by what sets them apart. Core members light up; edge members, between two clusters, show in gray. Also Pronator, Supinator, Unique unicorns and Best value."],
+  ["Pitch clusters", "Clusters and subclusters within each pitch type (the Pitch clusters switch at the top; click one in the key to light it up), found from the data (consensus Leiden clustering on what the pitch is), named by what sets them apart. Core members light up; edge members, between two clusters, show in gray."],
 ];
 function glossaryHTML() {
   const dl = rows => `<dl>${rows.map(([t, d]) => `<div><dt>${esc(t)}</dt><dd>${esc(d || "")}</dd></div>`).join("")}</dl>`;
@@ -5998,7 +6096,7 @@ function buildVarSelects() {
   const pick = vars.filter(v => !NOT_IN_LIST.has(v.key));
   const a = VMAP[kind][cur];
   const clOn = cur === "cat:cluster" || cur === "cat:subcluster";
-  $("#colorBtnTxt").textContent = cur === "cat:team" ? "Team (turn off on the map)" : clOn ? `${cur === "cat:cluster" ? "Clusters" : "Subclusters"} (turn off at left)` : a ? a.label : "Pitch type";
+  $("#colorBtnTxt").textContent = cur === "cat:team" ? "Team (turn off on the map)" : clOn ? `${cur === "cat:cluster" ? "Clusters" : "Subclusters"} (turn off at top)` : a ? a.label : "Pitch type";
   document.querySelectorAll("#clusterSeg [data-cl]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.cl === "off" ? !clOn : cur === b.dataset.cl)));
   if (!$("#colorMenu").hidden) $("#cmList").innerHTML = colorMenuHTML(pick, cur, $("#cmSearch").value);
   $("#colorB").innerHTML = optionsHTML(vars, state.colorB[kind], "", false);
@@ -6418,6 +6516,14 @@ function buildStatic() {
   // the scale switch lives inside the key, which is redrawn on every render
   $("#mapKey").addEventListener("click", e => {
     if (e.target.closest("[data-keyreset]")) { if (state.keyRange) { state.keyRange.lo = 0; state.keyRange.hi = 1; } render(); $("#mkLo").focus({ preventScroll: true }); return; }
+    const pk = e.target.closest("[data-arch]");
+    if (pk || e.target.closest("[data-archclear]")) {
+      const id = pk ? pk.dataset.arch : "";
+      state.archetype = id && state.archetype !== id ? id : "";
+      render(); renderDetail();
+      const nb = $("#mapKey").querySelector(id ? `[data-arch="${id}"]` : "[data-arch]"); if (nb) nb.focus({ preventScroll: true });
+      return;
+    }
     const b = e.target.closest("[data-scale]"); if (!b || b.dataset.scale === state.scale) return;
     state.scale = b.dataset.scale; render(); syncExplain();
     const nb = $("#mapKey").querySelector(`[data-scale="${state.scale}"]`); if (nb) nb.focus({ preventScroll: true });
@@ -6458,7 +6564,7 @@ function buildStatic() {
   document.addEventListener("keydown", e => { if (e.key === "Escape" && state.lasso) { e.preventDefault(); setLasso(false); } });
   // Pitch clusters Off / Clusters / Subclusters, for every map at once (so it stays on while you switch pitch type).
   // Off returns to pitch type, and only acts while clusters are on (it never undoes a measure chosen under Color by).
-  $("#clLbl").hidden = $("#clusterSeg").hidden = !D.pitch_clusters;
+  $("#clWrap").hidden = !D.pitch_clusters;
   document.querySelectorAll("#clusterSeg [data-cl]").forEach(b => b.addEventListener("click", () => {
     const cur = state.color[varKind(state.view)], on = cur === "cat:cluster" || cur === "cat:subcluster";
     if (b.dataset.cl === "off" ? !on : cur === b.dataset.cl) return;
@@ -6468,12 +6574,25 @@ function buildStatic() {
     const kind = varKind(state.view);
     state.color[kind] = state.color[kind] === "cat:team" ? "cat:pitch_type" : "cat:team"; buildVarSelects(); render();
   });
-  // the color menu: opens under its button, search on top, arrows move, Enter picks, Escape or a click outside closes
+  // the color menu: opens beside its button (over the map), search on top, arrows move, Enter picks, Escape or a click
+  // outside closes. The button sits in the left column, which scrolls and would clip a menu hung under it, so on a wide
+  // screen the menu is fixed to the window next to the button; on a phone it is the bottom sheet the CSS makes it.
   const cm = $("#colorMenu"), cmBtn = $("#colorBtn"), cmS = $("#cmSearch"), cmL = $("#cmList");
   const setColor = k => { state.color[varKind(state.view)] = k; buildVarSelects(); render(); };
+  const cmPlace = () => {
+    if (cm.hidden) return;
+    if (phone()) { cm.style.position = cm.style.left = cm.style.top = ""; return; }
+    const b = $("#colorAWrap").getBoundingClientRect(), w = Math.min(560, innerWidth * 0.92), h = Math.min(innerHeight * 0.7, 640);
+    cm.style.position = "fixed";
+    cm.style.left = Math.max(8, Math.min(b.right + 8, innerWidth - w - 8)) + "px";
+    cm.style.top = Math.max(8, Math.min(b.top, innerHeight - h - 8)) + "px";
+  };
+  $("#typeCol").addEventListener("scroll", cmPlace, { passive: true });
+  window.addEventListener("resize", cmPlace);
   const cmOpen = o => {
     cm.hidden = !o; cmBtn.setAttribute("aria-expanded", String(o));
     if (!o) return;
+    cmPlace();
     cmS.value = ""; cmL.innerHTML = colorMenuHTML(colorPick(), state.color[varKind(state.view)], "");
     cmS.focus({ preventScroll: true });
     const on = cmL.querySelector('[aria-selected="true"]'); if (on && on.scrollIntoView) on.scrollIntoView({ block: "center" });
@@ -6493,15 +6612,6 @@ function buildStatic() {
   $("#colorB").addEventListener("change", e => { state.colorB[varKind(state.view)] = e.target.value; render(); });
   $("#op").addEventListener("change", e => { state.op = e.target.value; buildVarSelects(); render(); });
 
-  // Find a type of pitcher
-  buildArchetypes();
-  $("#ptype").addEventListener("change", e => {
-    state.archetype = e.target.value;
-    const a = ARCH_BY_ID[state.archetype];
-    if (a && a.special === "cluster" && state.view !== a.pt) setView(a.pt);   // a cluster lives on its pitch type's map
-    syncArchetype(); render(); renderDetail();
-  });
-  $("#ptypeClear").addEventListener("click", () => { state.archetype = ""; $("#ptype").value = ""; syncArchetype(); render(); $("#ptype").focus({ preventScroll: true }); });
 
   // Sliders panel
   $("#slOpen").addEventListener("click", () => setSlidersOpen(!state.slidersOpen));
@@ -6512,7 +6622,7 @@ function buildStatic() {
   // "Reset filters" (header): everything that narrows the map; coloring, team colors and saved ellipses stay
   $("#resetAll").addEventListener("click", () => {
     state.ranges = {};
-    state.archetype = ""; $("#ptype").value = ""; syncArchetype();
+    state.archetype = "";
     state.fa = "all"; syncFA();
     if (state.keyRange) { state.keyRange.lo = 0; state.keyRange.hi = 1; }
     state.seasons = new Set(D.seasons); state.throws = "all"; syncSeasons(); syncThrows(); state.minIP = 0; syncIPSel();
@@ -6524,7 +6634,7 @@ function buildStatic() {
   $("#startOver").addEventListener("click", () => {
     closeSim(true);
     state.sel = null; state.preview = false; state.showComps = false; state.sim = null;
-    state.ranges = {}; state.archetype = ""; $("#ptype").value = ""; syncArchetype();
+    state.ranges = {}; state.archetype = "";
     state.fa = "all"; syncFA(); state.keyRange = null;
     state.seasons = new Set(D.seasons); state.throws = "all"; syncSeasons(); syncThrows(); state.minIP = 0; syncIPSel();
     state.groupsHi = false; syncGroupsHi(); state.onlyGroup = null; OG = null; state.lookTbl = null; syncTable(); renderSaved();
