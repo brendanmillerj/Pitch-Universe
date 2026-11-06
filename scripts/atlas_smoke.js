@@ -8,7 +8,8 @@
 // It runs the page's main inline script in a vm context with a permissive fake DOM, a recording fake Plotly and a fake
 // three.js (real vectors and buffers, no drawing), then drives it: layout, the cluster key and its subcluster tree, the
 // 2D and 3D morphs, the cluster tags on the map and player cards, the Pitch Simulation Lab's MLB average column and the
-// colour menu. CSS layout and real WebGL drawing are not checked. Exit code 0 = every check passed.
+// colour menu, the Clusters panel and Back/Forward (with a fake browser history). CSS layout and real WebGL drawing
+// are not checked. Exit code 0 = every check passed.
 const fs = require("fs"), path = require("path"), vm = require("vm");
 const ROOT = path.resolve(__dirname, ".."), BUILT = path.join(ROOT, "analysis", "pitch_atlas.html");
 function loadPage(arg) {
@@ -122,6 +123,13 @@ const THREE = {
 };
 
 let NOW = 1000; const raf = [];
+const winL = {};
+const hist = { list: [{ state: null, url: "" }], i: 0,
+  get state() { return this.list[this.i].state; },
+  pushState(st, t2, url) { this.list.length = this.i + 1; this.list.push({ state: st, url }); this.i++; },
+  replaceState(st, t2, url) { this.list[this.i] = { state: st, url }; },
+  back() { if (this.i > 0) { this.i--; popFire(); } }, forward() { if (this.i < this.list.length - 1) { this.i++; popFire(); } } };
+const popFire = () => setTimeout(() => (winL.popstate || []).forEach(f => f({ state: hist.list[hist.i].state })), 0);
 const ctx = {
   document, Plotly, THREE, console, Math, JSON, Date, Promise, Set, Map, WeakMap, Array, Object, Number, String, Boolean, RegExp, Error, TypeError,
   Int16Array, Int32Array, Uint8Array, Uint16Array, Float32Array, Float64Array, ArrayBuffer, DataView, TextDecoder, TextEncoder, URL, URLSearchParams,
@@ -135,9 +143,9 @@ const ctx = {
   MutationObserver: class { observe() {} disconnect() {} },
   fetch: () => Promise.reject(new Error("no network in the smoke test")),
   localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
-  location: { hash: "", href: "https://example/", search: "", pathname: "/" }, history: { replaceState() {}, pushState() {}, back() {} },
+  location: { hash: "", href: "https://example/", search: "", pathname: "/" }, history: hist,
   navigator: { userAgent: "node", language: "en-US", clipboard: { writeText: () => Promise.resolve() } },
-  innerWidth: 1600, innerHeight: 900, scrollY: 0, devicePixelRatio: 1, scrollTo() {}, addEventListener() {}, removeEventListener() {},
+  innerWidth: 1600, innerHeight: 900, scrollY: 0, devicePixelRatio: 1, scrollTo() {}, addEventListener: (k, f) => { (winL[k] ||= []).push(f); }, removeEventListener() {},
   CSS: { escape: s => String(s) }, Blob: class {}, Image: class {},
 };
 ctx.window = ctx; ctx.self = ctx; ctx.globalThis = ctx;
@@ -157,62 +165,77 @@ const J = JSON.stringify;
 
   // ---- layout
   const hEnd = markup.indexOf("</header>");
-  ok(markup.indexOf('id="clusterSeg"') < hEnd && markup.indexOf('id="dimSeg"') < hEnd && markup.indexOf('id="lqual"') < hEnd, "view switches, meter and cluster switch in the header");
+  ok(markup.indexOf('id="dimSeg"') < hEnd && markup.indexOf('id="lqual"') < hEnd && markup.indexOf('id="navBack"') < hEnd && markup.indexOf('id="navFwd"') < hEnd, "header: view switches, meter, ← Back, Forward →");
+  ok(markup.indexOf('id="clusterSeg"') > markup.indexOf('id="clusterBox"') && markup.indexOf('id="clusterBox"') > markup.indexOf('id="rail"'), "the cluster switch sits at the top of the Clusters panel");
+  ok(markup.indexOf('id="panelNav"') > markup.indexOf('id="lvlSeg"') && markup.indexOf('id="panelNav"') < markup.indexOf('id="universe"'), "Clusters · Pitchers · Groups rows under MLB | Triple-A");
+  ok(!markup.includes('id="railPills"') && !markup.includes('id="mkX"'), "no pills or × on the map");
   ok(markup.indexOf('class="measseg"') > markup.indexOf('id="typeCol"') && markup.indexOf('class="measseg"') < markup.indexOf('id="lvlSeg"'), "filter at the top of the left column, above MLB | Triple-A");
   ok(!markup.includes('id="mapTool"') && !markup.includes('id="ptype"') && !markup.includes("Find pitchers"), "toolbar row and finder menus removed");
   ok(/<title>ClusterPitch<\/title>/.test(html) && /<h1>ClusterPitch<\/h1>/.test(html), "named ClusterPitch");
   ok(run("!!D.pitch_clusters") === !getEl("#clWrap").hidden, "cluster switch visibility follows the data");
 
-  // ---- cluster key on one type's map
+  // ---- the Clusters panel beside the controls column: switch on top, cluster list below
   const pt = run('TYPES.includes("FF") ? "FF" : TYPES[0]'), ptn = run(`PTN[${J(pt)}]`);
-  run(`state.color.all = state.color.t = "cat:cluster"; setView(${J(pt)});`); await tick();
-  const items0 = getEl("#mkItems").innerHTML, chips0 = [...items0.matchAll(/data-arch="([^"]+)"/g)].map(m => m[1]);
+  run(`setView(${J(pt)})`); await tick();
+  ok(getEl("#rail").hidden === true, "the panel starts closed");
+  run(`openPanel("clusters")`); await tick();
+  ok(run("state.rail.open") && run("state.rail.tab") === "clusters" && run("state.color.t") === "cat:cluster", "opening Clusters turns the cluster colours on");
+  ok(getEl("#clusterBox").hidden === false && getEl("#matchBox").hidden === true && getEl("#pnClusters").getAttribute("aria-pressed") === "true", "Clusters tab shows; its row in the column is pressed");
+  ok(getEl("#mapKey").hidden === true, "the map's key carries no cluster list");
+  const items0 = getEl("#clList").innerHTML, chips0 = [...items0.matchAll(/data-arch="([^"]+)"/g)].map(m => m[1]);
   const nCl = run(`D.pitch_clusters.types[${J(pt)}].clusters.length`);
-  ok(chips0.length === nCl, `key has a button per ${pt} cluster (${chips0.length} vs ${nCl})`);
-  ok(!items0.includes(`</i>${ptn} `), `one-type key drops "${ptn}" from the names`);
-  ok(getEl("#mkPick").hidden === true && getEl("#mkX").hidden === false, "no pick line yet; × shows");
-  const keyClick = getEl("#mapKey")._h.click[0];
+  ok(chips0.length === nCl, `a button per ${pt} cluster (${chips0.length} vs ${nCl})`);
+  ok(!items0.includes(`</i>${ptn} `), `one-type list drops "${ptn}" from the names`);
+  ok(getEl("#clPick").hidden === true, "no pick line yet");
+  const clClick = getEl("#clusterBox")._h.click[0];
   const ev = (attr, val) => ({ target: { closest: s => (s === `[${attr}]` ? { dataset: { [attr.replace("data-", "")]: val } } : null) } });
   const pick = chips0[1] || chips0[0];
-  keyClick(ev("data-arch", pick)); await tick();
-  ok(run("state.archetype") === pick, "clicking a cluster in the key picks it");
-  const items1 = getEl("#mkItems").innerHTML;
+  clClick(ev("data-arch", pick)); await tick();
+  ok(run("state.archetype") === pick, "clicking a cluster picks it");
+  ok(run("state.rail.open") && run("state.rail.tab") === "clusters", "picking keeps the Clusters tab (no jump to Pitchers)");
+  const items1 = getEl("#clList").innerHTML;
   ok([...items1.matchAll(/data-arch="/g)].length === nCl && items1.includes(`data-arch="${pick}" aria-pressed="true"`), "every cluster stays listed; the picked chip is pressed");
   ok((items1.match(/mk-pick muted/g) || []).length === nCl - 1, "the other chips are dimmed");
-  ok(getEl("#mkPick").innerHTML.startsWith(pick.split("-").slice(1).join("-") + ":") && /data-archclear/.test(getEl("#mkPick").innerHTML), "pick line: short id, counts, Show all");
+  ok(getEl("#clPick").innerHTML.startsWith(pick.split("-").slice(1).join("-") + ":") && /data-archclear/.test(getEl("#clPick").innerHTML), "pick line: short id, counts, Show all");
   const lit = run(`(() => { const h = clusterHits(state.archetype); return visibleRows(state.view).filter(r => h.rows.has(r)).length; })()`);
   const react = calls.filter(c => c.f === "react").pop();
   const nmFull = run(`VMAP.t["cat:cluster"].names[VMAP.t["cat:cluster"].cats.indexOf(${J(pick.slice(3))})]`);
   const colored = react.data.filter(t => t.customdata && t.name && t.name.startsWith(nmFull)).reduce((a, t) => a + t.customdata.length, 0);
   ok(lit > 0 && colored === lit, `lit dots = the cluster's core (${colored} vs ${lit})`);
-  keyClick(ev("data-arch", chips0[0])); await tick();
+  clClick(ev("data-arch", chips0[0])); await tick();
   ok(run("state.archetype") === chips0[0], "another chip switches the pick");
-  keyClick(ev("data-arch", chips0[0])); await tick();
+  clClick(ev("data-arch", chips0[0])); await tick();
   ok(run("state.archetype") === "", "clicking the picked chip again unpicks");
-  keyClick(ev("data-arch", pick)); await tick(); keyClick(ev("data-archclear", "1")); await tick();
-  ok(run("state.archetype") === "" && getEl("#mkPick").hidden, "Show all unpicks");
-  keyClick(ev("data-arch", pick)); await tick();
-  keyClick({ target: { closest: s => (s === "#mkX" ? {} : null) } }); await tick();
-  ok(run("state.color.t") === "cat:pitch_type" && run("state.archetype") === "", "× turns clusters off and clears the pick");
-
-  // ---- subclusters: each cluster heads its subclusters
+  clClick(ev("data-arch", pick)); await tick(); clClick(ev("data-archclear", "1")); await tick();
+  ok(run("state.archetype") === "" && getEl("#clPick").hidden, "Show all unpicks");
+  // subclusters: each cluster heads its subclusters
   run(`state.color.all = state.color.t = "cat:subcluster"; render();`); await tick();
-  const tree = getEl("#mkItems"), seq = [...tree.innerHTML.matchAll(/class="mk-item mk-pick( mk-par| mk-kid)?[^"]*" data-arch="([^"]+)"/g)].map(m => ({ k: (m[1] || "").trim(), id: m[2] }));
-  ok(tree.classList.contains("tree") && seq.some(x => x.k === "mk-par") && seq.some(x => x.k === "mk-kid"), `subcluster key is a tree (${seq.filter(x => x.k === "mk-par").length} heads, ${seq.filter(x => x.k === "mk-kid").length} subclusters)`);
+  const tree = getEl("#clList"), seq = [...tree.innerHTML.matchAll(/class="mk-item mk-pick( mk-par| mk-kid)?[^"]*" data-arch="([^"]+)"/g)].map(m => ({ k: (m[1] || "").trim(), id: m[2] }));
+  ok(tree.classList.contains("tree") && seq.some(x => x.k === "mk-par") && seq.some(x => x.k === "mk-kid"), `subcluster list is a tree (${seq.filter(x => x.k === "mk-par").length} heads, ${seq.filter(x => x.k === "mk-kid").length} subclusters)`);
   let curPar = null, orderOk = true;
   seq.forEach(x => { const par = run(`(ARCH_BY_ID[${J(x.id)}] || {}).parent || null`);
     if (x.k === "mk-par") { curPar = x.id; if (run(`ARCH_BY_ID[${J(x.id)}].level`) !== 1) orderOk = false; }
     else if (x.k === "mk-kid") { if (par !== curPar) orderOk = false; }
     else { curPar = null; if (par) orderOk = false; } });
   ok(orderOk, "every subcluster sits under its own cluster; clusters without subclusters stand alone");
-  ok(!/mk-kid[^>]*>[^<]*<i[^>]*><\/i>\s*\w+-/.test(tree.innerHTML) && !tree.innerHTML.includes(`</i>${ptn} `), "subcluster names carry no type prefix");
   const head = seq.find(x => x.k === "mk-par");
-  keyClick(ev("data-arch", head.id)); await tick();
-  const t2 = getEl("#mkItems").innerHTML;
+  clClick(ev("data-arch", head.id)); await tick();
+  const t2 = getEl("#clList").innerHTML;
   ok(run("state.archetype") === head.id && t2.includes(`data-arch="${head.id}" aria-pressed="true"`), "clicking a cluster head picks the whole cluster");
   const kids = seq.filter(x => x.k === "mk-kid" && run(`ARCH_BY_ID[${J(x.id)}].parent`) === head.id).map(x => x.id);
   ok(kids.length > 0 && kids.every(id => !new RegExp(`mk-kid muted" data-arch="${id}"`).test(t2)), "its subclusters stay lit");
-  run(`state.archetype = ""; state.color.all = state.color.t = "cat:pitch_type"; render();`); await tick();
+  run("clustersOff()"); await tick();
+  ok(run("state.color.t") === "cat:pitch_type" && run("state.archetype") === "" && getEl("#clList").innerHTML === "", "Off: pitch-type colours, pick cleared, list empty");
+  // the measure keys stay on the map
+  run(`state.color.t = "t:velo"; render();`); await tick();
+  ok(getEl("#mapKey").hidden === false && !getEl("#mkItems").innerHTML.includes("data-arch"), "a measure's key stays on the map");
+  run(`state.color.t = "cat:pitch_type"; render();`); await tick();
+  // the column's rows: open a panel, and close it when it is the one open
+  const navClick = getEl("#panelNav")._h.click[0], row = v => ({ target: { closest: s => (s === "[data-panel]" ? { dataset: { panel: v } } : null) } });
+  navClick(row("pitchers")); await tick();
+  ok(run("state.rail.open") && run("state.rail.tab") === "pitchers" && getEl("#matchBox").hidden === false && getEl("#pnPitchers").getAttribute("aria-pressed") === "true", "Pitchers row opens the Pitchers tab");
+  navClick(row("pitchers")); await tick();
+  ok(!run("state.rail.open") && getEl("#rail").hidden === true, "clicking the open row closes the panel");
 
   // ---- morphs, 2D
   run(`setView("all")`); await tick(); await tick();
@@ -272,8 +295,9 @@ const J = JSON.stringify;
   const wantId = run(`"pc:" + (T.cl2 && T.cl2[${j}] && T.cl2[${j}] !== T.cl1[${j}] ? T.cl2[${j}] : T.cl1[${j}])`);
   run(`showClusterOf(${j})`); await tick();
   ok(run("state.view") === pt && run("state.sel") === j && run("state.preview") && !run("state.cardOpen"), "tag click: his type's map, him shown, card closed");
-  ok(run("state.archetype") === wantId && run("compsOnMap()") === false && getEl("#mkItems").innerHTML.includes(`data-arch="${wantId}" aria-pressed="true"`), "tag click: that cluster lit and pressed, no lookalike spokes");
-  run(`state.archetype = ""; state.color.all = state.color.t = "cat:pitch_type"; select(null)`); await tick();
+  ok(run("state.archetype") === wantId && run("compsOnMap()") === false && run("state.rail.open") && run("state.rail.tab") === "clusters"
+    && getEl("#clList").innerHTML.includes(`data-arch="${wantId}" aria-pressed="true"`), "tag click: cluster lit, pressed in the open Clusters panel, no lookalike spokes");
+  run(`clustersOff(); railClose(); select(null)`); await tick();
 
   // ---- the Pitch Simulation Lab: MLB average as a column beside his pitch
   run(`state.sim = null; state.sel = ${j};`);
@@ -296,6 +320,52 @@ const J = JSON.stringify;
     ok(cc.cols.length === 2 && !cc.cols.some(o => o.avg), "with a lookalike flying, the comparison stays him vs the lookalike");
   }
   run(`state.sim = null; select(null)`); await tick();
+
+  // ---- Back / Forward (one step per screen change; the browser's history walks the same list)
+  run(`state.sim = null; clustersOff(); railClose(); select(null); setView(${J(pt)});`); await tick();
+  const n0 = run("NAV.idx"), nm = run(`T.name[${j}]`);
+  ok(n0 > 0 && hist.state && hist.state.nav === n0, `the browser entry carries the step number (${n0})`);
+  run(`select(${j})`); await tick();
+  ok(run("NAV.idx") === n0 + 1 && run("state.cardOpen") && hist.state.nav === n0 + 1, "opening a card is one step");
+  ok(getEl("#navBack").disabled === false && /^Back to /.test(getEl("#navBack").title), "header ← Back names its destination: " + getEl("#navBack").title);
+  ok(getEl("#cardNav").innerHTML.includes('data-nav="back"'), "the card has its own ← Back");
+  run(`showClusterOf(${j})`); await tick();
+  ok(run("NAV.idx") === n0 + 2 && !run("state.cardOpen") && run("state.archetype") === wantId, "the cluster tag is one step");
+  ok(getEl("#navBack").title === `Back to ${nm}’s card`, "Back names his card: " + getEl("#navBack").title);
+  run("navBack()"); await tick(); await tick();
+  ok(run("NAV.idx") === n0 + 1 && run("state.sel") === j && run("state.cardOpen") && !run("state.preview"), "Back from the cluster view: his card again");
+  ok(run("state.archetype") === "" && run("state.color.t") === "cat:pitch_type" && !run("state.rail.open"), "…with the colours and panel as they were");
+  ok(getEl("#navFwd").disabled === false, "Forward is available");
+  run("navForward()"); await tick(); await tick();
+  ok(run("NAV.idx") === n0 + 2 && run("state.archetype") === wantId && run("state.preview") && run("state.rail.open") && run("state.rail.tab") === "clusters", "Forward: the cluster view again");
+  run("navBack()"); await tick(); await tick(); run("navBack()"); await tick(); await tick();
+  ok(run("NAV.idx") === n0 && run("state.sel") === null && run("state.view") === pt, "Back twice: the map before the card");
+  run(`goView(${J(other)})`); await tick(); await pump(1000); await tick(); await pump(1000); await tick();
+  ok(run("state.view") === other && run("NAV.idx") === n0 + 1 && run("NAV.entries.length") === n0 + 2, "type → type (two legs) is one step, and it replaced the forward steps");
+  run("navBack()"); await tick(); await tick();
+  ok(run("state.view") === pt && run("NAV.idx") === n0, "Back undoes the pitch-type switch");
+  run(`preview(${j})`); await tick(); const nL = run("NAV.idx");
+  run("openSim()"); await tick();
+  const simKey = run("state.sim && state.sim.key");
+  ok(run("state.simOpen") && run("NAV.idx") === nL + 1, "opening the lab is one step");
+  run("state.sim.showAvg = false; renderSim()"); await tick();
+  ok(run("NAV.idx") === nL + 1, "changes inside the lab are not steps");
+  run("navBack()"); await tick(); await tick();
+  ok(!run("state.simOpen") && run("state.sel") === j && run("state.preview"), "Back closes the lab");
+  run("navForward()"); await tick(); await tick();
+  ok(run("state.simOpen") && run("state.sim.key") === simKey && run("state.sim.showAvg") === false, "Forward reopens the lab as it was left");
+  run("closeSim()"); await tick(); run("select(null)"); await tick();
+  const nD = run("NAV.idx"); run("setSlidersOpen(true)"); await tick();
+  ok(run("state.slidersOpen") && run("NAV.idx") === nD + 1, "opening the measure drawer is one step");
+  run("navBack()"); await tick(); await tick();
+  ok(!run("state.slidersOpen"), "Back closes the drawer");
+  const nS = run("NAV.idx"), vS = run("state.view");
+  getEl("#startOver")._h.click[0]({}); await tick(); await tick();
+  ok(run("NAV.idx") === nS + 1 && run("state.view") === "all", "Start over is one step");
+  run("navBack()"); await tick(); await tick();
+  ok(run("state.view") === vS, "Back undoes Start over");
+  for (const f of winL.popstate || []) f({ state: { nav: 0 } }); await tick();
+  ok(run("NAV.idx") === 0 && run("state.view") === "all" && run("state.sel") === null, "a popstate for step 0 restores the opening screen");
 
   // ---- color menu: fixed beside its button on a wide screen
   getEl("#colorMenu").hidden = true;
