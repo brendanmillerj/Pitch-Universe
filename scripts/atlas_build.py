@@ -71,6 +71,12 @@ MOVEMENT = paths.META / f"movement_sample_{RANGE}.parquet"
 TEAMS_URL = "https://statsapi.mlb.com/api/v1/teams?sportId={sport}&season={season}"
 MOVE_PER_ROW = 50          # pitches sampled per pitcher x season x pitch type for the movement chart
 LOCBB = paths.META / f"location_bb_{RANGE}.parquet"
+# "Find a type of pitch": consensus clusters + subclusters within each pitch type (scripts/pitch_subclusters.py, MLB only);
+# Triple-A pitches take the subcluster most of their MLB lookalikes are in. Of the hand-written pitcher types
+# (PITCHER_TYPES) only these stay, as card tags and filters (user decision 2026-11-05).
+PCL_PARQ = paths.META / f"pitch_subclusters_{RANGE}.parquet"
+PCL_JSON = paths.META / f"pitch_subclusters_{RANGE}.json"
+TAG_RULES = ("pronator", "supinator")
 # Card heat map of where a pitch crosses the plate: a grid over HEAT_X x HEAT_Z (feet, catcher's view), HEAT_N cells a
 # side, built from HEAT_FINE x HEAT_FINE finer cells smoothed with a Gaussian of HEAT_SIGMA ft. Batted-ball shares need
 # BBE_MIN balls in play.
@@ -308,6 +314,44 @@ def location_bb(rebuild, level="mlb"):
     log(f"location + batted balls {level}: {len(out):,} pitcher-season-types, {out.gb_pct.notna().mean():.0%} with >= {BBE_MIN} "
         f"balls in play; maps vs LHB {out.heat_l.notna().mean():.0%}, vs RHB {out.heat_r.notna().mean():.0%}")
     return out
+
+
+def pitch_clusters(types, t_out):
+    """Adds cl1 / cl2 (cluster and subcluster ids such as "FF-A", "FF-A1") and conf1 / conf2 (consensus confidence) to the
+    exported type columns, and returns the definitions for the page. MLB rows come from pitch_subclusters.py; Triple-A rows
+    (and MLB rows it did not see) take the subcluster most of their MLB lookalikes are in, with that share as confidence."""
+    if not (PCL_PARQ.exists() and PCL_JSON.exists()):
+        return None
+    from collections import Counter
+    raw = json.loads(PCL_JSON.read_text())
+    defs, core = raw.get("types", raw), raw.get("core", 0.6)
+    A = pd.read_parquet(PCL_PARQ).astype({"pitcher": "int64", "season": "int64"})
+    k = ["pitcher", "season", "pitch_type"]
+    sub = A.set_index(k).reindex(pd.MultiIndex.from_frame(types[k].astype({"pitcher": "int64", "season": "int64"})))
+    mlb = (types.level == "mlb").to_numpy()
+    cl1 = np.where(mlb, sub.cl1.to_numpy(dtype=object), None)
+    cl2 = np.where(mlb, sub.cl2.to_numpy(dtype=object), None)
+    conf1 = np.where(mlb, sub.conf1.to_numpy(dtype="float64"), np.nan)
+    conf2 = np.where(mlb, sub.conf2.to_numpy(dtype="float64"), np.nan)
+    cr = np.stack(types.comp_rows.to_numpy())
+    placed = 0
+    for i in np.flatnonzero(pd.isna(cl2)):
+        labs = [(cl1[j], cl2[j]) for j in cr[i] if j >= 0 and mlb[j] and cl2[j] is not None]
+        if not labs:
+            continue
+        (c1, c2), n = Counter(labs).most_common(1)[0]
+        cl1[i], cl2[i], conf2[i] = c1, c2, n / len(labs)
+        conf1[i] = sum(a == c1 for a, _ in labs) / len(labs)
+        placed += 1
+    t_out["cl1"], t_out["cl2"], t_out["conf1"], t_out["conf2"] = cl1, cl2, conf1, conf2
+    log(f"pitch clusters: {pd.notna(cl1[mlb]).mean():.1%} of MLB rows from pitch_subclusters, {placed:,} rows placed by their "
+        f"MLB lookalikes; {sum(len(d['clusters']) for d in defs.values())} clusters, "
+        f"{sum(len(c['subs']) for d in defs.values() for c in d['clusters'])} subclusters")
+    keep = ("id", "letter", "name", "n", "n_core", "numbers")
+    return {"core": core, "types": {pt: {"name": d["name"], "n": d["n"], "k": d["k"], "repro": round(d["repro"], 2),
+                                         "clusters": [{**{x: c[x] for x in keep}, "subs": [{x: s_[x] for x in keep if x in s_} for s_ in c["subs"]]}
+                                                      for c in d["clusters"]]}
+                                    for pt, d in defs.items()}}
 
 
 def movement_blob(types, mv):
@@ -939,6 +983,7 @@ def export(types, pitchers, t_space, lead, fa, spin, mv, tj, teams, levels, team
                    "tcluster", "comp_tol", "gx3", "gy3", "gz3", "tx3", "ty3", "tz3"]
                   + (["comp_tol_aaa"] if "comp_tol_aaa" in types else [])].copy()
     t_out = pd.concat([t_out, type_display(types), look_deltas(types)], axis=1)
+    pcl = pitch_clusters(types, t_out)
     heat_grid = None
     if lb is not None:   # location heat map + batted-ball mix (location_bb), by key, in the types' order
         k = ["level", "pitcher", "season", "pitch_type"]
@@ -978,7 +1023,8 @@ def export(types, pitchers, t_space, lead, fa, spin, mv, tj, teams, levels, team
         **({"tcomps_aaa": comps_columnar(types.comp_rows_aaa, types.comp_pct_aaa)} if "comp_rows_aaa" in types else {}),
         "movement": movement_blob(types, mv),
         "flight": trajectory_blob(types, tj),
-        "archetypes": json.loads(PITCHER_TYPES.read_text()) if PITCHER_TYPES.exists() else [],
+        "archetypes": [r for r in json.loads(PITCHER_TYPES.read_text()) if r.get("id") in TAG_RULES] if PITCHER_TYPES.exists() else [],
+        **({"pitch_clusters": pcl} if pcl else {}),
         **({"layout_quality": quality} if quality else {}),
         **({"heat_grid": heat_grid} if heat_grid else {}),
         "fa_season": max(SEASONS),

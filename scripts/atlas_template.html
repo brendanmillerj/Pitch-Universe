@@ -1531,8 +1531,8 @@ tr.self td { font-weight: 600; background: none; }
           <span class="help" id="searchMsg" role="status" aria-live="polite"></span>
         </form>
         <div class="find find-type">
-          <label class="find-lbl" for="ptype">Find a type of pitcher</label>
-          <div class="find-box"><select id="ptype"></select><button type="button" class="boxclear" id="ptypeClear" aria-label="Clear pitcher type" title="Clear" hidden>×</button></div>
+          <label class="find-lbl" for="ptype">Find a type of pitch</label>
+          <div class="find-box"><select id="ptype"></select><button type="button" class="boxclear" id="ptypeClear" aria-label="Clear the type of pitch" title="Clear" hidden>×</button></div>
           <p class="ptype-meta"><span class="count" id="ptypeCount" aria-live="polite"></span></p>
           <p class="help" id="ptypeDef"></p>
         </div>
@@ -2296,7 +2296,8 @@ function render() {
   }
   const rows = visibleRows(view);
   const cg = colorGetter(kind);
-  const match = andMatch(andMatch(andMatch(ruleMatcher(kind, rows), archetypeMatcher(view)), faMatcher()), state.groupsHi && groupsOn() ? inGroups : null);
+  const others = andMatch(andMatch(ruleMatcher(kind, rows), faMatcher()), state.groupsHi && groupsOn() ? inGroups : null);
+  const match = andMatch(others, archetypeMatcher(view)), edgeM = archetypeEdge();
   const traces = [];
   // dots grow as you zoom in (state.zoomK, set from the visible x-range), so a close-up isn't specks
   const size = (view === "all" ? 6 : 9) * (state.zoomK || 1);
@@ -2309,7 +2310,10 @@ function render() {
   const onPhone = phone();
 
   const on = match ? rows.filter(match) : rows;
-  const off = match ? rows.filter(r => !match(r)) : [];
+  const offAll = match ? rows.filter(r => !match(r)) : [];
+  // a chosen pitch cluster's edge members (between two clusters): drawn between the lit dots and the grayed rest
+  const edge = edgeM ? offAll.filter(r => edgeM(r) && (!others || others(r))) : [];
+  const edgeSet = new Set(edge), off = edge.length ? offAll.filter(r => !edgeSet.has(r)) : offAll;
   // Triple-A: the big-league map stays underneath in gray, so a Triple-A pitch reads against where MLB sits
   if (state.level !== "mlb") {
     const under = viewRows(view).filter(r => T.level[r] === "mlb" && state.seasons.has(T.season[r]) && (state.throws === "all" || T.p_throws[r] === state.throws) && T.n[r] >= state.minN);
@@ -2324,6 +2328,12 @@ function render() {
     traces.push({ type: "scatter", mode: "markers", ...c, customdata: off, hoverinfo: "text",
       hovertext: off.map(r => hoverHTML(r)), name: "Other", showlegend: false,
       marker: { size: fadeSize, color: pal.gray, opacity: FADE } });
+  }
+  if (edge.length) {
+    const c = pt(edge);
+    traces.push({ type: "scatter", mode: "markers", ...c, customdata: edge, hoverinfo: "text",
+      hovertext: edge.map(r => hoverHTML(r) + "<br><i>Edge member: between this cluster and another</i>"), name: "Edge", showlegend: false,
+      marker: { size: Math.max(fadeSize, size * 0.8), color: "#9aa4b2", opacity: 0.75 } });
   }
 
   if (cg.v && cg.v.cat) {
@@ -3114,6 +3124,38 @@ function valueHits() {
   return (VAL = { rows, keys, cut, pitchers: picked.size, eligible: best.size });
 }
 const ARCH_BY_ID = Object.fromEntries(ARCH.map(a => [a.id, a]));
+// "Find a type of pitch" (scripts/pitch_subclusters.py, replacing the hand-written types 2026-11-05): consensus clusters and
+// subclusters within each pitch type, on what the pitch is. Ids "pc:FF-A" (cluster), "pc:FF-A1" (subcluster). Core members
+// (confidence >= PCL.core) light up; edge members, which sit between two clusters, show in mid-gray. Triple-A pitches carry
+// the subcluster most of their MLB lookalikes are in.
+const PCL = D.pitch_clusters || null, PCL_ITEMS = [];
+if (PCL) for (const pt of TYPES) {
+  const d = PCL.types[pt]; if (!d) continue;
+  d.clusters.forEach(c => {
+    PCL_ITEMS.push({ id: "pc:" + c.id, cid: c.id, pt, level: 1, special: "cluster", n: c.n, short: `${c.letter} · ${c.name}`,
+      name: `${PTN[pt]} ${c.letter} · ${c.name}`, def: `${PTN[pt]}s, cluster ${c.letter}: ${c.name.toLowerCase()}. On average ${c.numbers}. ${c.n_core.toLocaleString()} of ${c.n.toLocaleString()} MLB pitches are core members.` });
+    c.subs.forEach(x => { const sl = x.id.split("-")[1];
+      PCL_ITEMS.push({ id: "pc:" + x.id, cid: x.id, pt, level: 2, special: "cluster", n: x.n, short: `${sl} · ${x.name}`,
+        name: `${PTN[pt]} ${sl} · ${c.name} › ${x.name}`, def: `${PTN[pt]}s, subcluster ${sl} of ${c.letter} (${c.name.toLowerCase()}): ${x.name.toLowerCase()}. On average ${x.numbers}. ${x.n_core.toLocaleString()} of ${x.n.toLocaleString()} MLB pitches are core members.` }); });
+  });
+}
+PCL_ITEMS.forEach(a => { ARCH_BY_ID[a.id] = a; });
+const isCluster = id => !!(ARCH_BY_ID[id] && ARCH_BY_ID[id].special === "cluster");
+function clusterHits(id) {
+  if (archCache.has(id)) return archCache.get(id);
+  const a = ARCH_BY_ID[id], col = a.level === 1 ? T.cl1 : T.cl2, conf = a.level === 1 ? T.conf1 : T.conf2;
+  const rows = new Set(), edge = new Set(), keys = new Set();
+  if (col) for (let r = 0; r < NT; r++) if (col[r] === a.cid) {
+    (isNum(conf[r]) && conf[r] < PCL.core ? edge : rows).add(r); keys.add(T.pitcher[r] + "|" + T.season[r]);
+  }
+  const out = { rows, edge, keys }; archCache.set(id, out); return out;
+}
+// the edge members of the chosen cluster (null when no cluster is chosen)
+function archetypeEdge() {
+  if (!isCluster(state.archetype)) return null;
+  const h = clusterHits(state.archetype);
+  return h.edge.size ? r => h.edge.has(r) : null;
+}
 let UNI = null;
 function unicornHits() {
   if (UNI) return UNI;
@@ -3138,6 +3180,7 @@ const passes = (x, c) => isNum(x) && (c.op === "<=" ? x <= c.value : x >= c.valu
 const archCache = new Map();
 // -> { rows: Set of T rows to light up, keys: Set of "pitcher|season" }
 function archetypeHits(id) {
+  if (isCluster(id)) return clusterHits(id);
   if (id === UNICORN.id) return unicornHits();
   if (id === BEST_VALUE.id) return valueHits();
   if (archCache.has(id)) return archCache.get(id);
@@ -3160,8 +3203,8 @@ function archetypeHits(id) {
 function archetypeMatcher(view) {
   if (!state.archetype || !ARCH_BY_ID[state.archetype]) return null;
   const h = archetypeHits(state.archetype);
-  // unicorns are about one pitch: light just the unusual pitch
-  if (state.archetype === UNICORN.id) return r => h.rows.has(r);
+  // unicorns and pitch clusters are about one pitch: light just that pitch (a cluster's core members)
+  if (state.archetype === UNICORN.id || isCluster(state.archetype)) return r => h.rows.has(r);
   // other types belong to the whole pitcher-season: every pitch he throws lights up, on every map
   return r => h.keys.has(T.pitcher[r] + "|" + T.season[r]);
 }
@@ -3191,8 +3234,15 @@ const anyFilter = () => Object.keys(state.ranges).length > 0 || !!state.archetyp
   || state.fa !== "all" || !!(state.keyRange && (state.keyRange.lo > 0 || state.keyRange.hi < 1))
   || state.seasons.size !== D.seasons.length || state.throws !== "all" || state.minIP > 0 || !!state.groupsHi || !!state.onlyGroup;
 const andMatch = (a, b) => a && b ? r => a(r) && b(r) : a || b;
+function clusterName(j) {   // his pitch's cluster and subcluster, e.g. "Four-seam A1 · More glove-side break, high slot › more ride"
+  if (!PCL || !T.cl1 || !T.cl1[j]) return "";
+  const c1 = ARCH_BY_ID["pc:" + T.cl1[j]], c2 = T.cl2 && T.cl2[j] && T.cl2[j] !== T.cl1[j] ? ARCH_BY_ID["pc:" + T.cl2[j]] : null;
+  if (!c1) return "";
+  const edge = isNum((c2 ? T.conf2 : T.conf1)[j]) && (c2 ? T.conf2 : T.conf1)[j] < PCL.core;
+  return (c2 ? c2.name : c1.name) + (edge ? " (edge)" : "");
+}
 function typesLine(j) {
-  const names = archNames(j);
+  const names = [clusterName(j), ...archNames(j)].filter(Boolean);
   return names.length ? `<p class="ctypes">${names.map(esc).join(" · ")}</p>` : "";
 }
 function archNames(j) {   // pitcher types this pitcher-season belongs to (unicorns name their pitches)
@@ -3205,7 +3255,10 @@ function archNames(j) {   // pitcher types this pitcher-season belongs to (unico
 }
 function buildArchetypes() {
   const sel = $("#ptype");
-  sel.innerHTML = `<option value="">Any</option>` + ARCH.map(a => `<option value="${esc(a.id)}" title="${esc(a.def || "")}">${esc(a.name)}</option>`).join("");
+  const groups = TYPES.map(pt => [pt, PCL_ITEMS.filter(a => a.pt === pt)]).filter(([, its]) => its.length);
+  sel.innerHTML = `<option value="">Any</option>`
+    + groups.map(([pt, its]) => `<optgroup label="${esc(PTN[pt])}">${its.map(a => `<option value="${esc(a.id)}" title="${esc(a.def)}">${a.level === 2 ? "\u00a0\u00a0\u00a0↳ " : ""}${esc(a.short)} (${a.n.toLocaleString()})</option>`).join("")}</optgroup>`).join("")
+    + (ARCH.length ? `<optgroup label="Other">${ARCH.map(a => `<option value="${esc(a.id)}" title="${esc(a.def || "")}">${esc(a.name)}</option>`).join("")}</optgroup>` : "");
   sel.value = state.archetype;
   syncArchetype();
 }
@@ -3214,7 +3267,7 @@ function syncArchetype() {
   $("#ptypeClear").hidden = !a;
   $("#ptypeDef").textContent = a ? a.def || "" : "";
   const hits = a ? archetypeHits(a.id) : null;
-  $("#ptypeCount").textContent = !a ? "" : hits.pitchers !== undefined
+  $("#ptypeCount").textContent = !a ? "" : isCluster(a.id) ? `${hits.rows.size.toLocaleString()} core pitches, ${hits.edge.size.toLocaleString()} at the edge (gray)` : hits.pitchers !== undefined
     ? `${hits.pitchers.toLocaleString()} pitchers (${hits.keys.size.toLocaleString()} seasons)` : `${hits.keys.size.toLocaleString()} pitcher-seasons`;
 }
 
@@ -5840,7 +5893,7 @@ const TERMS = () => [
   ["Uniqueness", EXPLAIN.uniq_z],
   ["Comps, lookalikes, similar pitchers", "The ten other pitchers whose version of the pitch sits nearest his on what the pitch is: shape (velocity, spin, break), angles, dead-zone and seam-shifted-wake residuals, and delivery. Location, release and movement scatter, and usage are left out, so lookalikes can differ in how they use the same pitch. Same hand, arm angle within 7.5° (widened only when too few qualify), any season."],
   ["Fit (Close, Loose, Very Loose)", FIT_TIP.replace(/^Fit: /, "")],
-  ["Pitcher types", "Named groups under “Find a type of pitcher”; the definition of the chosen one shows under the box."],
+  ["Types of pitch", "Under “Find a type of pitch”: clusters and subclusters within each pitch type, found from the data (consensus Leiden clustering on what the pitch is), named by what sets them apart. Core members light up; edge members, between two clusters, show in gray. Also Pronator, Supinator, Unique unicorns and Best value."],
 ];
 function glossaryHTML() {
   const dl = rows => `<dl>${rows.map(([t, d]) => `<div><dt>${esc(t)}</dt><dd>${esc(d || "")}</dd></div>`).join("")}</dl>`;
@@ -6367,7 +6420,12 @@ function buildStatic() {
 
   // Find a type of pitcher
   buildArchetypes();
-  $("#ptype").addEventListener("change", e => { state.archetype = e.target.value; syncArchetype(); render(); renderDetail(); });
+  $("#ptype").addEventListener("change", e => {
+    state.archetype = e.target.value;
+    const a = ARCH_BY_ID[state.archetype];
+    if (a && a.special === "cluster" && state.view !== a.pt) setView(a.pt);   // a cluster lives on its pitch type's map
+    syncArchetype(); render(); renderDetail();
+  });
   $("#ptypeClear").addEventListener("click", () => { state.archetype = ""; $("#ptype").value = ""; syncArchetype(); render(); $("#ptype").focus({ preventScroll: true }); });
 
   // Sliders panel
