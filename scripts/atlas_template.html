@@ -40,7 +40,9 @@
   --shmap: 0 4px 16px rgba(0, 0, 0, 0.4);   /* anything floating on the map */
   --r: 8px; --r-lg: 12px;
   --ctl: 36px;           /* one control height everywhere */
-  --accent: #2b5d86;     /* the accent: actions that open something (Show Profile, Filter by measures), never an on/off state (ink fill = on) */
+  --accent: #2e7d4f;     /* the accent (green): actions that open something (Filter by measures, Show Profile, the lab's main button),
+                            never an on/off state (ink fill = on) */
+  --accent-dk: #24653f;  /* its hover */
   --font-serif: "Newsreader", "Iowan Old Style", Charter, Georgia, "Times New Roman", serif;
   --font-ui: "Libre Franklin", "Franklin Gothic Medium", "Helvetica Neue", Arial, system-ui, sans-serif;
   --gl: max(16px, env(safe-area-inset-left, 0px));
@@ -121,8 +123,8 @@ button, input, select { font: inherit; color: inherit; }
 .mselect::after { border-color: var(--ink); }
 .typecol .facount { font: 400 13px/1.35 var(--font-ui); color: var(--ink2); }
 .typecol .facount:empty { display: none; }
-/* left of the map, on the light page in the page's own buttons (filled = chosen, outline otherwise): MLB | Triple-A,
-   the measure filter, the pitch types, Color pitchers by with Team colors, ellipses and Draw a group, then who is
+/* left of the map, on the light page in the page's own buttons (filled = chosen, outline otherwise): the measure
+   filter, MLB | Triple-A, the pitch types, Color pitchers by with Team colors, ellipses and Draw a group, then who is
    shown (free agents, season, hand, innings). It scrolls on its own when taller than the map. */
 .mapbody { flex: 1 1 auto; min-height: 0; display: flex; gap: 10px; }
 .typecol { flex: none; width: 184px; display: flex; flex-direction: column; align-items: stretch; gap: 6px; overflow-y: auto; overscroll-behavior: contain; }
@@ -417,7 +419,7 @@ button, input, select { font: inherit; color: inherit; }
 .ctabtn:hover { background: var(--wash); }
 .ctabtn[aria-pressed="true"] { background: var(--ink); color: var(--field); }
 .ctabtn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-.ctabtn.primary:hover { background: #244e72; border-color: #244e72; }
+.ctabtn.primary:hover { background: var(--accent-dk); border-color: var(--accent-dk); }
 .cta-acts { display: flex; gap: 8px; }
 .cta-acts .ctabtn { flex: 1 1 0; min-width: 0; white-space: nowrap; }
 .cta-acts[hidden], .cta-look[hidden] { display: none; }
@@ -667,7 +669,7 @@ button, input, select { font: inherit; color: inherit; }
 #simBox .sim-replay:disabled, #simBox .simtype:disabled { color: var(--muted); border-color: var(--line); background: var(--field); opacity: 1; cursor: default; }
 #simBox .sim-replay[aria-pressed="true"], #simBox .simx[aria-pressed="true"] { background: var(--ink); color: var(--field); border-color: var(--ink); }
 #simBox .simprimary { background: var(--accent); border-color: var(--accent); color: #ffffff; }
-#simBox .simprimary:hover:not(:disabled) { background: #244e72; border-color: #244e72; }
+#simBox .simprimary:hover:not(:disabled) { background: var(--accent-dk); border-color: var(--accent-dk); }
 #simBox .simprimary:disabled { background: var(--field); color: var(--muted); border-color: var(--line); }
 #simBox .simsel { font: 600 13px var(--font-ui); min-height: 32px; padding: 0 8px; }
 #simBox .simsel option { color: var(--ink); background: var(--field); }
@@ -822,10 +824,10 @@ button, input, select { font: inherit; color: inherit; }
 .lvlseg[hidden] { display: none; }
 /* second row: Filter by measures (a split button: the arrow points where the drawer opens; Reset stays grayed
    until something is filtered), the pitch-type switch, Color pitchers by */
-/* Filter by measures opens the drawer: an action in the accent blue, so it never reads as a toggle that is on (ink) */
+/* Filter by measures opens the drawer: an action in the accent green, so it never reads as a toggle that is on (ink) */
 .measseg { display: inline-flex; flex: none; min-height: var(--ctl); border: 1.5px solid var(--accent); border-radius: var(--r); overflow: hidden; background: var(--field); }
 .measbtn { display: inline-flex; align-items: center; gap: 8px; font: 600 14px/1 var(--font-ui); padding: 0 12px 0 10px; border: 0; background: var(--accent); color: #fff; cursor: pointer; white-space: nowrap; }
-.measbtn:hover { background: #244e72; }
+.measbtn:hover { background: var(--accent-dk); }
 .measarr { font-size: 20px; line-height: 1; margin-top: -2px; transition: transform 160ms; }
 .measbtn:hover .measarr { transform: translateX(-3px); }
 .resetbtn { flex: none; font: 600 14px/1 var(--font-ui); padding: 0 10px; border: 0; border-left: 1.5px solid var(--accent); background: none; color: var(--ink); cursor: pointer; }
@@ -1610,14 +1612,14 @@ tr.self td { font-weight: 600; background: none; }
   <main class="map" aria-label="Map">
     <div class="plotwrap" id="plotWrap">
       <div class="mapbody">
-      <!-- left of the map: level, the measure filter, the pitch types, coloring and map tools, then who is shown -->
+      <!-- left of the map: the measure filter, level, the pitch types, coloring and map tools, then who is shown -->
       <div class="typecol" id="typeCol">
-        <div class="lvlseg" id="lvlSeg" role="group" aria-label="Level shown" hidden>
-          <button type="button" data-v="mlb" aria-pressed="true" title="Major-league pitchers">MLB</button><button type="button" data-v="aaa" aria-pressed="false" title="Triple-A pitchers on the same maps, every number measured against big-league norms">Triple-A</button>
-        </div>
         <div class="measseg" role="group" aria-label="Filter by measures &amp; show tables">
           <button type="button" class="measbtn" id="slOpen" aria-expanded="false" aria-controls="sliders"><span class="measarr" aria-hidden="true">‹</span><span id="slOpenTxt">Filter by measures &amp; show tables</span></button>
           <button type="button" class="resetbtn" id="resetAll" disabled title="Reset filters: measures, the pitch cluster, free agents, the color-key range, season and hand">Reset</button>
+        </div>
+        <div class="lvlseg" id="lvlSeg" role="group" aria-label="Level shown" hidden>
+          <button type="button" data-v="mlb" aria-pressed="true" title="Major-league pitchers">MLB</button><button type="button" data-v="aaa" aria-pressed="false" title="Triple-A pitchers on the same maps, every number measured against big-league norms">Triple-A</button>
         </div>
         <nav class="universe" id="universe" aria-label="Choose a map: all pitches or one pitch type"></nav>
         <div class="grp grp-color">
