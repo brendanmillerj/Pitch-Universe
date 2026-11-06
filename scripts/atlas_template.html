@@ -125,7 +125,9 @@ button, input, select { font: inherit; color: inherit; }
    the measure filter, the pitch types, Color pitchers by with Team colors, ellipses and Draw a group, then who is
    shown (free agents, season, hand, innings). It scrolls on its own when taller than the map. */
 .mapbody { flex: 1 1 auto; min-height: 0; display: flex; gap: 10px; }
-.typecol { flex: none; width: 200px; display: flex; flex-direction: column; align-items: stretch; gap: 6px; overflow-y: auto; overscroll-behavior: contain; }
+.typecol { flex: none; width: 184px; display: flex; flex-direction: column; align-items: stretch; gap: 6px; overflow-y: auto; overscroll-behavior: contain; }
+/* never squeezed when taller than the map (a segment clips its overflow, so it would collapse to its border): the column scrolls */
+.typecol > * { flex-shrink: 0; }
 .typecol > .lvlseg { display: flex; align-self: stretch; flex: none; }
 .typecol > .lvlseg button { flex: 1 1 0; padding: 0 6px; }
 /* the measure filter: the dark button over its Reset (side by side does not fit the column) */
@@ -143,8 +145,8 @@ button, input, select { font: inherit; color: inherit; }
 .typecol .ellrow { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
 .typecol .ellp { display: flex; }
 .typecol .ellp button { flex: 1 1 0; padding: 0 4px; }
-.typecol .universe { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
-.typecol .ubtn { width: 100%; justify-content: flex-start; }
+.typecol .universe { display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+.typecol .ubtn { width: 100%; justify-content: flex-start; min-height: 32px; }
 .typecol .udiv { width: 100%; height: 1px; margin: 2px 0; background: var(--line); }
 .tcsub { margin-top: 8px; font: 600 13px var(--font-ui); color: var(--ink2); }
 .typecol .mseg { display: flex; }
@@ -901,6 +903,9 @@ button, input, select { font: inherit; color: inherit; }
 .cltag { display: inline-flex; align-items: center; gap: 8px; vertical-align: middle; max-width: 100%; margin-left: 12px; padding: 5px 12px 5px 8px;
   font: 600 15px/1.25 var(--font-ui); letter-spacing: 0; color: var(--ink); background: var(--field); border: 1.5px solid var(--line); border-radius: 999px; }
 .cltag i { width: 14px; height: 14px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.25); }
+.cltag { cursor: pointer; text-align: left; }
+.cltag:hover { background: var(--wash); border-color: var(--ink2); }
+.cltag:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .hstats { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; width: 100%; padding-top: 10px; border-top: 1.5px solid var(--rule); }
 .hs-seasons { display: inline-flex; border: 1.5px solid var(--ink); border-radius: var(--r); overflow: hidden; }
 .hs-seasons button { font: 600 14px/1 var(--font-ui); min-height: calc(var(--ctl) - 3px); padding: 0 12px; border: 0; background: var(--field); color: var(--ink); cursor: pointer; font-variant-numeric: tabular-nums; }
@@ -1427,6 +1432,11 @@ tr.self td { font-weight: 600; background: none; }
   border-radius: var(--r-lg); background: var(--map-chrome); border: 1px solid var(--map-line); color: var(--map-ink); }
 .mapkey[hidden] { display: none; }
 .mk-title { font: 700 15px/1.2 var(--font-ui); color: var(--map-ink); }
+.mk-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.mk-x { flex: none; width: 30px; height: 30px; display: grid; place-items: center; padding: 0; border: 1.5px solid var(--map-muted); border-radius: var(--r);
+  background: transparent; color: var(--map-ink); font: 400 20px/1 var(--font-ui); cursor: pointer; }
+.mk-x:hover { background: var(--map-hover); }
+.mk-x:focus-visible { outline: 2px solid var(--map-ink); outline-offset: 1px; }
 .mk-sub { font: 400 13px/1.3 var(--font-ui); color: var(--map-ink2); margin-top: 2px; }
 .mk-dual { position: relative; width: 300px; max-width: 100%; margin: 10px 0 4px; }
 .mk-bar { height: 14px; border-radius: 6px; }
@@ -1454,8 +1464,13 @@ tr.self td { font-weight: 600; background: none; }
 .mk-item i { width: 14px; height: 14px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1.5px var(--map-ring); }
 .mk-item.muted { color: var(--map-muted); }
 /* pitch clusters in the key are buttons: click one to light up only its pitches, click it again (or Show all) to undo */
-.mk-pick { border: 0; margin: 0; padding: 3px 9px 3px 6px; border-radius: 999px; background: none; cursor: pointer; text-align: left;
+.mk-pick { border: 0; margin: 0; padding: 4px 10px 4px 6px; border-radius: 14px; background: none; cursor: pointer; text-align: left;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2); }
+/* a long name wraps inside its chip rather than running past the key's edge; the swatch stays on the first line */
+.mk-pick { white-space: normal; align-items: flex-start; max-width: 100%; line-height: 1.3; }
+.mk-pick i { margin-top: 2px; }
+.mk-pick .mk-n { white-space: nowrap; }
+#mkPick .link { margin-left: 0; }
 .mk-pick:hover { background: var(--map-hover); }
 .mk-pick[aria-pressed="true"] { background: var(--field); color: var(--ink); box-shadow: none; }
 .mk-pick[aria-pressed="true"] .mk-n { color: var(--ink2); }
@@ -2308,12 +2323,15 @@ function setLayout(lay) {
 // The new map is drawn first; afterPlot then rewinds it to where its dots were and plays it forward.
 const isRowTrace = t => { const cd = t.customdata; return Array.isArray(cd) && cd.length > 0 && !!t.x && t.x.length === cd.length && typeof cd[0] === "number"; };
 let afterPlot = null;   // { view, run }: once, right after the next 2D map draw for that view
-function goView(view) {
+function goView(view, opt = {}) {
   const prev = state.view;
+  if (state.morphing) { state.morphing = false; afterPlot = null; setView(view); return; }   // clicked mid-glide: go straight there
   const fl = plotEl._fullLayout;
-  const ok = prev !== view && (prev === "all" || view === "all") && plotReady && !is3D() && !reduced() && !state.morphing
+  const ok = prev !== view && plotReady && !is3D() && !reduced()
     && !state.cardOpen && plotEl.data && plotEl.data.length && fl && fl.xaxis && fl.xaxis.range && glOK();
   if (!ok) { setView(view); return; }
+  // one type to another: back out to All pitches, then into the new type, two quick legs
+  if (prev !== "all" && view !== "all") { goView("all", { dur: 560, then: () => goView(view, { dur: 560 }) }); return; }
   const one = prev === "all" ? view : prev;   // the pitch type both maps show
   const xr0 = fl.xaxis.range.slice(), yr0 = fl.yaxis.range.slice();
   const ratio = ((prev === "all" ? 6 : 9) * (state.zoomK || 1)) / (view === "all" ? 6 : 9);
@@ -2330,10 +2348,11 @@ function goView(view) {
     marker.showscale = false; delete marker.colorbar;
     ghosts.push({ type: t.type, mode: "markers", x: keep.map(k => t.x[k]), y: keep.map(k => t.y[k]), hoverinfo: "skip", showlegend: false, marker });
   });
-  afterPlot = { view, run: () => morphView(prev, one, xr0, yr0, ratio, ghosts) };
+  afterPlot = { view, run: () => morphView(prev, one, xr0, yr0, ratio, ghosts, opt) };
   setView(view);
 }
-function morphView(prev, one, xr0, yr0, ratio, ghosts) {
+// opt.dur: the glide's length (ms); opt.then: run once the landed map is redrawn (the second leg of type to type)
+function morphView(prev, one, xr0, yr0, ratio, ghosts, opt = {}) {
   const fl = plotEl._fullLayout;
   if (!fl || !fl.xaxis || !fl.xaxis.range || !plotEl.data) return;
   const xr1 = fl.xaxis.range.slice(), yr1 = fl.yaxis.range.slice();
@@ -2362,7 +2381,7 @@ function morphView(prev, one, xr0, yr0, ratio, ghosts) {
   });
   if (hide.length) Plotly.restyle(plotEl, { visible: false }, hide);
   Plotly.relayout(plotEl, { annotations: [], shapes: [], "xaxis.visible": false, "yaxis.visible": false, "yaxis.scaleanchor": null });
-  const t0 = performance.now(), dur = 950, ease = s => s < 0.5 ? 4 * s * s * s : 1 - Math.pow(-2 * s + 2, 3) / 2;
+  const t0 = performance.now(), dur = opt.dur || 950, ease = s => s < 0.5 ? 4 * s * s * s : 1 - Math.pow(-2 * s + 2, 3) / 2;
   const frame = s => {
     const L = (a, b) => a + (b - a) * s, d = { x: X0.map((a, i) => a.map((v, k) => L(v, X1[i][k]))), y: Y0.map((a, i) => a.map((v, k) => L(v, Y1[i][k]))),
       "marker.opacity": OP.map(f => f(s)) };
@@ -2374,7 +2393,8 @@ function morphView(prev, one, xr0, yr0, ratio, ghosts) {
     if (!state.morphing) return;
     const s = ease(Math.min(1, (now - t0) / dur));
     frame(s);
-    if (s < 1) requestAnimationFrame(step); else { state.morphing = false; render(); }
+    if (s < 1) requestAnimationFrame(step);
+    else { state.morphing = false; if (opt.then) afterPlot = { view: state.view, run: opt.then }; render(); }
   };
   requestAnimationFrame(step);
 }
@@ -2482,8 +2502,10 @@ function render() {
       const nm = cg.v.names ? cg.v.names[k] : PTN[c] || (c === "R" ? "RHP" : c === "L" ? "LHP" : c);
       const muted = cg.v.muted && cg.v.muted.includes(c);
       const color = cg.v.colors ? cg.v.colors(pal)[k] : pal.cat[k % pal.cat.length];
-      if (key) key.items.push(clPicked ? { name: nm, n: clN.get(c), color, muted: !rs.length, arch: clArch(c), on: state.archetype === clArch(c) }
-        : { name: nm, n: rs.length, color, muted, arch: clArch ? clArch(c) : null });
+      // on one pitch type's map the key drops the repeated type name ("B2 · More ride…", not "Four-seam B2 · More ride…")
+      const kn = clArch && view !== "all" && nm.startsWith(PTN[view] + " ") ? nm.slice(PTN[view].length + 1) : nm;
+      if (key) key.items.push(clPicked ? { name: kn, n: clN.get(c), color, muted: !rs.length, arch: clArch(c), on: state.archetype === clArch(c) }
+        : { name: kn, n: rs.length, color, muted, arch: clArch ? clArch(c) : null });
       if (!rs.length) return;
       const xy2 = pt(rs);
       if (cg.v.clusterLevel) {   // a cluster's edge members (between two clusters): faint, under its core
@@ -2504,9 +2526,10 @@ function render() {
         marker: { size: muted ? fadeSize : size + (cg.v.key === "cat:fa" ? 2 : 0), color, opacity: muted ? FADE : 0.92,
           line: { width: muted ? 0 : 0.75, color: pal.surface } } });
     });
+    if (key && clArch) key.clusters = true;   // the key gets its × (turn clusters off)
     if (key && clArch && isCluster(state.archetype)) {   // the picked cluster, under the key's title, with a way back
-      const a = ARCH_BY_ID[state.archetype], h = clusterHits(a.id);
-      key.pick = `${a.name}: ${h.rows.size.toLocaleString()} core pitches, ${h.edge.size.toLocaleString()} at the edge (gray)`;
+      const a = ARCH_BY_ID[state.archetype], h = clusterHits(a.id);   // its full name is on its pressed chip
+      key.pick = `${view === "all" ? PTN[a.pt] + " " : ""}${a.cid.split("-").slice(1).join("-")}: ${h.rows.size.toLocaleString()} core pitches, ${h.edge.size.toLocaleString()} at the edge (gray)`;
     }
   } else {
     const withV = [], noV = [], vals = [];
@@ -3410,7 +3433,25 @@ function clusterTag(j) {
   const nm = clusterName(j); if (!nm) return "";
   const v = VMAP.t["cat:cluster"], k = v ? v.cats.indexOf(T.cl1[j]) : -1, col = k >= 0 && v.colors ? v.colors(mapPalette())[k] : null;
   const a = ARCH_BY_ID["pc:" + (T.cl2 && T.cl2[j] ? T.cl2[j] : T.cl1[j])];
-  return `<span class="cltag" title="${esc(a && a.def ? a.def : "")}">${col ? `<i style="background:${col}" aria-hidden="true"></i>` : ""}${esc(nm)}</span>`;
+  return `<button type="button" class="cltag" data-cltag="${j}" title="${esc(`Show this cluster on the ${PTN[T.pitch_type[j]].toLowerCase()} map. ` + (a && a.def ? a.def : ""))}">${col ? `<i style="background:${col}" aria-hidden="true"></i>` : ""}${esc(nm)}</button>`;
+}
+// Pitch clusters off (the header's Off, the × on the key): pitch-type colours again, and a picked cluster is let go
+function clustersOff() {
+  state.color.all = state.color.t = "cat:pitch_type"; state.op = "none";
+  if (isCluster(state.archetype)) state.archetype = "";
+  buildVarSelects(); render(); renderDetail();
+}
+// The cluster tag on his card: the card closes onto his pitch type's map with that cluster lit (cluster colours on, its chip
+// pressed in the key) and him ringed on the map, without the lookalike spokes so the cluster reads; Show Profile reopens him.
+function showClusterOf(j) {
+  const sub = !!(T.cl2 && T.cl2[j] && T.cl2[j] !== T.cl1[j]), id = "pc:" + (sub ? T.cl2[j] : T.cl1[j]);
+  if (!isCluster(id)) return;
+  closeSim(true); followLevel(j);
+  state.color.all = state.color.t = sub ? "cat:subcluster" : "cat:cluster"; state.op = "none";
+  state.archetype = id;
+  state.preview = true; state.showComps = false; state.noLook = true; state.lookFrom = null;
+  setView(T.pitch_type[j], j);
+  const b = $("#ctaOpen"); if (b && !$("#selCta").hidden) b.focus({ preventScroll: true });
 }
 function typesLine(j) {   // pronator, supinator, unicorn, best value (the cluster is beside his name)
   const names = archNames(j);
@@ -3694,7 +3735,7 @@ function render3D(traces, view, pal, layout, groups = []) {
 function keyDOM() {
   const box = $("#mapKey");
   if (box.dataset.built) return box;
-  box.innerHTML = `<div class="mk-title" id="mkTitle"></div><div class="mk-sub" id="mkSub"></div>
+  box.innerHTML = `<div class="mk-head"><div class="mk-title" id="mkTitle"></div><button type="button" class="mk-x" id="mkX" aria-label="Turn off pitch clusters" title="Turn off pitch clusters" hidden>×</button></div><div class="mk-sub" id="mkSub"></div>
     <div id="mkNum"><div class="mk-dual"><div class="mk-bar" id="mkBar"></div><i class="mk-mask l" id="mkMaskL"></i><i class="mk-mask r" id="mkMaskR"></i>
       <input type="range" id="mkLo" min="0" max="100" step="1" value="0" aria-label="Show pitches from">
       <input type="range" id="mkHi" min="0" max="100" step="1" value="100" aria-label="Show pitches up to"></div>
@@ -3721,6 +3762,7 @@ function drawKey(k) {
   if (!k) { box.hidden = true; return; }
   box.hidden = false;
   $("#mkTitle").textContent = k.title;
+  $("#mkX").hidden = !k.clusters;
   $("#mkSub").hidden = !k.num; $("#mkNum").hidden = !k.num; $("#mkItems").hidden = !!k.num;
   if (k.num) {
     $("#mkSub").textContent = k.sub;
@@ -3743,7 +3785,7 @@ function drawKey(k) {
       ? `<button type="button" class="mk-item mk-pick${it.muted ? " muted" : ""}" data-arch="${esc(it.arch)}" aria-pressed="${!!it.on}" title="${esc((ARCH_BY_ID[it.arch] || {}).def || "")}">${inner(it)}</button>`
       : `<span class="mk-item${it.muted ? " muted" : ""}">${inner(it)}</span>`).join("");
     $("#mkPick").hidden = !k.pick;
-    $("#mkPick").innerHTML = k.pick ? `${esc(k.pick)} <button type="button" class="link" data-archclear>Show all</button>` : "";
+    $("#mkPick").innerHTML = k.pick ? `${esc(k.pick)} · <button type="button" class="link" data-archclear>Show all</button>` : "";
   }
 }
 
@@ -5606,7 +5648,7 @@ function select(r) {
   const s0 = state.sel;
   if (state.preview && r !== null && r !== undefined && s0 !== null && s0 !== undefined
       && T.pitcher[r] === T.pitcher[s0] && T.season[r] === T.season[s0]) { openCard(); return; }
-  state.preview = false; closeSim(true);
+  state.preview = false; state.noLook = false; closeSim(true);
   if (r !== state.sel && r !== null && r !== undefined) remember(state.view, state.sel, r);
   if (r === null || r === undefined) state.showComps = false;
   state.sel = r; render(); renderDetail();
@@ -5616,7 +5658,7 @@ function select(r) {
 function preview(r, opt = {}) {   // opt.from: the pitcher whose lookalike list this came from
   followLevel(r);
   if (r !== state.sel) remember(state.view, state.sel, r);
-  state.preview = true; state.showComps = true; state.lookFrom = opt.from ?? null; state.sel = r;
+  state.preview = true; state.showComps = true; state.lookFrom = opt.from ?? null; state.sel = r; state.noLook = false;
   if (state.lookTbl !== null && state.lookTbl !== undefined) state.lookTbl = r;   // an open lookalikes table follows the pitcher
   render(); renderDetail();
   if (state.simOpen) { renderSim(); return; }
@@ -5668,7 +5710,7 @@ function openCard() {
 // his pitches the comps are for (search starts on his primary fastball).
 // A pitcher picked on the map (dot, search, list, group) shows his ten closest lookalikes for one of his pitches straight
 // away: on the map everyone else fades, a spoke runs from him to each lookalike, and the numbers match the list.
-const compsOnMap = () => !!state.preview && state.sel !== null && state.sel !== undefined;
+const compsOnMap = () => !!state.preview && state.sel !== null && state.sel !== undefined && !state.noLook;   // noLook: shown from his card's cluster tag
 // What he and his lookalikes have in common: the traits the Groups panel finds for a saved group (sharedTraits), shown
 // as short tags in the Savant colour of the group's median percentile (red high, blue low); numbers wait in the tooltip
 const lookShareCache = new Map();
@@ -6507,6 +6549,7 @@ function buildStatic() {
     const { csv, n, name } = lookCSV(r); saveFile(name, csv, "text/csv;charset=utf-8", $("#mtMsg"), `Saved him and ${n} lookalikes.`); });
   document.addEventListener("click", e => { const b = e.target.closest("[data-svcomps]"); if (b && !b.disabled) saveCompsGroup(+b.dataset.svcomps); });
   document.addEventListener("click", e => { const b = e.target.closest("[data-pool]"); if (b) setCompPool(b.dataset.pool); });
+  document.addEventListener("click", e => { const b = e.target.closest("[data-cltag]"); if (b) showClusterOf(+b.dataset.cltag); });
   $("#ctaClose").addEventListener("click", () => select(null));
   if (window.claude && typeof window.claude.use === "function") {
     window.claude.use("downloads").then(d => { DOWNLOADS = d; $("#dlBtn").hidden = !d; syncTable(); if (state.simOpen && !state.simRec) renderSim(); }, () => {});
@@ -6516,6 +6559,7 @@ function buildStatic() {
   // the scale switch lives inside the key, which is redrawn on every render
   $("#mapKey").addEventListener("click", e => {
     if (e.target.closest("[data-keyreset]")) { if (state.keyRange) { state.keyRange.lo = 0; state.keyRange.hi = 1; } render(); $("#mkLo").focus({ preventScroll: true }); return; }
+    if (e.target.closest("#mkX")) { clustersOff(); const o = document.querySelector('#clusterSeg [data-cl="off"]'); if (o) o.focus({ preventScroll: true }); return; }
     const pk = e.target.closest("[data-arch]");
     if (pk || e.target.closest("[data-archclear]")) {
       const id = pk ? pk.dataset.arch : "";
@@ -6563,12 +6607,14 @@ function buildStatic() {
   document.addEventListener("click", e => { const b = e.target.closest(".hm [data-hk]"); if (b) sortHeat(b); });
   document.addEventListener("keydown", e => { if (e.key === "Escape" && state.lasso) { e.preventDefault(); setLasso(false); } });
   // Pitch clusters Off / Clusters / Subclusters, for every map at once (so it stays on while you switch pitch type).
-  // Off returns to pitch type, and only acts while clusters are on (it never undoes a measure chosen under Color by).
+  // Off (and the × on the key) returns to pitch type and lets go of a picked cluster; it only acts while clusters are on
+  // (it never undoes a measure chosen under Color by).
   $("#clWrap").hidden = !D.pitch_clusters;
   document.querySelectorAll("#clusterSeg [data-cl]").forEach(b => b.addEventListener("click", () => {
     const cur = state.color[varKind(state.view)], on = cur === "cat:cluster" || cur === "cat:subcluster";
     if (b.dataset.cl === "off" ? !on : cur === b.dataset.cl) return;
-    state.color.all = state.color.t = b.dataset.cl === "off" ? "cat:pitch_type" : b.dataset.cl; state.op = "none"; buildVarSelects(); render();
+    if (b.dataset.cl === "off") { clustersOff(); return; }
+    state.color.all = state.color.t = b.dataset.cl; state.op = "none"; buildVarSelects(); render();
   }));
   $("#teamOn").addEventListener("click", () => {   // Team colors on/off; off returns to pitch type
     const kind = varKind(state.view);
@@ -6633,7 +6679,7 @@ function buildStatic() {
   // Start over: everything back to how the page opens; saved groups are kept, unsaved picks are dropped
   $("#startOver").addEventListener("click", () => {
     closeSim(true);
-    state.sel = null; state.preview = false; state.showComps = false; state.sim = null;
+    state.sel = null; state.preview = false; state.showComps = false; state.noLook = false; state.sim = null;
     state.ranges = {}; state.archetype = "";
     state.fa = "all"; syncFA(); state.keyRange = null;
     state.seasons = new Set(D.seasons); state.throws = "all"; syncSeasons(); syncThrows(); state.minIP = 0; syncIPSel();
