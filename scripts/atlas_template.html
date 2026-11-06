@@ -1747,10 +1747,9 @@ tr.self td { font-weight: 600; background: none; }
         </div>
         <section class="railpane" id="clusterBox" role="tabpanel" aria-label="Pitch clusters" hidden>
           <div class="cl-switch" id="clWrap">
-            <div class="mseg" id="clusterSeg" role="group" aria-label="Pitch cluster colors">
+            <div class="mseg" id="clusterSeg" role="group" aria-label="Cluster colors">
               <button type="button" data-cl="off" aria-pressed="true" title="No cluster colors: pitches colored as chosen under Color pitchers by">Off</button>
-              <button type="button" data-cl="cat:cluster" aria-pressed="false" title="Color every pitch by its cluster, found from the data within its pitch type (letters mark each cluster; faint dots sit between two). Click a cluster below to light up only its pitches.">Clusters</button>
-              <button type="button" data-cl="cat:subcluster" aria-pressed="false" title="Color every pitch by its subcluster, in shades of its cluster's color. Click one below to light up only its pitches.">Subclusters</button>
+              <button type="button" data-cl="cat:subcluster" aria-pressed="false" title="Color every pitch by its subcluster, in shades of its cluster's color (letters mark each one; faint dots sit between two). Click one below to light up only its pitches.">On</button>
             </div>
           </div>
           <div class="mk-range" id="clPick" hidden></div>
@@ -1854,7 +1853,7 @@ const SING = { FF: "four-seam fastball", SI: "sinker", FC: "cutter", SL: "slider
 const MIN_IP = [0, 20, 50, 100, 150];
 let tIP = [];   // innings per type row (its pitcher-season); filled by indexData
 let pOfT = new Int32Array(0);   // pitcher-season row of each type row (-1 = none); filled by indexData
-const NOT_IN_LIST = new Set(["cat:pitch_type", "cat:team", "cat:fa", "cat:cluster", "cat:subcluster"]);   // pitch type leads the list; team is its own button; clusters are the header's switch
+const NOT_IN_LIST = new Set(["cat:pitch_type", "cat:team", "cat:fa", "cat:cluster", "cat:subcluster"]);   // pitch type leads the list; team is its own button; clusters are the Clusters panel's Off | On
 
 // ------------------------------------------------------------------ indexes
 // Everything derived from T and P row by row is built by indexData(): at load, and again when a level that
@@ -3024,7 +3023,7 @@ function syncRail() {
 function openPanel(t) {
   if (t === "clusters") {
     const cur = state.color[varKind(state.view)];
-    if (cur !== "cat:cluster" && cur !== "cat:subcluster") { state.color.all = state.color.t = "cat:cluster"; state.op = "none"; buildVarSelects(); }
+    if (cur !== "cat:cluster" && cur !== "cat:subcluster") { state.color.all = state.color.t = "cat:subcluster"; state.op = "none"; buildVarSelects(); }
   }
   state.rail.open = true; state.rail.tab = t; render();
 }
@@ -3607,7 +3606,7 @@ function showClusterOf(j) {
   const sub = !!(T.cl2 && T.cl2[j] && T.cl2[j] !== T.cl1[j]), id = "pc:" + (sub ? T.cl2[j] : T.cl1[j]);
   if (!isCluster(id)) return;
   closeSim(true); followLevel(j);
-  state.color.all = state.color.t = sub ? "cat:subcluster" : "cat:cluster"; state.op = "none";
+  state.color.all = state.color.t = "cat:subcluster"; state.op = "none";   // clusters always show as subclusters under their cluster
   state.archetype = id;
   state.preview = true; state.showComps = false; state.noLook = true; state.lookFrom = null;
   state.rail.open = true; state.rail.tab = "clusters";   // the cluster list beside the map, the picked one pressed
@@ -6211,7 +6210,7 @@ function colorMenuHTML(pick, cur, filter) {
   const hit = v => !f.length || f.every(w => (v.label + " " + v.group).toLowerCase().includes(w));
   const head = [{ key: "cat:pitch_type", label: "Pitch type", group: "Groups" }]
     .concat(cur === "cat:team" ? [{ key: "cat:team", label: "Team (turn off on the map)", group: "Groups" }] : [])
-    .concat(cur === "cat:cluster" || cur === "cat:subcluster" ? [{ key: cur, label: `${cur === "cat:cluster" ? "Clusters" : "Subclusters"} (turn off in the Clusters panel)`, group: "Groups" }] : []);
+    .concat(cur === "cat:cluster" || cur === "cat:subcluster" ? [{ key: cur, label: "Clusters (turn off in the Clusters panel)", group: "Groups" }] : []);
   let html = "", g = null;
   head.concat(pick).forEach(v => {
     if (!hit(v)) return;
@@ -6366,8 +6365,8 @@ function buildVarSelects() {
   const pick = vars.filter(v => !NOT_IN_LIST.has(v.key));
   const a = VMAP[kind][cur];
   const clOn = cur === "cat:cluster" || cur === "cat:subcluster";
-  $("#colorBtnTxt").textContent = cur === "cat:team" ? "Team (turn off on the map)" : clOn ? `${cur === "cat:cluster" ? "Clusters" : "Subclusters"} (turn off in the Clusters panel)` : a ? a.label : "Pitch type";
-  document.querySelectorAll("#clusterSeg [data-cl]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.cl === "off" ? !clOn : cur === b.dataset.cl)));
+  $("#colorBtnTxt").textContent = cur === "cat:team" ? "Team (turn off on the map)" : clOn ? "Clusters (turn off in the Clusters panel)" : a ? a.label : "Pitch type";
+  document.querySelectorAll("#clusterSeg [data-cl]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.cl === "off" ? !clOn : clOn)));
   if (!$("#colorMenu").hidden) $("#cmList").innerHTML = colorMenuHTML(pick, cur, $("#cmSearch").value);
   $("#colorB").innerHTML = optionsHTML(vars, state.colorB[kind], "", false);
   $("#colorAWrap").classList.toggle("on", !NOT_IN_LIST.has(cur));   // filled in while a measure is the color
@@ -6840,9 +6839,10 @@ function buildStatic() {
   $("#lassoOn").addEventListener("click", () => setLasso(!state.lasso));
   document.addEventListener("click", e => { const b = e.target.closest(".hm [data-hk]"); if (b) sortHeat(b); });
   document.addEventListener("keydown", e => { if (e.key === "Escape" && state.lasso) { e.preventDefault(); setLasso(false); } });
-  // Pitch clusters Off / Clusters / Subclusters, for every map at once (so it stays on while you switch pitch type).
-  // Off (and the × on the key) returns to pitch type and lets go of a picked cluster; it only acts while clusters are on
-  // (it never undoes a measure chosen under Color by).
+  // Cluster colors Off | On, for every map at once (so they stay on while you switch pitch type).
+  // Off | On in the Clusters panel. On colors by subcluster (the only cluster view; each cluster heads its subclusters in the
+  // list). Off returns to pitch type and lets go of a picked cluster; it only acts while clusters are on (it never undoes a
+  // measure chosen under Color pitchers by).
   $("#clWrap").hidden = !D.pitch_clusters;
   document.querySelectorAll("#clusterSeg [data-cl]").forEach(b => b.addEventListener("click", () => {
     const cur = state.color[varKind(state.view)], on = cur === "cat:cluster" || cur === "cat:subcluster";
