@@ -1622,6 +1622,11 @@ tr.self td { font-weight: 600; background: none; }
       <div class="mapbody">
       <div class="typecol" id="typeCol">
         <nav class="universe" id="universe" aria-label="Choose a map: all pitches or one pitch type"></nav>
+        <span class="tcsub" id="clLbl">Pitch clusters</span>
+        <div class="mseg" id="clusterSeg" role="group" aria-labelledby="clLbl">
+          <button type="button" data-cl="cat:cluster" aria-pressed="false" title="Color every pitch by its cluster, found from the data within its pitch type (letters mark each cluster; faint dots sit between two). Press again to turn off.">Clusters</button>
+          <button type="button" data-cl="cat:subcluster" aria-pressed="false" title="Color every pitch by its subcluster, in shades of its cluster's color. Press again to turn off.">Subclusters</button>
+        </div>
         <span class="tcsub" id="seasonLbl">Season</span>
         <div class="mseg" id="seasonChips" role="group" aria-labelledby="seasonLbl"></div>
         <span class="tcsub" id="handLbl">Hand</span>
@@ -1763,7 +1768,7 @@ const SING = { FF: "four-seam fastball", SI: "sinker", FC: "cutter", SL: "slider
 const MIN_IP = [0, 20, 50, 100, 150];
 let tIP = [];   // innings per type row (its pitcher-season); filled by indexData
 let pOfT = new Int32Array(0);   // pitcher-season row of each type row (-1 = none); filled by indexData
-const NOT_IN_LIST = new Set(["cat:pitch_type", "cat:team", "cat:fa"]);   // pitch type leads the list; team is the map button
+const NOT_IN_LIST = new Set(["cat:pitch_type", "cat:team", "cat:fa", "cat:cluster", "cat:subcluster"]);   // pitch type leads the list; team is the map button; clusters are the left column's switch
 
 // ------------------------------------------------------------------ indexes
 // Everything derived from T and P row by row is built by indexData(): at load, and again when a level that
@@ -5832,7 +5837,8 @@ function colorMenuHTML(pick, cur, filter) {
   const f = String(filter || "").toLowerCase().split(/\s+/).filter(Boolean);
   const hit = v => !f.length || f.every(w => (v.label + " " + v.group).toLowerCase().includes(w));
   const head = [{ key: "cat:pitch_type", label: "Pitch type", group: "Groups" }]
-    .concat(cur === "cat:team" ? [{ key: "cat:team", label: "Team (turn off on the map)", group: "Groups" }] : []);
+    .concat(cur === "cat:team" ? [{ key: "cat:team", label: "Team (turn off on the map)", group: "Groups" }] : [])
+    .concat(cur === "cat:cluster" || cur === "cat:subcluster" ? [{ key: cur, label: `${cur === "cat:cluster" ? "Clusters" : "Subclusters"} (turn off at left)`, group: "Groups" }] : []);
   let html = "", g = null;
   head.concat(pick).forEach(v => {
     if (!hit(v)) return;
@@ -5986,7 +5992,9 @@ function buildVarSelects() {
   const kind = varKind(state.view), vars = VARS[kind], cur = state.color[kind];
   const pick = vars.filter(v => !NOT_IN_LIST.has(v.key));
   const a = VMAP[kind][cur];
-  $("#colorBtnTxt").textContent = cur === "cat:team" ? "Team (turn off on the map)" : a ? a.label : "Pitch type";
+  const clOn = cur === "cat:cluster" || cur === "cat:subcluster";
+  $("#colorBtnTxt").textContent = cur === "cat:team" ? "Team (turn off on the map)" : clOn ? `${cur === "cat:cluster" ? "Clusters" : "Subclusters"} (turn off at left)` : a ? a.label : "Pitch type";
+  document.querySelectorAll("#clusterSeg [data-cl]").forEach(b => b.setAttribute("aria-pressed", String(cur === b.dataset.cl)));
   if (!$("#colorMenu").hidden) $("#cmList").innerHTML = colorMenuHTML(pick, cur, $("#cmSearch").value);
   $("#colorB").innerHTML = optionsHTML(vars, state.colorB[kind], "", false);
   $("#colorAWrap").classList.toggle("on", !NOT_IN_LIST.has(cur));   // filled in while a measure is the color
@@ -6443,6 +6451,12 @@ function buildStatic() {
   $("#lassoOn").addEventListener("click", () => setLasso(!state.lasso));
   document.addEventListener("click", e => { const b = e.target.closest(".hm [data-hk]"); if (b) sortHeat(b); });
   document.addEventListener("keydown", e => { if (e.key === "Escape" && state.lasso) { e.preventDefault(); setLasso(false); } });
+  // Pitch clusters on/off, for every map at once (so it stays on while you switch pitch type); off returns to pitch type
+  $("#clLbl").hidden = $("#clusterSeg").hidden = !D.pitch_clusters;
+  document.querySelectorAll("#clusterSeg [data-cl]").forEach(b => b.addEventListener("click", () => {
+    const to = state.color[varKind(state.view)] === b.dataset.cl ? "cat:pitch_type" : b.dataset.cl;
+    state.color.all = state.color.t = to; state.op = "none"; buildVarSelects(); render();
+  }));
   $("#teamOn").addEventListener("click", () => {   // Team colors on/off; off returns to pitch type
     const kind = varKind(state.view);
     state.color[kind] = state.color[kind] === "cat:team" ? "cat:pitch_type" : "cat:team"; buildVarSelects(); render();
