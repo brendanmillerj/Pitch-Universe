@@ -567,6 +567,8 @@ button, input, select { font: inherit; color: inherit; }
 .simyr { font: 400 0.7em var(--font-ui); color: var(--map-ink2); }
 .simhr { display: flex; align-items: center; gap: 8px; flex: none; }
 .simhr .simhint { white-space: nowrap; }
+.simprof { margin-left: 6px; padding: 1px 9px; font: 600 13px var(--font-ui); color: var(--ink); background: var(--field); border: 1.5px solid var(--ink); border-radius: var(--r); cursor: pointer; vertical-align: 1px; white-space: nowrap; }
+.simprof:hover { background: var(--wash); }
 .simsw { display: inline-flex; align-items: center; gap: 4px; }
 .simsel { font: 600 13px var(--font-ui); color: var(--map-ink); background: var(--map-chrome); border: 1.5px solid var(--map-muted); border-radius: var(--r); min-height: 32px; padding: 0 8px; max-width: min(34ch, 48vw); cursor: pointer; }
 .simsel option { color: var(--ink); background: var(--field); }
@@ -859,15 +861,21 @@ button, input, select { font: inherit; color: inherit; }
 .k-solid { width: 14px; height: 14px; border-radius: 50%; display: inline-block; flex: none; background: var(--ink); }
 .k-diamond { width: 11px; height: 11px; display: inline-block; flex: none; border: 2.5px solid var(--ink); transform: rotate(45deg); margin: 0 2px; }
 
-.backsel { font-weight: 600; }
+.backsel, .fwdsel { font-weight: 600; }
 .simbtn { margin: 0; min-height: var(--ctl); padding: 0 12px; border-radius: var(--r); border: 1.5px solid var(--ink); background: var(--field);
   font: 600 14px var(--font-ui); color: var(--ink); }
 .simbtn:hover { background: var(--wash); }
 .simbtn[aria-expanded="true"] { background: var(--ink); color: var(--field); }
 /* Savant-style card: profile | percentile rankings | movement profile */
 .card.sv { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px;
-  grid-template-areas: "prof move" "prof flight" "prof loc" "all all"; grid-template-rows: auto auto 1fr auto; align-items: start; }
-@media (min-width: 1300px) { .card.sv { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "prof move flight" "prof move loc" "all all all"; grid-template-rows: auto 1fr auto; } }
+  grid-template-areas: "prof move" "prof flight" "loc loc" "all all"; align-items: start; }
+@media (min-width: 1300px) {
+  .card.sv { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "prof move flight" "loc loc loc" "all all all"; }
+  /* one height for the three panels: the profile's rows spread to fill, the flight viewport extends (dark frame) */
+  .card.sv > .sv-prof, .card.sv > .sv-move, .card.sv > .sv-flight { align-self: stretch; display: flex; flex-direction: column; }
+  .card.sv > .sv-prof > .sv-pct { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+  .card.sv > .sv-flight > .flwrap { flex: 1; }
+}
 /* card header and Defining Traits are rows of the page grid above the card body */
 .dhead, .dtraits { display: none; }
 .app.has-sel .dhead, .app.has-sel .dtraits { display: block; min-width: 0; background: var(--panel); }
@@ -943,7 +951,6 @@ button, input, select { font: inherit; color: inherit; }
 .sv-bar .cname { margin: 0; }
 
 .sv-barr { margin-left: auto; display: inline-flex; align-items: baseline; gap: 16px; }
-.backmap { font-size: 17px; font-weight: 700; }
 .svp { background: var(--field); border: 1px solid var(--line); border-radius: var(--r); padding: 8px 10px 8px; }
 .svp > h3:first-child { margin: 0 0 4px !important; text-align: center; font-size: 20px !important; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
 .svp > h3:first-child .tm { display: block; font-weight: 400; font-size: 13px; color: var(--ink2); margin-top: 2px; }   /* the pool note on its own line, never an orphaned wrap */
@@ -974,15 +981,18 @@ button, input, select { font: inherit; color: inherit; }
 .svm tr.gap td, .svm tr.gap th { border-top: 1px solid var(--line); }
 .svm tr.avg td, .svm tr.avg th { color: var(--muted); font-style: italic; }
 .sv-loc { grid-area: loc; min-width: 0; }
-.svloc { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 4px; }
-.svloc thead th { font: 700 13px var(--font-ui); color: var(--ink); white-space: nowrap; padding: 2px 4px 4px; text-align: center; }
-.svloc tbody th { width: 64px; text-align: left; font: 700 13px var(--font-ui); color: var(--ink2); padding: 0 4px 0 0; }
-.svloc td { padding: 3px; text-align: center; vertical-align: middle; }
-.svloc th.self, .svloc td.self { background: var(--wash); }
-.svloc svg.heatmini { display: block; width: 100%; max-width: 124px; height: auto; margin: 0 auto; border: 1px solid var(--line); border-radius: 4px; }
-.svloc .tm { color: var(--muted); }
-.locnote { margin: 6px 0 0; font: 400 13px var(--font-ui); color: var(--ink2); line-height: 1.35; }
-@media (max-width: 1099px) { .card.sv { grid-template-columns: minmax(0, 1fr); grid-template-areas: "prof" "move" "flight" "loc" "all"; grid-template-rows: none; } .mcols { column-count: 1; } }
+.locgrid { display: grid; gap: 8px 12px; margin-top: 6px; }
+.locp { margin: 0; padding: 4px 6px 6px; border-radius: var(--r); }
+.locp.self { background: var(--wash); }
+.locp figcaption { font: 700 14px var(--font-ui); color: var(--ink); text-align: center; margin-bottom: 4px; white-space: nowrap; }
+.locpair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
+.locpair > div { min-width: 0; text-align: center; }
+.locpair svg.heatmini { display: block; width: 100%; max-width: 170px; height: auto; margin: 0 auto; border: 1px solid var(--line); border-radius: 4px; }
+.locpair span { display: block; margin-top: 2px; font: 600 12px var(--font-ui); color: var(--ink2); }
+.locpair .tm { color: var(--muted); display: grid; place-items: center; aspect-ratio: 1; max-width: 170px; margin: 0 auto; border: 1px dashed var(--line); border-radius: 4px; }
+.flwrap { display: flex; align-items: center; background: var(--map); border-radius: var(--r-lg); }
+@media (max-width: 1099px) { .locgrid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important; } }
+@media (max-width: 1099px) { .card.sv { grid-template-columns: minmax(0, 1fr); grid-template-areas: "prof" "move" "flight" "loc" "all"; } .mcols { column-count: 1; } }
 /* similar pitchers inside the card column, under the four panels */
 .compsin { margin-top: 8px; padding-top: 8px; border-top: 2px solid var(--rule); scroll-margin-top: 8px; }
 .compsin .card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: start; }
@@ -1070,6 +1080,8 @@ button, input, select { font: inherit; color: inherit; }
 .sel select:disabled { color: var(--muted); border-bottom-color: var(--line); cursor: default; }
 .sel select option, .sel select optgroup { font-weight: 400; color: var(--ink); background: var(--bg); }
 .sel select optgroup { font-style: normal; font-weight: 600; }
+/* a boxed dropdown (.mselect: Free agents, Innings that season) already has its border: no second underline from .sel */
+.sel.mselect select, .sel.mselect select:hover, .sel.mselect select:disabled { border-bottom: 0; }
 
 /* text fields */
 input[type=search], input[type=number] { border: 0; border-bottom: 1px solid var(--ink2); border-radius: 0; background: transparent;
@@ -3711,6 +3723,7 @@ function renderDetail() {
   const cs = dh.querySelector(".clearsel"); if (cs) cs.addEventListener("click", () => closeCard());
   const lb = dh.querySelector("#labBtn"); if (lb) lb.addEventListener("click", () => toggleSim(lb));   // the lab opens over the card
   const bk = dh.querySelector(".backsel"); if (bk) bk.addEventListener("click", e => { goBack(); if (viaKeys(e)) focusCard(); });
+  const fw = dh.querySelector(".fwdsel"); if (fw) fw.addEventListener("click", e => { goForward(); if (viaKeys(e)) focusCard(); });
   if (!had) try { window.scrollTo({ top: 0, behavior: "auto" }); } catch (e) {}   // the card replaced the map: start at its head
 }
 
@@ -4776,8 +4789,8 @@ function renderSim(opt = {}) {
   const box = $("#simBox"), j = state.sel; if (j === null || j === undefined) { box.hidden = true; return; }
   if (flightData().none) {
     box.hidden = false; box.setAttribute("aria-label", "Pitch Simulation Lab");
-    box.innerHTML = `<div class="sim-head"><h2 class="sim-name" id="simTitle" tabindex="-1">${esc(T.name[j])}</h2><button type="button" class="sim-x" id="simClose" aria-label="Close the Pitch Simulation Lab">×</button></div><p class="simsub">No tracked flight paths for this pitch.</p>`;
-    $("#simClose").onclick = () => closeSimFocus(); return;
+    box.innerHTML = `<div class="sim-head"><h2 class="sim-name" id="simTitle" tabindex="-1">${esc(T.name[j])}</h2><div class="simhr"><button type="button" class="sim-replay simprof" id="simProfile" title="His full player card: every pitch, measure and season">Show Profile</button><button type="button" class="sim-x" id="simClose" aria-label="Close the Pitch Simulation Lab">×</button></div></div><p class="simsub">No tracked flight paths for this pitch.</p>`;
+    $("#simClose").onclick = () => closeSimFocus(); $("#simProfile").onclick = () => simToProfile(); return;
   }
   const S = simState(j), cmp = S.mode === "compare" && S.vs !== null && S.vs !== undefined, me = lastName(T.name[j]), cam = state.flightCam || "catcher";
   const own = S.items.filter(it => it.kind === "own"), added = S.items.filter(it => it.kind === "other" || it.kind === "lack"), ghosts = S.items.filter(it => it.kind === "ghost");
@@ -4797,16 +4810,16 @@ function renderSim(opt = {}) {
     const ci = comps.findIndex(([c]) => c === S.vs), q = ci >= 0 ? comps[ci][1] : undefined, vt = T.pitch_type[S.vs];
     header = `<div class="sim-head"><div class="simh2h">
       <div class="simside">${sw(SAVANT_PITCH[mine ? mine.t : myT], "")}<h2 class="sim-name" id="simTitle" tabindex="-1">${esc(T.name[j])} <span class="simyr">${yy(T.season[j])}</span></h2>
-        <p class="simsub">${esc(teamStr(j))}${T.level[j] === "mlb" ? "" : " · Triple-A"}${mine ? ` · ${PTN[mine.t].toLowerCase()} ${fmt(T.velo[mine.r], 1)} mph` : ""} · solid</p></div>
+        <p class="simsub">${esc(teamStr(j))}${T.level[j] === "mlb" ? "" : " · Triple-A"}${mine ? ` · ${PTN[mine.t].toLowerCase()} ${fmt(T.velo[mine.r], 1)} mph` : ""} · solid ${simProfBtn(j)}</p></div>
       <span class="simvsword">vs</span>
       <div class="simside">${sw(SAVANT_PITCH[vt], "dash")}<h2 class="sim-name">${esc(T.name[S.vs])} <span class="simyr">${yy(T.season[S.vs])}</span></h2>
-        <p class="simsub">${esc(teamStr(S.vs))}${T.level[S.vs] === "mlb" ? "" : " · Triple-A"} · ${PTN[vt].toLowerCase()} ${fmt(T.velo[S.vs], 1)} mph · dashed${q !== undefined ? ` · ${fitOf(q)[1]}` : ""}</p></div></div>
+        <p class="simsub">${esc(teamStr(S.vs))}${T.level[S.vs] === "mlb" ? "" : " · Triple-A"} · ${PTN[vt].toLowerCase()} ${fmt(T.velo[S.vs], 1)} mph · dashed${q !== undefined ? ` · ${fitOf(q)[1]}` : ""} ${simProfBtn(S.vs)}</p></div></div>
       <div class="simhr">${comps.length > 1 ? `<div class="simsw" role="group" aria-label="Which lookalike"><button type="button" class="sim-replay" id="simPrev"${ci <= 0 ? " disabled" : ""} aria-label="Previous lookalike" title="Previous lookalike (←)">‹</button>${vsSel("simVs", "Lookalike to compare with")}<button type="button" class="sim-replay" id="simNext"${ci < 0 || ci >= comps.length - 1 ? " disabled" : ""} aria-label="Next lookalike" title="Next lookalike (→)">›</button></div>` : ""}<span class="simhint">Pitch Simulation Lab</span>
       <button type="button" class="sim-x" id="simClose" aria-label="Close the Pitch Simulation Lab" title="Close (Esc)">×</button></div></div>`;
     box.setAttribute("aria-label", `Pitch Simulation Lab: ${T.name[j]} vs ${T.name[S.vs]}`);
   } else {
     header = `<div class="sim-head"><div><h2 class="sim-name" id="simTitle" tabindex="-1">${esc(T.name[j])} · Pitch Simulation Lab</h2>
-      <p class="simsub">${T.season[j]}${T.level[j] === "mlb" ? "" : " · Triple-A"} · ${esc(teamStr(j))}</p></div>
+      <p class="simsub">${T.season[j]}${T.level[j] === "mlb" ? "" : " · Triple-A"} · ${esc(teamStr(j))} ${simProfBtn(j)}</p></div>
       <div class="simhr">${comps.length ? vsSel("simVs", "Compare with a lookalike") : ""}<button type="button" class="sim-x" id="simClose" aria-label="Close the Pitch Simulation Lab" title="Close (Esc)">×</button></div></div>`;
     box.setAttribute("aria-label", `Pitch Simulation Lab: ${T.name[j]}`);
   }
@@ -4882,6 +4895,8 @@ function renderSim(opt = {}) {
   // ---- wiring
   const rerender = () => renderSim(), hold = () => renderSim({ hold: true }), on = (sel, fn) => { const el = $(sel); if (el) el.onclick = fn; };
   on("#simClose", () => closeSimFocus());
+  on("#simProfile", () => simToProfile());
+  box.querySelectorAll("[data-prof]").forEach(b => { b.onclick = () => simToProfile(+b.dataset.prof); });
   const vs = $("#simVs"); if (vs) vs.onchange = () => { const c = +vs.value; if (vs.value !== "" && Number.isInteger(c)) compareSim(c); };
   const stepVs = dir => { const k = comps.findIndex(([c]) => c === S.vs), n = comps[k + dir]; if (n) compareSim(n[0]); };
   on("#simPrev", () => stepVs(-1)); on("#simNext", () => stepVs(1));
@@ -5208,9 +5223,10 @@ function typeCard(view, j) {
     <span class="sv-barr">
       <button type="button" class="bigbtn simbtn" id="simBtn" aria-expanded="${!!state.showComps}" aria-controls="comps">${state.showComps ? "Hide similar pitchers ↑" : "Show similar pitchers ↓"}</button>
       <button type="button" class="bigbtn pickbtn" data-pick="${j}" aria-pressed="${state.picks.has(j)}" title="Pick his ${PTN[T.pitch_type[j]].toLowerCase()} for a new group; name and save it in the Groups tab">${state.picks.has(j) ? `In new group (${state.picks.size})` : "Add to group"}</button>
-      ${backTarget(j) ? `<button type="button" class="bigbtn backsel">← Go back to ${esc(T.name[backTarget(j).sel])}</button>` : ""}
+      ${backTarget(j) ? `<button type="button" class="bigbtn backsel"${backTarget(j).lab ? ' title="Back to the Pitch Simulation Lab, as you left it"' : ""}>${esc(backLabel(backTarget(j)))}</button>` : ""}
+      ${fwdTarget(j) ? `<button type="button" class="bigbtn fwdsel">Go forward to ${esc(T.name[fwdTarget(j).sel])} →</button>` : ""}
       ${!flightData().none && trajOf(j) ? `<button type="button" class="bigbtn labbtn" id="labBtn" title="Fly his pitches, edit them, compare them with a lookalike's">▶ Pitch Simulation Lab</button>` : ""}
-      <button type="button" class="bigbtn clearsel backmap" aria-label="Close this pitcher and go back to the map">← Back to map</button></span>${headStats(view, j, i)}${arsenalStrip(view, j, ars)}</div>`;
+</span>${headStats(view, j, i)}${arsenalStrip(view, j, ars)}</div>`;
   // ---------------- hero: what puts this pitch where it is in the 3D space ----------------
   // the measures on which his pitch sits farthest from a typical pitch of its type: these are what
   // place it in the map. Every measure at/above HERO_HI or at/below HERO_LO percentile, at least HERO_MIN.
@@ -5268,16 +5284,13 @@ function typeCard(view, j) {
   h += `<section class="svp sv-flight" id="flight"><h3>${T.season[j]} flight paths</h3>
     <div class="flbar"><span role="group" aria-label="Camera"><button type="button" data-flcam="pitcher" aria-pressed="true">Behind the pitcher</button> <button type="button" data-flcam="catcher" aria-pressed="false">Catcher's view</button></span>
       <button type="button" id="flReplay">↻ Replay</button><span class="fltm">${FL.SLOW}× slow motion</span></div>
-    <canvas id="flightCv" role="img" aria-label="Animated flight of each of ${esc(T.name[j])}'s pitch types, released together, beside the league-average ${PTN[t].toLowerCase()}"></canvas>
+    <div class="flwrap"><canvas id="flightCv" role="img" aria-label="Animated flight of each of ${esc(T.name[j])}'s pitch types, released together, beside the league-average ${PTN[t].toLowerCase()}"></canvas></div>
     <div class="flkey"></div>
     <p class="flnote">Season-average path per pitch type, from Statcast's release and acceleration parameters, not a single thrown pitch. Every pitch leaves at the same instant, so the slower ones arrive later. Dashed: the league's ${PTN[t].toLowerCase()} from ${R ? "right" : "left"}-handers.</p></section>`;
 
   // ---------------- location: where each pitch crosses the plate, against each batter hand ----------------
-  h += `<section class="svp sv-loc"><h3>${T.season[j]} location</h3>
-    <table class="svloc"><thead><tr><th></th>${ars.map(([x, r]) => `<th${r === j ? ' class="self"' : ""}><i class="psw" style="background:${SAVANT_PITCH[x]}"></i> ${x}</th>`).join("")}</tr></thead><tbody>
-      ${[["l", "LHB", "left"], ["r", "RHB", "right"]].map(([sd, lab, w]) => `<tr><th title="Against ${w}-handed batters, who stand on the ${w === "left" ? "right" : "left"} of these maps">vs ${lab}</th>${ars.map(([, r]) => `<td${r === j ? ' class="self"' : ""}>${heatSVG(r, sd)}</td>`).join("")}</tr>`).join("")}
-    </tbody></table>
-    <p class="locnote">Catcher's view. Darker is where more of his pitches cross the plate; each map is scaled to its own busiest spot, so it shows where, not how often. Box: the average strike zone. A map needs 15 pitches against that hand.</p></section>`;
+  h += `<section class="svp sv-loc"><h3>${T.season[j]} location <span class="tm">Catcher's view. Darker is where more of his pitches cross the plate; each map is scaled to its own busiest spot, so it shows where, not how often. Box: the average strike zone. A map needs 15 pitches against that hand.</span></h3>
+    <div class="locgrid" style="grid-template-columns:repeat(${ars.length}, minmax(0, 1fr))">${ars.map(([x, r]) => `<figure class="locp${r === j ? " self" : ""}"><figcaption><i class="psw" style="background:${SAVANT_PITCH[x]}"></i> ${PTN[x]}</figcaption><div class="locpair">${[["l", "LHB"], ["r", "RHB"]].map(([sd, lab]) => `<div>${heatSVG(r, sd)}<span>vs ${lab}</span></div>`).join("")}</div></figure>`).join("")}</div></section>`;
 
   // ---------------- panel 4: every measure, by category, sorted within ----------------
   const groups = [...new Set(items.map(it => it.v.group))];
@@ -5315,24 +5328,47 @@ function spreadLabels2D(lx, ly, lt) {   // returns the labels' boxes on screen (
 // ---------------------------------------------------------------- controls
 // Back stack: each time the selected pitch changes to another pitcher, remember where we were.
 // Moving between one pitcher's own pitches (search preview -> his card, the arsenal chips) is not a step back.
-const backStack = [];
-let goingBack = false;
+// Forward stack, as in a browser: "Go back" leaves the pitcher it came from there; "Go forward" returns to him; a
+// step to a new pitcher any other way clears it.
+const backStack = [], fwdStack = [];
+let goingBack = false;   // true while Go back / Go forward navigates, so the move itself is not remembered
 const samePitcher = (a, b) => a !== null && a !== undefined && b !== null && b !== undefined && T.pitcher[a] === T.pitcher[b];
 function remember(view, sel, next) {
   if (goingBack || sel === null || sel === undefined) return;
   if (samePitcher(sel, next)) return;
+  fwdStack.length = 0;
   const top = backStack[backStack.length - 1];
   if (top && top.view === view && top.sel === sel) return;
   backStack.push({ view, sel }); if (backStack.length > 50) backStack.shift();
 }
 // the entry "Go back" would land on: the newest one that is another pitcher than the one shown
 const backTarget = cur => { for (let k = backStack.length - 1; k >= 0; k--) if (!samePitcher(backStack[k].sel, cur)) return backStack[k]; return null; };
+const fwdTarget = cur => { for (let k = fwdStack.length - 1; k >= 0; k--) if (!samePitcher(fwdStack[k].sel, cur)) return fwdStack[k]; return null; };
 function goBack() {
   let prev = backStack.pop();
   while (prev && samePitcher(prev.sel, state.sel)) prev = backStack.pop();
   if (!prev) return;
+  if (state.sel !== null && state.sel !== undefined) { fwdStack.push({ view: state.view, sel: state.sel }); if (fwdStack.length > 50) fwdStack.shift(); }
   goingBack = true;
-  try { if (prev.view !== state.view) setView(prev.view, prev.sel); else select(prev.sel); }
+  try {
+    if (prev.lab && prev.lab.preview && state.cardOpen && state.cardFrom && state.cardFrom.sel === prev.sel) closeCard();   // the lab sat on the map
+    else if (prev.view !== state.view) setView(prev.view, prev.sel); else select(prev.sel);
+    if (prev.lab && state.sel === prev.sel) { state.sim = prev.lab.sim; openSim(); }
+  } finally { goingBack = false; }
+}
+// what the back button says: a lab comparison by its two names, a lab by his, anything else by the pitcher
+const backLabel = e => {
+  const sim = e.lab && e.lab.sim, vs = sim && sim.mode === "compare" ? sim.vs : null;
+  if (vs !== null && vs !== undefined) return `← Back to ${lastName(T.name[e.sel])} vs. ${lastName(T.name[vs])}`;
+  return sim ? `← Back to ${lastName(T.name[e.sel])}’s simulation` : `← Go back to ${T.name[e.sel]}`;
+};
+function goForward() {
+  let next = fwdStack.pop();
+  while (next && samePitcher(next.sel, state.sel)) next = fwdStack.pop();
+  if (!next) return;
+  if (state.sel !== null && state.sel !== undefined) { backStack.push({ view: state.view, sel: state.sel }); if (backStack.length > 50) backStack.shift(); }
+  goingBack = true;
+  try { if (next.view !== state.view) setView(next.view, next.sel); else select(next.sel); }
   finally { goingBack = false; }
 }
 // a comp or a group member can sit at the other level: follow him there (selection kept)
@@ -5389,7 +5425,7 @@ function mostUsedRow(r) {
 }
 // The card pops out over the map. Opening it remembers the map as it is (view, selection, preview card, lookalike
 // list, level, dot size); the map behind is not redrawn while the card is open, so Plotly keeps its zoom; closing
-// (Back to map, ×, Escape, a click outside) puts all of it back.
+// (×, Escape, a click outside) puts all of it back.
 function cardSnap() {
   if (state.cardOpen || state.cardFrom) return;   // already open: keep the first snapshot
   state.cardFrom = { view: state.view, sel: state.sel, preview: !!state.preview, showComps: !!state.showComps, lookFrom: state.lookFrom ?? null, level: state.level, zoomK: state.zoomK || 1 };
@@ -5545,6 +5581,23 @@ function closeSim(quiet) {
   state.simOpen = false; $("#simBox").hidden = true; $("#simScrim").hidden = true;
   if (FLS && FLS.cvId === "simCv") stopFlight();
   if (!quiet && was) { renderDetail(); syncCta(); }   // the card's own flight panel comes back
+}
+// "<Name>’s profile ›" beside each name in the lab's header: that pitcher's full player card. For the lookalike, his card opens
+// (Go back returns to the pitcher the lab was for). For the pitcher himself: opened from the map's lookalikes card, his
+// card opens; opened from his card, the card is already under the lab, so the lab just closes back to it.
+const simProfBtn = r => `<button type="button" class="simprof" data-prof="${r}" title="Open ${esc(T.name[r])}’s player card">${esc(lastName(T.name[r]))}’s profile ›</button>`;
+function simToProfile(r) {
+  if (r === null || r === undefined) r = state.sel;
+  if (r === null || r === undefined) return;
+  if (!samePitcher(r, state.sel)) {   // to the lookalike: Go back on his card returns to this lab, as it is now
+    const from = state.sel, lab = state.simOpen && state.sim ? { sim: state.sim, preview: !!state.preview } : null;
+    openPitcher(r);
+    const top = backStack[backStack.length - 1];
+    if (lab && top && top.sel === from) top.lab = lab;
+    return;
+  }
+  if (state.preview) { openCard(); return; }
+  closeSim(); focusCard();
 }
 function closeSimFocus() {   // × and Escape: focus goes back to whatever opened the lab
   const o = state.simOpener; closeSim();
