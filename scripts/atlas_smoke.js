@@ -238,6 +238,7 @@ const J = JSON.stringify;
   // the Clusters row's own ON/OFF switch: colours only, the panel stays closed
   const sw = { target: { closest: s => (s === "#pnClSw" ? {} : null) } };
   ok(getEl("#pnClSw").getAttribute("aria-checked") === "false" && getEl("#pnClSwTxt").textContent === "OFF", "Clusters switch reads OFF");
+  ok(["#pnClusters", "#pnPitchers", "#pnGroups"].every(id => getEl(id).innerHTML.includes('class="chev"')) && getEl("#pnClusters").title === "Show the cluster list", "rows carry the opens-a-panel arrow; Clusters says it shows the list");
   navClick(sw); await tick();
   ok(run("state.color.t") === "cat:subcluster" && !run("state.rail.open") && getEl("#pnClSw").getAttribute("aria-checked") === "true" && getEl("#pnClSwTxt").textContent === "ON", "switch ON: subcluster colours on, panel stays closed");
   navClick(sw); await tick();

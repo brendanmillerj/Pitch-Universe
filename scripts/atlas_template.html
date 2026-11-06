@@ -158,11 +158,13 @@ button, input, select { font: inherit; color: inherit; }
 .typecol .panelnav .ubtn { width: 100%; min-height: 32px; justify-content: space-between; }
 .panelnav .ubtn b { font-weight: 400; color: var(--ink2); font-variant-numeric: tabular-nums; }
 .panelnav .ubtn[aria-pressed="true"] b { color: var(--field); }
+.panelnav .pnl, .panelnav .pnr { display: inline-flex; align-items: center; gap: 6px; }
+.panelnav .chev { font-style: normal; font-size: 20px; line-height: 1; margin-left: 4px; margin-top: -2px; }
 /* the Clusters row carries its own ON/OFF switch at its right end (a sibling laid over the row: a button can't hold a button) */
 .pnrow { position: relative; display: flex; }
-.pnrow #pnClusters { flex: 1 1 auto; padding-right: 84px; }
-.pnsw { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px;
-  border: 0; border-radius: 999px; background: none; color: var(--ink); font: 700 12px/1 var(--font-ui); letter-spacing: 0.04em; cursor: pointer; }
+.pnrow #pnClusters { flex: 1 1 auto; padding-right: 90px; justify-content: flex-start; }
+.pnsw { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 9px;
+  border: 0; border-left: 1px solid var(--rule); border-radius: 0; background: none; color: var(--ink); font: 700 12px/1 var(--font-ui); letter-spacing: 0.04em; cursor: pointer; }
 .pnsw i { position: relative; width: 32px; height: 18px; border-radius: 999px; background: var(--rule); flex: none; transition: background 150ms; }
 .pnsw i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--field);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); transition: left 150ms; }
@@ -172,7 +174,7 @@ button, input, select { font: inherit; color: inherit; }
 .pnsw:hover i { box-shadow: 0 0 0 2px var(--wash); }
 .pnsw:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 /* on the filled row (Clusters panel open) the switch turns light */
-#pnClusters[aria-pressed="true"] + .pnsw { color: var(--field); }
+#pnClusters[aria-pressed="true"] + .pnsw { color: var(--field); border-left-color: rgba(255, 255, 255, 0.35); }
 #pnClusters[aria-pressed="true"] + .pnsw i { background: rgba(255, 255, 255, 0.35); }
 #pnClusters[aria-pressed="true"] + .pnsw[aria-checked="true"] i { background: var(--field); }
 #pnClusters[aria-pressed="true"] + .pnsw[aria-checked="true"] i::after { background: var(--ink); }
@@ -3039,11 +3041,17 @@ function syncRail() {
   const open = !!state.rail.open;
   $("#rail").hidden = !open;
   const label = { clusters: "Clusters", pitchers: "Pitchers", groups: `Groups${nG ? ` <b>${nG}</b>` : ""}` };
-  const nav = { clusters: "Clusters", pitchers: `Pitchers${nP ? ` <b>${nP.toLocaleString()}</b>` : ""}`, groups: `Groups${nG ? ` <b>${nG}</b>` : ""}` };
+  // the column's rows: an arrow says "opens a panel" (the Clusters row's ON/OFF switch, past a divider, is the colors)
+  const chev = `<i class="chev" aria-hidden="true">›</i>`;
+  const nav = { clusters: `<span class="pnl">Clusters${chev}</span>`,
+    pitchers: `<span class="pnl">Pitchers</span><span class="pnr">${nP ? `<b>${nP.toLocaleString()}</b>` : ""}${chev}</span>`,
+    groups: `<span class="pnl">Groups</span><span class="pnr">${nG ? `<b>${nG}</b>` : ""}${chev}</span>` };
+  const tip = { clusters: "the cluster list", pitchers: "the pitcher list", groups: "your groups" };
   Object.keys(RAIL_PANES).forEach(t => {
     const T1 = t[0].toUpperCase() + t.slice(1), there = tabs.includes(t), on = open && state.rail.tab === t;
     const b = $("#tab" + T1); b.hidden = !there; b.innerHTML = label[t]; b.setAttribute("aria-selected", String(on));
     const n = $("#pn" + T1); n.hidden = !there; n.innerHTML = nav[t]; n.setAttribute("aria-pressed", String(on));   // the column's rows
+    n.title = `${on ? "Hide" : "Show"} ${tip[t]}`;
     $(RAIL_PANES[t]).hidden = !(there && on);
   });
   $("#pnClRow").hidden = !tabs.includes("clusters");
