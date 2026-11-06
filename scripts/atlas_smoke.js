@@ -166,7 +166,7 @@ const J = JSON.stringify;
   // ---- layout
   const hEnd = markup.indexOf("</header>");
   ok(markup.indexOf('id="dimSeg"') < hEnd && markup.indexOf('id="lqual"') < hEnd && markup.indexOf('id="navBack"') < hEnd && markup.indexOf('id="navFwd"') < hEnd, "header: view switches, meter, ← Back, Forward →");
-  ok(markup.indexOf('id="clusterSeg"') > markup.indexOf('id="clusterBox"') && markup.indexOf('id="clusterBox"') > markup.indexOf('id="rail"'), "the cluster switch sits at the top of the Clusters panel");
+  ok(!markup.includes('id="clusterSeg"') && /id="pnClusters"[^>]*role="switch"/.test(markup), "the Clusters row is the one switch (no switch inside the panel)");
   ok(markup.indexOf('id="panelNav"') > markup.indexOf('id="lvlSeg"') && markup.indexOf('id="panelNav"') < markup.indexOf('id="universe"'), "Clusters · Pitchers · Groups rows under MLB | Triple-A");
   ok(!markup.includes('id="railPills"') && !markup.includes('id="mkX"'), "no pills or × on the map");
   ok(markup.indexOf('class="measseg"') > markup.indexOf('id="typeCol"') && markup.indexOf('class="measseg"') < markup.indexOf('id="lvlSeg"'), "filter at the top of the left column, above MLB | Triple-A");
@@ -178,10 +178,10 @@ const J = JSON.stringify;
   const pt = run('TYPES.includes("FF") ? "FF" : TYPES[0]'), ptn = run(`PTN[${J(pt)}]`);
   run(`setView(${J(pt)})`); await tick();
   ok(getEl("#rail").hidden === true, "the panel starts closed");
-  ok(!markup.includes('data-cl="cat:cluster"') && markup.includes('data-cl="cat:subcluster"'), "the switch is Off | On (no Clusters vs Subclusters choice)");
+  ok(!markup.includes("data-cl="), "no Clusters vs Subclusters choice anywhere");
   run(`openPanel("clusters")`); await tick();
   ok(run("state.rail.open") && run("state.rail.tab") === "clusters" && run("state.color.t") === "cat:subcluster", "opening Clusters turns on the subcluster colours");
-  ok(getEl("#clusterBox").hidden === false && getEl("#matchBox").hidden === true && getEl("#pnClusters").getAttribute("aria-pressed") === "true", "Clusters tab shows; its row in the column is pressed");
+  ok(getEl("#clusterBox").hidden === false && getEl("#matchBox").hidden === true && getEl("#pnClusters").getAttribute("aria-checked") === "true", "Clusters tab shows; the Clusters switch in the column reads ON");
   ok(getEl("#mapKey").hidden === true, "the map's key carries no cluster list");
   const tree = getEl("#clList"), chipRe = /class="mk-item mk-pick( mk-par| mk-kid)?[^"]*" data-arch="([^"]+)"/g;
   const seq = [...tree.innerHTML.matchAll(chipRe)].map(m => ({ k: (m[1] || "").trim(), id: m[2] }));
@@ -235,17 +235,23 @@ const J = JSON.stringify;
   ok(run("state.rail.open") && run("state.rail.tab") === "pitchers" && getEl("#matchBox").hidden === false && getEl("#pnPitchers").getAttribute("aria-pressed") === "true", "Pitchers row opens the Pitchers tab");
   navClick(row("pitchers")); await tick();
   ok(!run("state.rail.open") && getEl("#rail").hidden === true, "clicking the open row closes the panel");
-  // the Clusters row's own ON/OFF switch: colours only, the panel stays closed
-  const sw = { target: { closest: s => (s === "#pnClSw" ? {} : null) } };
-  ok(getEl("#pnClSw").getAttribute("aria-checked") === "false" && getEl("#pnClSwTxt").textContent === "OFF", "Clusters switch reads OFF");
-  ok(["#pnClusters", "#pnPitchers", "#pnGroups"].every(id => getEl(id).innerHTML.includes('class="chev"')) && getEl("#pnClusters").title === "Show the cluster list", "rows carry the opens-a-panel arrow; Clusters says it shows the list");
-  navClick(sw); await tick();
-  ok(run("state.color.t") === "cat:subcluster" && !run("state.rail.open") && getEl("#pnClSw").getAttribute("aria-checked") === "true" && getEl("#pnClSwTxt").textContent === "ON", "switch ON: subcluster colours on, panel stays closed");
-  navClick(sw); await tick();
-  ok(run("state.color.t") === "cat:pitch_type" && getEl("#pnClSw").getAttribute("aria-checked") === "false" && getEl("#pnClSwTxt").textContent === "OFF", "switch OFF: back to pitch-type colours");
-  run(`openPanel("clusters")`); await tick();
-  ok(getEl("#pnClSw").getAttribute("aria-checked") === "true", "opening the panel turns colours on, and the switch shows it");
-  run("clustersOff(); railClose(); render();"); await tick();
+  // the Clusters row is one switch: on = colours + list; on with the list showing -> off; on with the list closed by × -> list back
+  const pc = getEl("#pnClusters"), pill = () => /<span>(ON|OFF)<\/span>/.exec(pc.innerHTML)?.[1];
+  ok(pc.getAttribute("aria-checked") === "false" && pill() === "OFF" && /Turn clusters on/.test(pc.title), "Clusters switch reads OFF");
+  ok(["#pnPitchers", "#pnGroups"].every(id => getEl(id).innerHTML.includes('class="chev"')), "Pitchers and Groups rows carry the opens-a-panel arrow");
+  navClick(row("clusters")); await tick();
+  ok(run("state.color.t") === "cat:subcluster" && run("state.rail.open") && run("state.rail.tab") === "clusters" && pc.getAttribute("aria-checked") === "true" && pill() === "ON",
+    "switch ON: subcluster colours on and the cluster list open");
+  ok(getEl("#clList").innerHTML.includes("data-arch") && pc.title === "Turn clusters off", "the list is there; the switch says it turns them off");
+  navClick(row("clusters")); await tick();
+  ok(run("state.color.t") === "cat:pitch_type" && !run("state.rail.open") && pc.getAttribute("aria-checked") === "false" && pill() === "OFF", "switch OFF: colours off and the list closed");
+  navClick(row("clusters")); await tick();
+  getEl("#railClose")._h.click[0]({}); await tick();
+  ok(run("state.color.t") === "cat:subcluster" && !run("state.rail.open") && pc.getAttribute("aria-checked") === "true" && pc.title === "Show the cluster list again", "× hides just the list; the colours stay on");
+  navClick(row("clusters")); await tick();
+  ok(run("state.rail.open") && run("state.rail.tab") === "clusters" && run("state.color.t") === "cat:subcluster", "clicking the switch then brings the list back (still ON)");
+  run("clustersOff()"); await tick();
+  ok(!run("state.rail.open") && pill() === "OFF", "Off closes the list too");
 
   // ---- morphs, 2D
   run(`setView("all")`); await tick(); await tick();
