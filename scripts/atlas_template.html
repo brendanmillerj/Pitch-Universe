@@ -2330,8 +2330,8 @@ function goView(view, opt = {}) {
   const ok = prev !== view && !reduced() && !state.cardOpen && (in3D ? G3.view === prev && G3.objs.length > 0
     : plotReady && !is3D() && plotEl.data && plotEl.data.length && fl && fl.xaxis && fl.xaxis.range && glOK());
   if (!ok) { setView(view); return; }
-  // one type to another: back out to All pitches, then into the new type, two quick legs
-  if (prev !== "all" && view !== "all") { goView("all", { dur: 420, then: () => goView(view, { dur: 420 }) }); return; }
+  // one type to another: back out to All pitches, then into the new type, each leg at the All <-> type pace (950 ms)
+  if (prev !== "all" && view !== "all") { goView("all", { then: () => goView(view) }); return; }
   const one = prev === "all" ? view : prev;   // the pitch type both maps show
   if (in3D) { morph3D(prev, view, one, opt); return; }
   const xr0 = fl.xaxis.range.slice(), yr0 = fl.yaxis.range.slice();
