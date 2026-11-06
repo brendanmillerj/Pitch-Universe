@@ -2001,6 +2001,11 @@ const PITCHER_DELIVERY = [
 ];
 const mk = (key, label, unit, dec, group, div, get) => ({ key, label, unit, dec, group, div: !!div, get });
 const cat = (key, label, cats, get) => ({ key, label, group: "Groups", cat: true, cats, get });
+// a colour toward black (t > 0) or white (t < 0) by |t|: subclusters as shades of their cluster's colour
+function shadeHex(hex, t) {
+  const n = parseInt(hex.slice(1), 16), c = [n >> 16, (n >> 8) & 255, n & 255], to = t > 0 ? 0 : 255, a = Math.min(1, Math.abs(t));
+  return "#" + c.map(x => Math.round(x + (to - x) * a).toString(16).padStart(2, "0")).join("");
+}
 
 function buildTypeVars(all) {
   const v = [];
@@ -2014,6 +2019,22 @@ function buildTypeVars(all) {
   v.push({ ...cat("cat:fa", `Free-agent status (${D.fa_season}–${String(D.fa_season + 1).slice(2)})`, ["none", "signed", "minor", "open"], faStatus),
     names: ["Not a free agent", "Free agent, signed", "Minor-league free agent, unsigned", "Free agent, unsigned"],
     muted: ["none"], colors: pal => [pal.gray, pal.cat[0], pal.cat[3], pal.cat[7]] });
+  const pcl = D.pitch_clusters;   // (read directly: the vars are built before PCL is defined)
+  if (pcl) {   // the pitch clusters projected on the map: one colour per cluster; subclusters shade their cluster's colour
+    const c1 = [], n1 = [], k1 = [], c2 = [], n2 = [], k2 = [];
+    TYPES.forEach(pt => {
+      const d = pcl.types[pt]; if (!d) return;
+      d.clusters.forEach((c, i) => {
+        c1.push(c.id); n1.push(`${PTN[pt]} ${c.letter} · ${c.name}`); k1.push(i);
+        const subs = c.subs.length ? c.subs : [{ id: c.id, name: c.name }];
+        subs.forEach((x, q) => { c2.push(x.id); n2.push(`${PTN[pt]} ${x.id.split("-")[1]} · ${x.name}`); k2.push([i, subs.length > 1 ? q / (subs.length - 1) : 0.5]); });
+      });
+    });
+    v.push({ ...cat("cat:cluster", "Pitch cluster (Find a type of pitch)", c1, j => T.cl1 ? T.cl1[j] : null), names: n1, clusterLevel: 1,
+      colors: pal => k1.map(i => pal.cat[i % pal.cat.length]) });
+    v.push({ ...cat("cat:subcluster", "Pitch subcluster", c2, j => T.cl2 ? T.cl2[j] : null), names: n2, clusterLevel: 2,
+      colors: pal => k2.map(([i, f]) => shadeHex(pal.cat[i % pal.cat.length], 0.45 - 0.9 * f)) });
+  }
   TF.forEach(f => v.push(mk("t:" + f[0], f[1], f[2], f[3], f[4], f[5], j => T[f[0]][j])));
   PITCHER_RESULTS.filter(r => r[0] !== "n" && r[0] !== "rv100").forEach(([k, l, u, d, dv]) =>
     v.push(mk("P:" + k, "Pitcher " + (k === "luck" ? l : l.charAt(0).toLowerCase() + l.slice(1)), u, d, "Whole pitcher", dv,
@@ -2358,6 +2379,19 @@ function render() {
       const muted = cg.v.muted && cg.v.muted.includes(c);
       const color = cg.v.colors ? cg.v.colors(pal)[k] : pal.cat[k % pal.cat.length];
       if (key) key.items.push({ name: nm, n: rs.length, color, muted });
+      if (cg.v.clusterLevel) {   // a cluster's edge members (between two clusters): faint, under its core
+        const conf = cg.v.clusterLevel === 1 ? T.conf1 : T.conf2, isEdge = r => isNum(conf[r]) && conf[r] < PCL.core;
+        const er = rs.filter(isEdge);
+        if (er.length) {
+          traces.push({ type: "scatter", mode: "markers", ...pt(er), customdata: er, name: `${nm}, edge (${er.length})`, hoverinfo: "text",
+            hovertext: er.map(r => hov(r, nm) + "<br><i>Edge member: between this cluster and another</i>"),
+            marker: { size: Math.max(fadeSize, size * 0.8), color, opacity: 0.35, line: { width: 0 } } });
+          const cr = rs.filter(r => !isEdge(r)); if (!cr.length) return;
+          traces.push({ type: "scatter", mode: "markers", ...pt(cr), customdata: cr, name: `${nm} (${cr.length})`, hoverinfo: "text",
+            hovertext: cr.map(r => hov(r, nm)), marker: { size, color, opacity: 0.92, line: { width: 0.75, color: pal.surface } } });
+          return;
+        }
+      }
       traces.push({ type: "scatter", mode: "markers", ...xy2, customdata: rs, name: `${nm} (${rs.length})`, hoverinfo: "text",
         hovertext: rs.map(r => hov(r, nm)),
         marker: { size: muted ? fadeSize : size + (cg.v.key === "cat:fa" ? 2 : 0), color, opacity: muted ? FADE : 0.92,
@@ -2439,6 +2473,19 @@ function render() {
     traces.push({ meta: "typelabels", type: "scatter", mode: "text", x: lx, y: ly, text: lt, hoverinfo: "skip", showlegend: false,
       textfont: { family: UI_FONT, size: 13, color: pal.ink, shadow: `0 0 3px ${pal.bg}, 0 0 3px ${pal.bg}, 0 0 2px ${pal.bg}` } });
   }
+  // coloured by pitch cluster: each cluster's letter (A, A1; "FF A" in All pitches) at the median of its core members
+  if (cg.v && cg.v.clusterLevel) {
+    const conf = cg.v.clusterLevel === 1 ? T.conf1 : T.conf2, lx = [], ly = [], lt = [], sets = [];
+    cg.v.cats.forEach(c => {
+      const rs = on.filter(r => cg.get(r) === c); if (!rs.length) return;
+      const core = rs.filter(r => !(isNum(conf[r]) && conf[r] < PCL.core)), use = core.length ? core : rs;
+      const xs = use.map(r => xy(view, r)[0]).filter(isNum).sort((a, b) => a - b), ys = use.map(r => xy(view, r)[1]).filter(isNum).sort((a, b) => a - b);
+      if (!xs.length) return;
+      lx.push(xs[xs.length >> 1]); ly.push(ys[ys.length >> 1]); lt.push(`<b>${view === "all" ? c.replace("-", " ") : c.split("-")[1]}</b>`); sets.push(use);
+    });
+    if (lt.length) traces.push({ meta: "clusterlabels", type: "scatter", mode: "text", x: lx, y: ly, text: lt, rowsets: sets, hoverinfo: "skip", showlegend: false,
+      textfont: { family: UI_FONT, size: 14, color: pal.ink, shadow: `0 0 3px ${pal.bg}, 0 0 3px ${pal.bg}, 0 0 2px ${pal.bg}` } });
+  }
   traces.push(...savedTraces(view, pal, typeBoxes));   // saved groups: always drawn, whatever the filters
   // pitches picked for a new group: a white ring each (only those on this map, at this level)
   const picked = [...state.picks].filter(r => T.level[r] === state.level && (view === "all" || T.pitch_type[r] === view));
@@ -2487,7 +2534,7 @@ function render() {
     const srcOf = r => traces.find(t => Array.isArray(t.customdata) && t.marker && t.customdata.includes(r));
     const srcs = arsenal.map(srcOf);
     // (with his lookalikes shown, everything but him, the spokes and the numbered lookalikes fades further)
-    const dimTo = compsOnMap() ? LOOK_DIM : SEL_DIM, keepLit = compsOnMap() ? new Set(["typelabels", "saved", "comps", "spokes"]) : new Set(["typelabels", "saved"]);
+    const dimTo = compsOnMap() ? LOOK_DIM : SEL_DIM, keepLit = compsOnMap() ? new Set(["typelabels", "clusterlabels", "saved", "comps", "spokes"]) : new Set(["typelabels", "clusterlabels", "saved"]);
     traces.forEach(t => { if (!keepLit.has(t.meta) && t.fill !== "toself") { t.opacity = dimTo; t.dimK = dimTo; } });
     // ...and his pitch(es) are redrawn on top at full strength in their own colors; in All pitches each
     // carries its pitch code (the selected one below the dot, clear of the name label above it)
@@ -2538,6 +2585,11 @@ function render() {
         const pos = TYPES.filter(c => typeRows[c].length).map(c => [0, 1, 2].map(k => med(typeRows[c].map(r => xyz(view, r)[k]))));
         return { ...t, type: "scatter3d", x: pos.map(q => q[0]), y: pos.map(q => q[1]), z: pos.map(q => q[2]),
           textfont: { family: UI_FONT, size: 13, color: pal.ink } };
+      }
+      if (t.meta === "clusterlabels") {
+        const pos = t.rowsets.map(rs => [0, 1, 2].map(k => med(rs.map(r => xyz(view, r)[k]))));
+        return { ...t, type: "scatter3d", x: pos.map(q => q[0]), y: pos.map(q => q[1]), z: pos.map(q => q[2]),
+          textfont: { family: UI_FONT, size: 14, color: pal.ink } };
       }
       if (!Array.isArray(t.customdata)) return null;
       const c3 = t.customdata.map(r => xyz(view, r));
@@ -3465,7 +3517,7 @@ function render3D(traces, view, pal, layout, groups = []) {
     g.labels.push({ v: new THREE.Vector3(pt[0], pt[1], pt[2]), el, dy: pos === "top center" ? "-160%" : pos === "bottom center" ? "60%" : "-50%" });
   };
   for (const t of traces) {
-    if (t.meta === "typelabels") { t.x.forEach((x, k) => addLabel([x, t.y[k], t.z[k]], t.text[k], "g3-tlabel", "middle center")); continue; }
+    if (t.meta === "typelabels" || t.meta === "clusterlabels") { t.x.forEach((x, k) => addLabel([x, t.y[k], t.z[k]], t.text[k], "g3-tlabel", "middle center")); continue; }
     if (!Array.isArray(t.customdata)) continue;
     const n = t.customdata.length; if (!n) continue;
     const pos = new Float32Array(n * 3);
@@ -5867,6 +5919,8 @@ const EXPLAIN = {
   "P:ip": "Innings pitched that season.",
   "P:release_spread": "How far apart his release points are across his pitch types, in inches. Smaller means his pitches look more alike out of the hand.",
   "cat:season": "Colors each dot by season.",
+  "cat:cluster": "Colors each pitch by its cluster under “Find a type of pitch” (found from the data, within its pitch type); letters mark each cluster’s core, faint dots are edge members between two clusters.",
+  "cat:subcluster": "Colors each pitch by its subcluster, in shades of its cluster’s color; letters mark each subcluster’s core, faint dots are edge members.",
   "cat:throws": "Colors each dot by throwing hand.",
 };
 // Glossary (under the how-to box): the jargon first, in plain words, then every measure by category,
