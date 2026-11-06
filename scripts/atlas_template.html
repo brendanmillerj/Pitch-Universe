@@ -130,6 +130,10 @@ button, input, select { font: inherit; color: inherit; }
 .tcsub { margin-top: 8px; font: 600 13px var(--font-ui); color: var(--ink2); }
 .typecol .mseg { display: flex; }
 .typecol .mseg button { flex: 1 1 0; padding: 0 4px; }
+/* Pitch clusters: Off / Clusters / Subclusters stacked (three side by side do not fit the column) */
+.typecol #clusterSeg { flex-direction: column; }
+.typecol #clusterSeg button { min-height: 30px; }
+.typecol #clusterSeg button + button { border-left: 0; border-top: 1.5px solid var(--ink); }
 .typecol .tcsel { display: block; }
 .typecol .tcsel select { width: 100%; max-width: none; padding: 0 28px 0 10px; }
 .typecol .tcsel select:disabled { color: var(--muted); cursor: default; }
@@ -1624,8 +1628,9 @@ tr.self td { font-weight: 600; background: none; }
         <nav class="universe" id="universe" aria-label="Choose a map: all pitches or one pitch type"></nav>
         <span class="tcsub" id="clLbl">Pitch clusters</span>
         <div class="mseg" id="clusterSeg" role="group" aria-labelledby="clLbl">
-          <button type="button" data-cl="cat:cluster" aria-pressed="false" title="Color every pitch by its cluster, found from the data within its pitch type (letters mark each cluster; faint dots sit between two). Press again to turn off.">Clusters</button>
-          <button type="button" data-cl="cat:subcluster" aria-pressed="false" title="Color every pitch by its subcluster, in shades of its cluster's color. Press again to turn off.">Subclusters</button>
+          <button type="button" data-cl="off" aria-pressed="true" title="No cluster colors: pitches colored as chosen under Color pitchers by">Off</button>
+          <button type="button" data-cl="cat:cluster" aria-pressed="false" title="Color every pitch by its cluster, found from the data within its pitch type (letters mark each cluster; faint dots sit between two)">Clusters</button>
+          <button type="button" data-cl="cat:subcluster" aria-pressed="false" title="Color every pitch by its subcluster, in shades of its cluster's color">Subclusters</button>
         </div>
         <span class="tcsub" id="seasonLbl">Season</span>
         <div class="mseg" id="seasonChips" role="group" aria-labelledby="seasonLbl"></div>
@@ -5994,7 +5999,7 @@ function buildVarSelects() {
   const a = VMAP[kind][cur];
   const clOn = cur === "cat:cluster" || cur === "cat:subcluster";
   $("#colorBtnTxt").textContent = cur === "cat:team" ? "Team (turn off on the map)" : clOn ? `${cur === "cat:cluster" ? "Clusters" : "Subclusters"} (turn off at left)` : a ? a.label : "Pitch type";
-  document.querySelectorAll("#clusterSeg [data-cl]").forEach(b => b.setAttribute("aria-pressed", String(cur === b.dataset.cl)));
+  document.querySelectorAll("#clusterSeg [data-cl]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.cl === "off" ? !clOn : cur === b.dataset.cl)));
   if (!$("#colorMenu").hidden) $("#cmList").innerHTML = colorMenuHTML(pick, cur, $("#cmSearch").value);
   $("#colorB").innerHTML = optionsHTML(vars, state.colorB[kind], "", false);
   $("#colorAWrap").classList.toggle("on", !NOT_IN_LIST.has(cur));   // filled in while a measure is the color
@@ -6451,11 +6456,13 @@ function buildStatic() {
   $("#lassoOn").addEventListener("click", () => setLasso(!state.lasso));
   document.addEventListener("click", e => { const b = e.target.closest(".hm [data-hk]"); if (b) sortHeat(b); });
   document.addEventListener("keydown", e => { if (e.key === "Escape" && state.lasso) { e.preventDefault(); setLasso(false); } });
-  // Pitch clusters on/off, for every map at once (so it stays on while you switch pitch type); off returns to pitch type
+  // Pitch clusters Off / Clusters / Subclusters, for every map at once (so it stays on while you switch pitch type).
+  // Off returns to pitch type, and only acts while clusters are on (it never undoes a measure chosen under Color by).
   $("#clLbl").hidden = $("#clusterSeg").hidden = !D.pitch_clusters;
   document.querySelectorAll("#clusterSeg [data-cl]").forEach(b => b.addEventListener("click", () => {
-    const to = state.color[varKind(state.view)] === b.dataset.cl ? "cat:pitch_type" : b.dataset.cl;
-    state.color.all = state.color.t = to; state.op = "none"; buildVarSelects(); render();
+    const cur = state.color[varKind(state.view)], on = cur === "cat:cluster" || cur === "cat:subcluster";
+    if (b.dataset.cl === "off" ? !on : cur === b.dataset.cl) return;
+    state.color.all = state.color.t = b.dataset.cl === "off" ? "cat:pitch_type" : b.dataset.cl; state.op = "none"; buildVarSelects(); render();
   }));
   $("#teamOn").addEventListener("click", () => {   // Team colors on/off; off returns to pitch type
     const kind = varKind(state.view);
