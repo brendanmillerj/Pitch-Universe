@@ -235,6 +235,16 @@ const J = JSON.stringify;
   ok(run("state.rail.open") && run("state.rail.tab") === "pitchers" && getEl("#matchBox").hidden === false && getEl("#pnPitchers").getAttribute("aria-pressed") === "true", "Pitchers row opens the Pitchers tab");
   navClick(row("pitchers")); await tick();
   ok(!run("state.rail.open") && getEl("#rail").hidden === true, "clicking the open row closes the panel");
+  // the Clusters row's own ON/OFF switch: colours only, the panel stays closed
+  const sw = { target: { closest: s => (s === "#pnClSw" ? {} : null) } };
+  ok(getEl("#pnClSw").getAttribute("aria-checked") === "false" && getEl("#pnClSwTxt").textContent === "OFF", "Clusters switch reads OFF");
+  navClick(sw); await tick();
+  ok(run("state.color.t") === "cat:subcluster" && !run("state.rail.open") && getEl("#pnClSw").getAttribute("aria-checked") === "true" && getEl("#pnClSwTxt").textContent === "ON", "switch ON: subcluster colours on, panel stays closed");
+  navClick(sw); await tick();
+  ok(run("state.color.t") === "cat:pitch_type" && getEl("#pnClSw").getAttribute("aria-checked") === "false" && getEl("#pnClSwTxt").textContent === "OFF", "switch OFF: back to pitch-type colours");
+  run(`openPanel("clusters")`); await tick();
+  ok(getEl("#pnClSw").getAttribute("aria-checked") === "true", "opening the panel turns colours on, and the switch shows it");
+  run("clustersOff(); railClose(); render();"); await tick();
 
   // ---- morphs, 2D
   run(`setView("all")`); await tick(); await tick();
@@ -262,6 +272,19 @@ const J = JSON.stringify;
   await pump(1000); await tick(); ok(run("state.view") === other && !run("state.morphing"), "type -> type lands");
   run(`goView(${J(pt)})`); await tick(); run(`goView("all")`); await tick();
   ok(run("state.view") === "all" && !run("state.morphing"), "a click mid-glide goes straight there");
+  await pump(1200); await tick(); await pump(1200); await tick();
+  ok(run("state.view") === "all" && !run("state.morphing"), "a cancelled glide stays cancelled (its pending frames and second leg never resume)");
+  // with the Clusters panel open, type → type keeps the old list on the first leg, then shows the new type's
+  run(`setView(${J(pt)}); openPanel("clusters")`); await tick(); await tick();
+  const listA = getEl("#clList").innerHTML, idsOf = h => [...h.matchAll(/data-arch="pc:([A-Z]+)-/g)].map(m => m[1]);
+  ok(idsOf(listA).length > 0 && idsOf(listA).every(x => x === pt), `panel lists ${pt}'s clusters`);
+  run(`goView(${J(other)})`); await tick(); await pump(400); await tick();
+  ok(run("state.view") === "all" && getEl("#clList").innerHTML === listA, "first leg (All pitches on the map): the panel still shows the old type's list");
+  await pump(700); await tick();
+  const listB = getEl("#clList").innerHTML;
+  ok(run("state.view") === other && idsOf(listB).length > 0 && idsOf(listB).every(x => x === other), `second leg: straight to ${other}'s list`);
+  await pump(1000); await tick();
+  run(`clustersOff(); railClose(); setView("all");`); await tick(); await tick();
 
   // ---- morphs, 3D
   run(`state.dim = 3; state.zoomK = 1; render();`); await tick(); await pump(16);

@@ -158,6 +158,25 @@ button, input, select { font: inherit; color: inherit; }
 .typecol .panelnav .ubtn { width: 100%; min-height: 32px; justify-content: space-between; }
 .panelnav .ubtn b { font-weight: 400; color: var(--ink2); font-variant-numeric: tabular-nums; }
 .panelnav .ubtn[aria-pressed="true"] b { color: var(--field); }
+/* the Clusters row carries its own ON/OFF switch at its right end (a sibling laid over the row: a button can't hold a button) */
+.pnrow { position: relative; display: flex; }
+.pnrow #pnClusters { flex: 1 1 auto; padding-right: 84px; }
+.pnsw { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px;
+  border: 0; border-radius: 999px; background: none; color: var(--ink); font: 700 12px/1 var(--font-ui); letter-spacing: 0.04em; cursor: pointer; }
+.pnsw i { position: relative; width: 32px; height: 18px; border-radius: 999px; background: var(--rule); flex: none; transition: background 150ms; }
+.pnsw i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--field);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); transition: left 150ms; }
+.pnsw span { min-width: 2.2em; text-align: left; }
+.pnsw[aria-checked="true"] i { background: var(--ink); }
+.pnsw[aria-checked="true"] i::after { left: 16px; }
+.pnsw:hover i { box-shadow: 0 0 0 2px var(--wash); }
+.pnsw:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+/* on the filled row (Clusters panel open) the switch turns light */
+#pnClusters[aria-pressed="true"] + .pnsw { color: var(--field); }
+#pnClusters[aria-pressed="true"] + .pnsw i { background: rgba(255, 255, 255, 0.35); }
+#pnClusters[aria-pressed="true"] + .pnsw[aria-checked="true"] i { background: var(--field); }
+#pnClusters[aria-pressed="true"] + .pnsw[aria-checked="true"] i::after { background: var(--ink); }
+@media (prefers-reduced-motion: reduce) { .pnsw i, .pnsw i::after { transition: none; } }
 /* wide screens: controls column, then the panel, then the map (the DOM keeps plot-then-panel for the phone stack) */
 @media (min-width: 720px) { .mapbody > .typecol { order: 0; } .mapbody > .mrail { order: 1; } .mapbody > .plotarea { order: 2; } }
 .typecol .ubtn { width: 100%; justify-content: flex-start; min-height: 32px; }
@@ -1550,6 +1569,7 @@ tr.self td { font-weight: 600; background: none; }
   .typecol > .lvlseg, .typecol > .measseg, .typecol > .grp, .typecol .universe { flex: 1 1 100%; }
   .typecol > .panelnav { flex: 1 1 100%; flex-direction: row; }
   .typecol > .panelnav .ubtn { flex: 1 1 0; width: auto; }
+  .typecol > .panelnav .pnrow { flex: 1 1 0; }
   .typecol > .mbtn, .typecol .ellrow .mbtn { width: auto; }
   .typecol .ellrow { flex-direction: row; }
   .tcsub { margin-top: 0; }
@@ -1654,7 +1674,10 @@ tr.self td { font-weight: 600; background: none; }
         </div>
         <!-- the panels beside the map open from here; the open one is filled -->
         <div class="panelnav" id="panelNav" role="group" aria-label="Panels beside the map">
-          <button type="button" class="ubtn" id="pnClusters" data-panel="clusters" aria-pressed="false">Clusters</button>
+          <div class="pnrow" id="pnClRow">
+            <button type="button" class="ubtn" id="pnClusters" data-panel="clusters" aria-pressed="false">Clusters</button>
+            <button type="button" class="pnsw" id="pnClSw" role="switch" aria-checked="false" aria-label="Cluster colors" title="Turn the cluster colors on or off"><i aria-hidden="true"></i><span id="pnClSwTxt">OFF</span></button>
+          </div>
           <button type="button" class="ubtn" id="pnPitchers" data-panel="pitchers" aria-pressed="false">Pitchers</button>
           <button type="button" class="ubtn" id="pnGroups" data-panel="groups" aria-pressed="false">Groups</button>
         </div>
@@ -2374,15 +2397,22 @@ function setLayout(lay) {
 // The new map is drawn first; afterPlot then rewinds it to where its dots were and plays it forward.
 const isRowTrace = t => { const cd = t.customdata; return Array.isArray(cd) && cd.length > 0 && !!t.x && t.x.length === cd.length && typeof cd[0] === "number"; };
 let afterPlot = null;   // { view, run }: once, right after the next 2D map draw for that view
+// Type to type passes through All pitches; the Clusters panel keeps the old type's list on that leg and changes straight
+// to the new type's when the second leg starts (no flash of every type's clusters). Expires on its own if a leg is lost.
+let clHold = null;   // { until } while the first leg runs
 function goView(view, opt = {}) {
   const prev = state.view;
-  if (state.morphing) { state.morphing = false; afterPlot = null; setView(view); return; }   // clicked mid-glide: go straight there
+  if (state.morphing) { state.morphing = false; state.morphTok = null; afterPlot = null; clHold = null; setView(view); return; }   // clicked mid-glide: go straight there
   const fl = plotEl._fullLayout, in3D = is3D() && !!G3 && !!window.THREE;
   const ok = prev !== view && !reduced() && !state.cardOpen && (in3D ? G3.view === prev && G3.objs.length > 0
     : plotReady && !is3D() && plotEl.data && plotEl.data.length && fl && fl.xaxis && fl.xaxis.range && glOK());
   if (!ok) { setView(view); return; }
   // one type to another: back out to All pitches, then into the new type, each leg at the All <-> type pace (950 ms)
-  if (prev !== "all" && view !== "all") { goView("all", { then: () => goView(view) }); return; }
+  if (prev !== "all" && view !== "all") {
+    clHold = { until: performance.now() + 2500 };
+    goView("all", { then: () => { clHold = null; goView(view); } });
+    return;
+  }
   const one = prev === "all" ? view : prev;   // the pitch type both maps show
   if (in3D) { morph3D(prev, view, one, opt); return; }
   const xr0 = fl.xaxis.range.slice(), yr0 = fl.yaxis.range.slice();
@@ -2424,7 +2454,7 @@ function morph3D(prev, view, one, opt = {}) {
   });
   const ratio = (prev === "all" ? 6 : 9) / (view === "all" ? 6 : 9);
   setView(view);   // draws the new map and frames its camera
-  if (G3 !== g || !is3D() || !g.objs.length) return;
+  if (G3 !== g || !is3D() || !g.objs.length) { if (opt.then) opt.then(); return; }
   const cam1 = g.camera.position.clone(), tgt1 = g.controls.target.clone(), objs = g.objs, moving = [], hidden = [];
   objs.forEach(o => {
     const rows = o.userData && o.userData.rows;
@@ -2446,7 +2476,7 @@ function morph3D(prev, view, one, opt = {}) {
     g.scene.add(pts); return { pts, C0: gh.col };
   });
   g.overlay.style.visibility = "hidden";
-  state.morphing = true;
+  state.morphing = true; const tok = state.morphTok = {};   // a newer glide (or a cancel) retires this one
   const t0 = performance.now(), dur = opt.dur || 950, ease = s => s < 0.5 ? 4 * s * s * s : 1 - Math.pow(-2 * s + 2, 3) / 2;
   const frame = s => {
     moving.forEach(m => {
@@ -2473,7 +2503,7 @@ function morph3D(prev, view, one, opt = {}) {
   };
   frame(0);
   const step = now => {
-    if (!state.morphing || G3 !== g || g.objs !== objs) { finish(); return; }   // cancelled, or the map was redrawn under it
+    if (!state.morphing || state.morphTok !== tok || G3 !== g || g.objs !== objs) { finish(); return; }   // cancelled, or the map was redrawn under it
     const s = ease(Math.min(1, (now - t0) / dur));
     frame(s);
     if (s < 1) { requestAnimationFrame(step); return; }
@@ -2487,7 +2517,7 @@ function morphView(prev, one, xr0, yr0, ratio, ghosts, opt = {}) {
   const fl = plotEl._fullLayout;
   if (!fl || !fl.xaxis || !fl.xaxis.range || !plotEl.data) return;
   const xr1 = fl.xaxis.range.slice(), yr1 = fl.yaxis.range.slice();
-  state.morphing = true;   // before any relayout, so the zoom handler leaves it alone
+  state.morphing = true; const tok = state.morphTok = {};   // before any relayout, so the zoom handler leaves it alone; a newer glide retires this one
   if (ghosts.length) Plotly.addTraces(plotEl, ghosts, ghosts.map((g, i) => i));   // under everything
   const idx = [], X0 = [], Y0 = [], X1 = [], Y1 = [], OP = [], SZ = [], hide = [];
   plotEl.data.forEach((t, k) => {
@@ -2521,7 +2551,7 @@ function morphView(prev, one, xr0, yr0, ratio, ghosts, opt = {}) {
   };
   frame(0);   // rewound before the browser paints the new map
   const step = now => {
-    if (!state.morphing) return;
+    if (!state.morphing || state.morphTok !== tok) return;
     const s = ease(Math.min(1, (now - t0) / dur));
     frame(s);
     if (s < 1) requestAnimationFrame(step);
@@ -2544,10 +2574,10 @@ function morphLayout() {
   const xr0 = fl.xaxis.range.slice(), yr0 = fl.yaxis.range.slice(), xr1 = ext(X1), yr1 = ext(Y1);
   if (hide.length) Plotly.restyle(plotEl, { visible: false }, hide);
   Plotly.relayout(plotEl, { annotations: [], shapes: [], "xaxis.visible": false, "yaxis.visible": false, "yaxis.scaleanchor": null });
-  state.morphing = true; state.zoomK = 1;
+  state.morphing = true; state.zoomK = 1; const tok = state.morphTok = {};
   const t0 = performance.now(), dur = 950, ease = s => s < 0.5 ? 4 * s * s * s : 1 - Math.pow(-2 * s + 2, 3) / 2;
   const step = now => {
-    if (!state.morphing) return;
+    if (!state.morphing || state.morphTok !== tok) return;
     const s = ease(Math.min(1, (now - t0) / dur)), L = (a, b) => a + (b - a) * s;
     Plotly.update(plotEl, { x: X0.map((a, i) => a.map((v, k) => L(v, X1[i][k]))), y: Y0.map((a, i) => a.map((v, k) => L(v, Y1[i][k]))) },
       { "xaxis.range": [L(xr0[0], xr1[0]), L(xr0[1], xr1[1])], "yaxis.range": [L(yr0[0], yr1[0]), L(yr0[1], yr1[1])] }, idx);
@@ -3016,8 +3046,15 @@ function syncRail() {
     const n = $("#pn" + T1); n.hidden = !there; n.innerHTML = nav[t]; n.setAttribute("aria-pressed", String(on));   // the column's rows
     $(RAIL_PANES[t]).hidden = !(there && on);
   });
+  $("#pnClRow").hidden = !tabs.includes("clusters");
   syncOnlySel();
   if (!$("#matchBox").hidden && state.mbDirty) renderMatchList();
+}
+// The Clusters row's ON/OFF switch: subcluster colors on, or off (as Off in the panel)
+function clustersToggle() {
+  const cur = state.color[varKind(state.view)];
+  if (cur === "cat:cluster" || cur === "cat:subcluster") { clustersOff(); return; }
+  state.color.all = state.color.t = "cat:subcluster"; state.op = "none"; buildVarSelects(); render();
 }
 // Opening a panel; Clusters turns the cluster colors on when they are off (the switch at its top turns them off)
 function openPanel(t) {
@@ -3945,6 +3982,7 @@ function drawKey(k) {
 // The Clusters panel's list: a chip per cluster (or the subcluster tree), the picked one pressed, "Show all" above them
 function drawClusterList(k) {
   const list = $("#clList"), pk = $("#clPick");
+  if (clHold && state.view === "all" && performance.now() < clHold.until) return;   // type to type, first leg: keep the old list
   if (!k) { list.innerHTML = ""; list.classList.remove("tree"); pk.hidden = true; pk.innerHTML = ""; return; }
   const inner = it => `<i style="background:${it.color}"></i>${esc(it.name)}<span class="mk-n">${it.n.toLocaleString()}</span>`;
   list.classList.toggle("tree", !!k.tree);
@@ -5814,7 +5852,7 @@ function navTo(i) {
   if (was && navKey(was) === navKey(here)) NAV.entries[NAV.idx] = here;
   NAV.restoring = true; NAV.idx = i;
   try {
-    state.morphing = false; afterPlot = null;
+    state.morphing = false; state.morphTok = null; afterPlot = null; clHold = null;
     if (s.level !== state.level && levelLoaded(s.level)) { state.level = s.level; syncLevel(); svRowCache.clear(); }
     Object.assign(state, { zoomK: s.view !== state.view ? 1 : state.zoomK, view: s.view, sel: s.sel, preview: s.preview, showComps: s.showComps,
       noLook: s.noLook, lookFrom: s.lookFrom, archetype: s.archetype, color: { ...s.color }, op: s.op, colorB: { ...s.colorB },
@@ -6367,6 +6405,7 @@ function buildVarSelects() {
   const clOn = cur === "cat:cluster" || cur === "cat:subcluster";
   $("#colorBtnTxt").textContent = cur === "cat:team" ? "Team (turn off on the map)" : clOn ? "Clusters (turn off in the Clusters panel)" : a ? a.label : "Pitch type";
   document.querySelectorAll("#clusterSeg [data-cl]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.cl === "off" ? !clOn : clOn)));
+  $("#pnClSw").setAttribute("aria-checked", String(clOn)); $("#pnClSwTxt").textContent = clOn ? "ON" : "OFF";
   if (!$("#colorMenu").hidden) $("#cmList").innerHTML = colorMenuHTML(pick, cur, $("#cmSearch").value);
   $("#colorB").innerHTML = optionsHTML(vars, state.colorB[kind], "", false);
   $("#colorAWrap").classList.toggle("on", !NOT_IN_LIST.has(cur));   // filled in while a measure is the color
@@ -6747,6 +6786,7 @@ function buildStatic() {
   $("#railClose").addEventListener("click", () => { railClose(); render(); });
   // the rows at the top of the controls column: open that panel, or close it when it is the one open
   $("#panelNav").addEventListener("click", e => {
+    if (e.target.closest("#pnClSw")) { clustersToggle(); return; }   // the Clusters row's ON/OFF: colors only, the panel stays as it is
     const b = e.target.closest("[data-panel]"); if (!b) return;
     if (state.rail.open && state.rail.tab === b.dataset.panel) { railClose(); render(); } else openPanel(b.dataset.panel);
   });
