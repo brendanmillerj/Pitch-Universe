@@ -2317,7 +2317,7 @@ function setLayout(lay) {
   if (!plotReady || is3D() || reduced() || !plotEl.data || !plotEl.data.length) { state.zoomK = 1; render(); return; }
   morphLayout();
 }
-// Switching between All pitches and one pitch type (2D, from the pitch-type buttons) morphs the same way: that type's dots
+// Switching between All pitches and one pitch type (from the pitch-type buttons; 2D here, 3D in morph3D) morphs the same way: that type's dots
 // glide between its island on the all-pitches map and its own map, growing or shrinking to the new dot size, the view
 // zooming along, while the other types fade out (into one type) or fade in where they sit (back to All pitches).
 // The new map is drawn first; afterPlot then rewinds it to where its dots were and plays it forward.
@@ -2326,13 +2326,14 @@ let afterPlot = null;   // { view, run }: once, right after the next 2D map draw
 function goView(view, opt = {}) {
   const prev = state.view;
   if (state.morphing) { state.morphing = false; afterPlot = null; setView(view); return; }   // clicked mid-glide: go straight there
-  const fl = plotEl._fullLayout;
-  const ok = prev !== view && plotReady && !is3D() && !reduced()
-    && !state.cardOpen && plotEl.data && plotEl.data.length && fl && fl.xaxis && fl.xaxis.range && glOK();
+  const fl = plotEl._fullLayout, in3D = is3D() && !!G3 && !!window.THREE;
+  const ok = prev !== view && !reduced() && !state.cardOpen && (in3D ? G3.view === prev && G3.objs.length > 0
+    : plotReady && !is3D() && plotEl.data && plotEl.data.length && fl && fl.xaxis && fl.xaxis.range && glOK());
   if (!ok) { setView(view); return; }
   // one type to another: back out to All pitches, then into the new type, two quick legs
   if (prev !== "all" && view !== "all") { goView("all", { dur: 420, then: () => goView(view, { dur: 420 }) }); return; }
   const one = prev === "all" ? view : prev;   // the pitch type both maps show
+  if (in3D) { morph3D(prev, view, one, opt); return; }
   const xr0 = fl.xaxis.range.slice(), yr0 = fl.yaxis.range.slice();
   const ratio = ((prev === "all" ? 6 : 9) * (state.zoomK || 1)) / (view === "all" ? 6 : 9);
   // going into one type: the other types' dots exactly as drawn now (colour, size), to fade out where they are
@@ -2350,6 +2351,85 @@ function goView(view, opt = {}) {
   });
   afterPlot = { view, run: () => morphView(prev, one, xr0, yr0, ratio, ghosts, opt) };
   setView(view);
+}
+// The same morph in 3D (three.js): the new map is drawn, then rewound and played forward. The shared type's dots glide
+// between the two maps' 3D positions while the camera flies from where it was to the new map's framing; the other types
+// fade by easing their colour into the background (3D dots are solid, as everywhere in 3D: no transparency sort).
+// Labels, the other-seasons path and ellipsoids step aside until it lands; then the map is redrawn.
+function morph3D(prev, view, one, opt = {}) {
+  const g = G3, bg = parseRGB(mapPalette().surface);
+  const cam0 = g.camera.position.clone(), tgt0 = g.controls.target.clone();
+  // going into one type: the other types' dots exactly as drawn now, to fade out where they are
+  const ghosts = [];
+  if (prev === "all") g.objs.forEach(o => {
+    const rows = o.userData && o.userData.rows;
+    if (!o.isPoints || !o.visible || !Array.isArray(rows) || typeof rows[0] !== "number") return;
+    const keep = []; rows.forEach((r, k) => { if (T.pitch_type[r] !== one) keep.push(k); });
+    if (!keep.length) return;
+    const P = o.geometry.attributes.position.array, C = o.geometry.attributes.color.array;
+    const pos = new Float32Array(keep.length * 3), col = new Float32Array(keep.length * 3);
+    keep.forEach((k, i) => { for (let c = 0; c < 3; c++) { pos[3 * i + c] = P[3 * k + c]; col[3 * i + c] = C[3 * k + c]; } });
+    ghosts.push({ pos, col, mat: o.material.clone(), order: o.renderOrder });
+  });
+  const ratio = (prev === "all" ? 6 : 9) / (view === "all" ? 6 : 9);
+  setView(view);   // draws the new map and frames its camera
+  if (G3 !== g || !is3D() || !g.objs.length) return;
+  const cam1 = g.camera.position.clone(), tgt1 = g.controls.target.clone(), objs = g.objs, moving = [], hidden = [];
+  objs.forEach(o => {
+    const rows = o.userData && o.userData.rows;
+    if (!o.isPoints || !Array.isArray(rows) || typeof rows[0] !== "number") { if (o.visible) { o.visible = false; hidden.push(o); } return; }
+    const pa = o.geometry.attributes.position, ca = o.geometry.attributes.color;
+    const P1 = Float32Array.from(pa.array), C1 = Float32Array.from(ca.array), P0 = Float32Array.from(P1), fade = new Uint8Array(rows.length);
+    let nFade = 0;
+    rows.forEach((r, k) => {
+      if (T.pitch_type[r] !== one) { fade[k] = 1; nFade++; return; }
+      const q = xyz(prev, r); if (q.every(isNum)) for (let c = 0; c < 3; c++) P0[3 * k + c] = q[c];
+    });
+    o.frustumCulled = false;   // its bounding sphere was measured where the dots end up
+    moving.push({ o, pa, ca, P0, P1, C1, fade: nFade ? fade : null, size1: o.material.size, whole: !nFade });
+  });
+  const ghostObjs = ghosts.map(gh => {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(gh.pos, 3)); geo.setAttribute("color", new THREE.BufferAttribute(Float32Array.from(gh.col), 3));
+    const pts = new THREE.Points(geo, gh.mat); pts.renderOrder = gh.order; pts.frustumCulled = false; pts.userData = { pick: false };
+    g.scene.add(pts); return { pts, C0: gh.col };
+  });
+  g.overlay.style.visibility = "hidden";
+  state.morphing = true;
+  const t0 = performance.now(), dur = opt.dur || 950, ease = s => s < 0.5 ? 4 * s * s * s : 1 - Math.pow(-2 * s + 2, 3) / 2;
+  const frame = s => {
+    moving.forEach(m => {
+      const P = m.pa.array; for (let i = 0; i < P.length; i++) P[i] = m.P0[i] + (m.P1[i] - m.P0[i]) * s;
+      m.pa.needsUpdate = true;
+      if (m.fade) {
+        const C = m.ca.array;
+        for (let k = 0; k < m.fade.length; k++) if (m.fade[k]) for (let c = 0; c < 3; c++) C[3 * k + c] = bg[c] + (m.C1[3 * k + c] - bg[c]) * s;
+        m.ca.needsUpdate = true;
+      }
+      if (m.whole) m.o.material.size = m.size1 * (ratio + (1 - ratio) * s);   // dot size eases between the two maps'
+    });
+    ghostObjs.forEach(({ pts, C0 }) => {
+      const ca = pts.geometry.attributes.color, C = ca.array;
+      for (let i = 0; i < C.length; i++) C[i] = C0[i] + (bg[i % 3] - C0[i]) * s;
+      ca.needsUpdate = true;
+    });
+    g.camera.position.lerpVectors(cam0, cam1, s); g.controls.target.lerpVectors(tgt0, tgt1, s);
+    g.needs = true;
+  };
+  const finish = () => {
+    ghostObjs.forEach(({ pts }) => { g.scene.remove(pts); pts.geometry.dispose(); pts.material.dispose(); });
+    g.overlay.style.visibility = ""; hidden.forEach(o => { o.visible = true; });
+  };
+  frame(0);
+  const step = now => {
+    if (!state.morphing || G3 !== g || g.objs !== objs) { finish(); return; }   // cancelled, or the map was redrawn under it
+    const s = ease(Math.min(1, (now - t0) / dur));
+    frame(s);
+    if (s < 1) { requestAnimationFrame(step); return; }
+    finish(); state.morphing = false; render();
+    if (opt.then) opt.then();
+  };
+  requestAnimationFrame(step);
 }
 // opt.dur: the glide's length (ms); opt.then: run once the landed map is redrawn (the second leg of type to type)
 function morphView(prev, one, xr0, yr0, ratio, ghosts, opt = {}) {
