@@ -414,6 +414,9 @@ button, input, select { font: inherit; color: inherit; }
 .cta-name { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
 .cta-name b { font: 600 22px/1.15 var(--font-serif); color: var(--ink); text-wrap: balance; }
 .cta-name span { font: 400 13px var(--font-ui); color: var(--ink2); }
+.cta-cl:empty { display: none; }
+.cta-cl .cltag { margin: 6px 0 4px; padding: 4px 10px 4px 7px; font-size: 13px; }
+.cta-cl .cltag i { width: 12px; height: 12px; }
 .ctabtn { display: flex; align-items: center; justify-content: center; width: 100%; min-height: var(--ctl); padding: 0 12px; border: 1.5px solid var(--ink); border-radius: var(--r);
   background: var(--field); color: var(--ink); font: 600 14px var(--font-ui); cursor: pointer; }
 .ctabtn:hover { background: var(--wash); }
@@ -1475,6 +1478,11 @@ tr.self td { font-weight: 600; background: none; }
 .mk-pick i { margin-top: 2px; }
 .mk-pick .mk-n { white-space: nowrap; }
 #mkPick .link { margin-left: 0; }
+/* subclusters: one column, each cluster heading its subclusters, which sit indented in smaller type */
+.mk-items.tree { flex-direction: column; flex-wrap: nowrap; align-items: flex-start; gap: 4px; }
+.mk-items.tree .mk-par:not(:first-child) { margin-top: 6px; }
+.mk-items.tree .mk-kid { margin-left: 20px; font-size: 13px; }
+.mk-items.tree .mk-kid i { width: 12px; height: 12px; margin-top: 2px; }
 .mk-pick:hover { background: var(--map-hover); }
 .mk-pick[aria-pressed="true"] { background: var(--field); color: var(--ink); box-shadow: none; }
 .mk-pick[aria-pressed="true"] .mk-n { color: var(--ink2); }
@@ -1684,7 +1692,7 @@ tr.self td { font-weight: 600; background: none; }
       <div class="mapkey" id="mapKey" hidden></div>
       <p class="maptoast" id="mapnote" role="status" aria-live="polite" hidden></p>
       <div class="selcta" id="selCta" role="region" aria-label="Selected pitcher" hidden>
-        <div class="cta-head"><div class="cta-name"><b id="ctaName"></b><span id="ctaSub"></span></div>
+        <div class="cta-head"><div class="cta-name"><b id="ctaName"></b><div class="cta-cl" id="ctaCl"></div><span id="ctaSub"></span></div>
           <button type="button" class="ctaclose" id="ctaClose" aria-label="Clear the selection" title="Clear">×</button></div>
         <button type="button" class="link lk-from" id="ctaFrom" hidden></button>
         <div class="cta-acts" id="ctaActs">
@@ -2611,6 +2619,23 @@ function render() {
           line: { width: muted ? 0 : 0.75, color: pal.surface } } });
     });
     if (key && clArch) key.clusters = true;   // the key gets its × (turn clusters off)
+    // subclusters: each cluster heads its own subclusters (indented, smaller), and picking the head lights the whole cluster
+    if (key && cg.v.clusterLevel === 2) {
+      const cv = VMAP[kind]["cat:cluster"], ccol = cv && cv.colors ? cv.colors(pal) : [], out = [];
+      const noType = (a, nm) => nm.startsWith(PTN[a.pt] + " ") ? nm.slice(PTN[a.pt].length + 1) : nm;
+      key.items.forEach((it, i) => {
+        const a = ARCH_BY_ID[it.arch], par = a && a.parent ? ARCH_BY_ID[a.parent] : null;
+        if (!par) { out.push(it); return; }   // a cluster with no subclusters stands on its own
+        const prevPar = i > 0 && ARCH_BY_ID[key.items[i - 1].arch] ? ARCH_BY_ID[key.items[i - 1].arch].parent : null;
+        if (prevPar !== par.id) {
+          const kids = key.items.filter(x => ARCH_BY_ID[x.arch] && ARCH_BY_ID[x.arch].parent === par.id), k = cv ? cv.cats.indexOf(par.cid) : -1;
+          out.push({ name: view === "all" ? par.name : noType(par, par.name), n: kids.reduce((s2, x) => s2 + x.n, 0), color: ccol[k] || it.color,
+            muted: kids.every(x => x.muted), arch: par.id, on: state.archetype === par.id, par: true });
+        }
+        out.push({ ...it, name: noType(a, it.name), kid: true });
+      });
+      key.items = out; key.tree = true;
+    }
     if (key && clArch && isCluster(state.archetype)) {   // the picked cluster, under the key's title, with a way back
       const a = ARCH_BY_ID[state.archetype], h = clusterHits(a.id);   // its full name is on its pressed chip
       key.pick = `${view === "all" ? PTN[a.pt] + " " : ""}${a.cid.split("-").slice(1).join("-")}: ${h.rows.size.toLocaleString()} core pitches, ${h.edge.size.toLocaleString()} at the edge (gray)`;
@@ -3406,7 +3431,7 @@ if (PCL) for (const pt of TYPES) {
     PCL_ITEMS.push({ id: "pc:" + c.id, cid: c.id, pt, level: 1, special: "cluster", n: c.n, short: `${c.letter} · ${c.name}`,
       name: `${PTN[pt]} ${c.letter} · ${c.name}`, def: `${PTN[pt]}s, cluster ${c.letter}: ${c.name.toLowerCase()}. On average ${c.numbers}. ${c.n_core.toLocaleString()} of ${c.n.toLocaleString()} MLB pitches are core members.` });
     c.subs.forEach(x => { const sl = x.id.split("-")[1];
-      PCL_ITEMS.push({ id: "pc:" + x.id, cid: x.id, pt, level: 2, special: "cluster", n: x.n, short: `${sl} · ${x.name}`,
+      PCL_ITEMS.push({ id: "pc:" + x.id, cid: x.id, pt, level: 2, special: "cluster", parent: "pc:" + c.id, n: x.n, short: `${sl} · ${x.name}`,
         name: `${PTN[pt]} ${sl} · ${c.name} › ${x.name}`, def: `${PTN[pt]}s, subcluster ${sl} of ${c.letter} (${c.name.toLowerCase()}): ${x.name.toLowerCase()}. On average ${x.numbers}. ${x.n_core.toLocaleString()} of ${x.n.toLocaleString()} MLB pitches are core members.` }); });
   });
 }
@@ -3865,8 +3890,9 @@ function drawKey(k) {
   } else {
     const items = k.items.concat(k.tail ? [k.tail] : []);
     const inner = it => `<i style="background:${it.color}"></i>${esc(it.name)}<span class="mk-n">${it.n.toLocaleString()}</span>`;
+    $("#mkItems").classList.toggle("tree", !!k.tree);
     $("#mkItems").innerHTML = items.map(it => it.arch
-      ? `<button type="button" class="mk-item mk-pick${it.muted ? " muted" : ""}" data-arch="${esc(it.arch)}" aria-pressed="${!!it.on}" title="${esc((ARCH_BY_ID[it.arch] || {}).def || "")}">${inner(it)}</button>`
+      ? `<button type="button" class="mk-item mk-pick${it.par ? " mk-par" : it.kid ? " mk-kid" : ""}${it.muted ? " muted" : ""}" data-arch="${esc(it.arch)}" aria-pressed="${!!it.on}" title="${esc((ARCH_BY_ID[it.arch] || {}).def || "")}">${inner(it)}</button>`
       : `<span class="mk-item${it.muted ? " muted" : ""}">${inner(it)}</span>`).join("");
     $("#mkPick").hidden = !k.pick;
     $("#mkPick").innerHTML = k.pick ? `${esc(k.pick)} · <button type="button" class="link" data-archclear>Show all</button>` : "";
@@ -4929,7 +4955,34 @@ function simScoreCards(j, S) {
   const rows = simTableRows(j, S), byT = new Map();
   rows.forEach(o => { if (!byT.has(o.t)) byT.set(o.t, []); byT.get(o.t).push(o); });
   const order = [...byT.keys()].sort((a, b) => (b === T.pitch_type[j]) - (a === T.pitch_type[j]));   // the pitch he was opened on first, then his usage order
-  return order.map(t => { const cols = byT.get(t).slice().sort((a, b) => (b.who === j) - (a.who === j) || a.dashed - b.dashed); return { t, cols: cols.slice(0, 3), more: cols.length - 3 }; });
+  return order.map(t => {
+    let cols = byT.get(t).slice().sort((a, b) => (b.who === j) - (a.who === j) || a.dashed - b.dashed);
+    // only his pitch of this type in the air, with the MLB average on: the average is the second column, with the same
+    // Δ and Gap a lookalike gets
+    if (S.showAvg && cols.length === 1 && cols[0].who === j) {
+      const o = cols[0], v = simAvgValues(T.season[o.r], T.p_throws[o.r], t);
+      if (v) cols = [o, { t, avg: true, who: null, r: null, dashed: false, matched: false, note: "", label: "MLB average", v }];
+    }
+    return { t, cols: cols.slice(0, 3), more: cols.length - 3 };
+  });
+}
+// The MLB average of a pitch type for a season and hand, in the scorecard's units. Velocity, ride, run, arm angle and spin
+// are pitch-weighted means over every MLB pitcher-season of that type (his own column reads these from the same columns);
+// release height, side, extension and arrival angle come from the league's average trajectory, the dotted path that flies.
+const simAvgCache = new Map();
+function simAvgValues(season, hand, t) {
+  const key = `${NT}|${season}|${hand}|${t}`;
+  if (simAvgCache.has(key)) return simAvgCache.get(key);
+  const rows = (typeRows[t] || []).filter(r => T.season[r] === season && T.p_throws[r] === hand && isNum(T.n[r]) && T.n[r] > 0);
+  const wm = c => { if (!T[c]) return null; let s2 = 0, w = 0; for (const r of rows) { const x = T[c][r]; if (isNum(x)) { s2 += x * T.n[r]; w += T.n[r]; } } return w ? s2 / w : null; };
+  const L = simLeague(season, hand, t);
+  let relH = null, relS = null, ext = null, vaa = null, ms = null;
+  if (L) {   // flown through labPath unchanged, the way his own column's arrival angle and flight time are measured
+    const bs = labBase(L), sgn = ARM_SIGN(hand); relH = bs.r[2]; relS = sgn * bs.r[0]; ext = 60.5 - bs.r[1];
+    const f = labPath(bs, { mph: flightPath(L).mph, divb: 0, dhb: 0, relH, relS, ext }, sgn); vaa = f.vaa; ms = f.tEnd * 1000;
+  }
+  const v = rows.length ? { mph: wm("velo"), ivb: wm("ivb"), hb: wm("hb"), relH, relS, ext, arm: wm("arm_angle"), spin: wm("spin"), vaa, ms } : null;
+  simAvgCache.set(key, v); return v;
 }
 // Δ colour: the Savant scale, red where the second pitcher's value is higher and blue where it is lower. The depth is
 // how the gap ranks among the gaps between every two same-handed MLB pitchers throwing that pitch type: pale = smaller
@@ -4967,8 +5020,11 @@ function pairMedian(P) {   // the median gap between two of them
 function simScoreHTML(j, S) {
   const cards = simScoreCards(j, S);
   if (!cards.length) return `<p class="labnote">Nothing to show: turn on a pitch above.</p>`;
-  const sw = o => `<i class="psw${o.dashed ? " dash" : ""}" style="${o.dashed ? `background:none;border-color:${SAVANT_PITCH[o.t]}` : `background:${SAVANT_PITCH[o.t]}`}"></i>`;
-  const head = o => `<th scope="col">${sw(o)}${esc(whoOf(o.who))}${/edited/i.test(o.note) && o.who === j && o.label.endsWith("(edited)") ? ` <span class="tm">edited</span>` : ""}</th>`;
+  const sw = o => o.avg ? `<i class="psw dot" style="background:none;border-color:var(--ink2)"></i>`
+    : `<i class="psw${o.dashed ? " dash" : ""}" style="${o.dashed ? `background:none;border-color:${SAVANT_PITCH[o.t]}` : `background:${SAVANT_PITCH[o.t]}`}"></i>`;
+  const head = o => o.avg ? `<th scope="col" title="The MLB average ${PTN[o.t].toLowerCase()} for his season and hand (the dotted path)">${sw(o)}MLB avg</th>`
+    : `<th scope="col">${sw(o)}${esc(whoOf(o.who))}${/edited/i.test(o.note) && o.who === j && o.label.endsWith("(edited)") ? ` <span class="tm">edited</span>` : ""}</th>`;
+  const nm = o => o.avg ? "The MLB average" : lastName(T.name[o.who]);
   const num = (v, d) => isNum(v) ? v.toFixed(d) : "–";
   return cards.slice(0, 3).map(({ t, cols, more }) => {
     const two = cols.length === 2, a = cols[0], b = cols[1];
@@ -4979,7 +5035,7 @@ function simScoreHTML(j, S) {
         else {
           const dv = b.v[k] - a.v[k], hand = T.p_throws[j], P = pairVals(t, hand, k), share = pairShare(P.v, Math.abs(dv));
           const pp = share === null ? 50 : 50 + 50 * Math.sign(dv) * share, med = share === null ? NaN : pairMedian(P), tn = `${hand === "R" ? "right" : "left"}-handed MLB ${PTN[t].toLowerCase()}s`;
-          const tip = `${lastName(T.name[b.who])} is ${Math.abs(dv).toFixed(d)} ${u} ${dv >= 0 ? "higher" : "lower"} than ${lastName(T.name[a.who])}.`
+          const tip = `${nm(b)} is ${Math.abs(dv).toFixed(d)} ${u} ${dv >= 0 ? "higher" : "lower"} than ${nm(a)}.`
             + (share === null ? "" : ` ${share < 0.01 ? "Fewer than 1%" : `${Math.round(share * 100)}%`} of pairs of ${tn} differ by less; the typical pair differs by ${med.toFixed(d)} ${u}.`);
           dlt = `<span class="dlt" style="background:${savantColor(pp)};color:${savantInk(pp)}" title="${esc(tip)}">${dv >= 0 ? "+" : "−"}${Math.abs(dv).toFixed(d)}</span>`;
           if (share !== null) { const bi = GAP_BANDS.indexOf(gapBand(share)), bd = GAP_BANDS[bi];
@@ -4995,7 +5051,7 @@ function simScoreHTML(j, S) {
     const colg = `<colgroup>${widths.map(w => `<col style="width:${w}%">`).join("")}</colgroup>`;
     let leg = "";
     if (two) {
-      const bn = esc(lastName(T.name[b.who])), an = esc(lastName(T.name[a.who])), hand = T.p_throws[j] === "R" ? "right" : "left";
+      const bn = b.avg ? "MLB avg" : esc(nm(b)), an = esc(nm(a)), hand = T.p_throws[j] === "R" ? "right" : "left";
       const pair = share => `<span class="scleg-sw" aria-hidden="true"><i style="background:${savantColor(50 - 50 * share)}"></i><i style="background:${savantColor(50 + 50 * share)}"></i></span>`;
       leg = `<div class="scleg" role="note" aria-label="Key for the Δ column">
         <p><b>Δ = ${bn} minus ${an}.</b> Red: ${bn} higher. Blue: ${bn} lower.</p>
@@ -5007,7 +5063,7 @@ function simScoreHTML(j, S) {
 }
 function simLiveText(j, S) {   // the same comparison as one sentence, for screen readers
   const cards = simScoreCards(j, S); if (!cards.length) return "Nothing to show: turn on a pitch above.";
-  const c = cards[0], d = o => `${whoOf(o.who)}: ${fmt(o.v.mph, 1)} mph, ${fmt(o.v.ivb, 1)} in ride, ${fmt(o.v.hb, 1)} in run, released ${fmt(o.v.relH, 2)} ft high`;
+  const c = cards[0], d = o => `${o.avg ? "MLB average" : whoOf(o.who)}: ${fmt(o.v.mph, 1)} mph, ${fmt(o.v.ivb, 1)} in ride, ${fmt(o.v.hb, 1)} in run, released ${fmt(o.v.relH, 2)} ft high`;
   return `${PTN[c.t]}. ` + c.cols.map(d).join(". ") + ".";
 }
 function simKeyLines(j, S) {   // the key on the canvas: only what is in the air
@@ -5880,6 +5936,7 @@ function syncCta() {
   box.hidden = !on; if (!on) return;
   const n = TYPES.filter(t => { const x = tRow(T.pitcher[r], T.season[r], t, T.level[r]); return x !== undefined && T.n[x] >= state.minN; }).length;
   $("#ctaName").textContent = T.name[r];
+  $("#ctaCl").innerHTML = clusterTag(r);   // his pitch's cluster, as on his card (click: that cluster lit on its map)
   const from = state.lookFrom, fb = $("#ctaFrom"), showFrom = from !== null && from !== undefined && from !== r;
   fb.hidden = !showFrom; if (showFrom) fb.textContent = `← Back to ${lastName(T.name[from])}’s lookalikes`;
   $("#ctaSub").textContent = `${T.season[r]} · ${teamStr(r)} · ${n} pitch${n === 1 ? "" : "es"}`;
