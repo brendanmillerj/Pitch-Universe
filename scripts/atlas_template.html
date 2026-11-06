@@ -2331,7 +2331,7 @@ function goView(view, opt = {}) {
     && !state.cardOpen && plotEl.data && plotEl.data.length && fl && fl.xaxis && fl.xaxis.range && glOK();
   if (!ok) { setView(view); return; }
   // one type to another: back out to All pitches, then into the new type, two quick legs
-  if (prev !== "all" && view !== "all") { goView("all", { dur: 560, then: () => goView(view, { dur: 560 }) }); return; }
+  if (prev !== "all" && view !== "all") { goView("all", { dur: 280, then: () => goView(view, { dur: 280 }) }); return; }
   const one = prev === "all" ? view : prev;   // the pitch type both maps show
   const xr0 = fl.xaxis.range.slice(), yr0 = fl.yaxis.range.slice();
   const ratio = ((prev === "all" ? 6 : 9) * (state.zoomK || 1)) / (view === "all" ? 6 : 9);
