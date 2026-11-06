@@ -92,7 +92,12 @@ button, input, select { font: inherit; color: inherit; }
 .hdrow { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 20px; min-width: 0; }
 .restart { margin-left: auto; align-self: flex-end; flex: none; min-height: var(--ctl); padding: 0 14px; border-radius: var(--r); border: 1.5px solid var(--ink);
   background: var(--field); color: var(--ink); font: 600 14px var(--font-ui); cursor: pointer; white-space: nowrap; }
-.restart:hover { background: var(--wash); }
+.restart:hover:not(:disabled) { background: var(--wash); }
+.restart:disabled { color: var(--muted); border-color: var(--line); cursor: default; }
+/* ← Back, Forward →, ↺ Start over: together at the header's right end */
+.hnav { margin-left: auto; align-self: flex-end; display: flex; flex-wrap: wrap; gap: 8px; }
+.hnav .restart { margin-left: 0; }
+.cardnav { display: contents; }
 .brand { display: flex; flex-direction: column; gap: 2px; }
 .hview { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
 .hview .lqual { margin-left: 4px; }
@@ -102,8 +107,8 @@ button, input, select { font: inherit; color: inherit; }
 .controls { grid-area: controls; min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 6px 0; }
 
 /* ----------------------------------------------------------------------- map
-   One slate panel: the plot (with its toolbar, key, toast and the docked name bar) and, docked on the right,
-   a rail with three tabs: Pitchers, Comps, Groups. Two elevations only: docked surfaces (rail, toolbar, key,
+   One slate panel: the plot (with its key, toast and the selected-pitcher card) and, docked on its left beside the
+   controls column, a panel with three tabs: Clusters, Pitchers, Groups. Two elevations only: docked surfaces (rail, toolbar, key,
    name bar) carry a hairline and no shadow; transient overlays (menus, the toast, the simulation) a shadow. */
 /* only the plot is dark: the toolbar above it and the pitch types beside it sit on the light page */
 .map { grid-area: map; min-height: 0; min-width: 0; position: relative; display: flex; flex-direction: row; gap: 8px; --mi: 8px; --rw: 320px; }
@@ -148,6 +153,13 @@ button, input, select { font: inherit; color: inherit; }
 .typecol .ellp { display: flex; }
 .typecol .ellp button { flex: 1 1 0; padding: 0 4px; }
 .typecol .universe { display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+/* the panels beside the map (Clusters · Pitchers · Groups) open from these rows; the open one is filled */
+.typecol .panelnav { display: flex; flex-direction: column; gap: 4px; }
+.typecol .panelnav .ubtn { width: 100%; min-height: 32px; justify-content: space-between; }
+.panelnav .ubtn b { font-weight: 400; color: var(--ink2); font-variant-numeric: tabular-nums; }
+.panelnav .ubtn[aria-pressed="true"] b { color: var(--field); }
+/* wide screens: controls column, then the panel, then the map (the DOM keeps plot-then-panel for the phone stack) */
+@media (min-width: 720px) { .mapbody > .typecol { order: 0; } .mapbody > .mrail { order: 1; } .mapbody > .plotarea { order: 2; } }
 .typecol .ubtn { width: 100%; justify-content: flex-start; min-height: 32px; }
 .typecol .udiv { width: 100%; height: 1px; margin: 2px 0; background: var(--line); }
 .tcsub { margin-top: 8px; font: 600 13px var(--font-ui); color: var(--ink2); }
@@ -169,11 +181,11 @@ button, input, select { font: inherit; color: inherit; }
 .lq-bar.lq-on i { background: var(--ink); }
 .dimseg button:disabled { color: var(--muted); cursor: default; }
 /* map controls off the map (header and left column): light outline buttons, the chosen one filled in ink */
-:is(.head, .typecol) :is(.dimseg, .ellp, .mseg) { border-color: var(--ink); background: var(--field); }
-:is(.head, .typecol) :is(.dimseg, .ellp, .mseg) button { color: var(--ink); }
-:is(.head, .typecol) :is(.dimseg, .ellp, .mseg) button + button { border-left-color: var(--ink); }
-:is(.head, .typecol) :is(.dimseg, .ellp, .mseg) button:hover:not([aria-pressed="true"]) { background: var(--wash); }
-:is(.head, .typecol) :is(.dimseg, .ellp, .mseg) button[aria-pressed="true"] { background: var(--ink); color: var(--field); }
+:is(.head, .typecol, #rail) :is(.dimseg, .ellp, .mseg) { border-color: var(--ink); background: var(--field); }
+:is(.head, .typecol, #rail) :is(.dimseg, .ellp, .mseg) button { color: var(--ink); }
+:is(.head, .typecol, #rail) :is(.dimseg, .ellp, .mseg) button + button { border-left-color: var(--ink); }
+:is(.head, .typecol, #rail) :is(.dimseg, .ellp, .mseg) button:hover:not([aria-pressed="true"]) { background: var(--wash); }
+:is(.head, .typecol, #rail) :is(.dimseg, .ellp, .mseg) button[aria-pressed="true"] { background: var(--ink); color: var(--field); }
 .typecol .mbtn { border-color: var(--ink); background: var(--field); color: var(--ink); }
 .typecol .mbtn:hover { background: var(--wash); }
 .typecol .mbtn[aria-pressed="true"] { background: var(--ink); color: var(--field); border-color: var(--ink); }
@@ -204,7 +216,7 @@ button, input, select { font: inherit; color: inherit; }
 .maptoast.show { opacity: 1; }
 .maptoast[hidden] { display: none; }
 /* the rail */
-.mrail { flex: none; width: var(--rw); max-width: 48%; display: flex; flex-direction: column; min-height: 0; background: var(--map-panel); color: var(--map-ink);   /* beside the plot, under the toolbar */
+.mrail { flex: none; width: var(--rw); max-width: 48%; display: flex; flex-direction: column; min-height: 0; background: var(--map-panel); color: var(--map-ink);   /* between the controls column and the plot */
   border-radius: var(--r-lg); overflow: hidden; }
 .mrail[hidden] { display: none; }
 .railtabs { flex: none; display: flex; align-items: stretch; border-bottom: 1px solid var(--map-line); }
@@ -333,7 +345,7 @@ button, input, select { font: inherit; color: inherit; }
 .sv-undo[hidden] { display: none; }
 /* ---- the Pitchers / Groups panel in the same look as the pitcher's card on the map (.selcta): a white panel with
    the map shadow, ink text, names in Newsreader, buttons outlined in ink that darken on hover and fill with ink when
-   on. Scoped to #rail and #railPills so it outranks the older on-map rules above. */
+   on. Scoped to #rail so it outranks the older on-map rules above. */
 #rail { background: var(--field); color: var(--ink); box-shadow: var(--shmap); border-radius: var(--r-lg); }
 #rail .railtabs { border-bottom: 1px solid var(--line); }
 #rail .railtab { color: var(--ink2); }
@@ -348,6 +360,23 @@ button, input, select { font: inherit; color: inherit; }
 #rail .railsel option { color: var(--ink); background: var(--field); }
 #rail .railx { color: var(--ink); }
 #rail .railx:hover { background: var(--wash); }
+/* the Clusters panel: the switch on top, then the cluster list (the chips the map's key used to carry), on the white panel */
+#clusterBox { padding: 10px 12px 0; gap: 8px; }
+#clusterBox .mseg { display: flex; }
+#clusterBox .mseg button { flex: 1 1 0; padding: 0 6px; }
+#rail .mk-items { margin: 0 -12px; padding: 2px 12px 12px; max-height: none; flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+#rail .mk-item { color: var(--ink); }
+#rail .mk-item.muted { color: var(--muted); }
+#rail .mk-item i { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25); }
+#rail .mk-n { color: var(--ink2); }
+#rail .mk-pick { box-shadow: inset 0 0 0 1px var(--line); }
+#rail .mk-pick:hover { background: var(--wash); }
+#rail .mk-pick[aria-pressed="true"] { background: var(--ink); color: var(--field); box-shadow: none; }
+#rail .mk-pick[aria-pressed="true"] .mk-n { color: var(--field); }
+#rail .mk-pick:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+#rail #clPick { color: var(--ink); margin-top: 0; }
+#rail #clPick .link { color: var(--link); }
+#rail .rp-acts .railsel { flex: 1 1 140px; margin: 0; min-height: var(--ctl); }
 /* headings, notes */
 #rail .rp-head { color: var(--ink); font: 600 18px/1.2 var(--font-serif); padding-top: 12px; }
 #rail .rp-head .rp-n { font: 400 13px var(--font-ui); color: var(--ink2); }
@@ -401,9 +430,6 @@ button, input, select { font: inherit; color: inherit; }
 #rail .sv-undo { color: var(--ink2); border-top-color: var(--line); }
 #rail .sv-undo .link { color: var(--link); }
 /* the closed panel's pills on the map: the same white, ink-outlined look */
-#railPills .pill { background: var(--field); color: var(--ink); border-color: var(--ink); box-shadow: var(--shmap); }
-#railPills .pill:hover { background: var(--wash); }
-#railPills .pill b { color: var(--ink2); }
 /* the selected pitcher's name bar: docked to the bottom edge of the plot */
 /* the selected pitcher: a small card at the map's top left, his name and the three things to do next */
 .selcta { position: absolute; z-index: 7; top: var(--mi); left: var(--mi); width: min(280px, calc(100% - 2 * var(--mi))); display: flex; flex-direction: column; gap: 8px;
@@ -1477,7 +1503,7 @@ tr.self td { font-weight: 600; background: none; }
 .mk-pick { white-space: normal; align-items: flex-start; max-width: 100%; line-height: 1.3; }
 .mk-pick i { margin-top: 2px; }
 .mk-pick .mk-n { white-space: nowrap; }
-#mkPick .link { margin-left: 0; }
+#clPick .link { margin-left: 0; }
 /* subclusters: one column, each cluster heading its subclusters, which sit indented in smaller type */
 .mk-items.tree { flex-direction: column; flex-wrap: nowrap; align-items: flex-start; gap: 4px; }
 .mk-items.tree .mk-par:not(:first-child) { margin-top: 6px; }
@@ -1522,6 +1548,8 @@ tr.self td { font-weight: 600; background: none; }
   .typecol .ubtn { width: auto; }
   .typecol .udiv { width: 1px; height: 24px; margin: 0; align-self: center; }
   .typecol > .lvlseg, .typecol > .measseg, .typecol > .grp, .typecol .universe { flex: 1 1 100%; }
+  .typecol > .panelnav { flex: 1 1 100%; flex-direction: row; }
+  .typecol > .panelnav .ubtn { flex: 1 1 0; width: auto; }
   .typecol > .mbtn, .typecol .ellrow .mbtn { width: auto; }
   .typecol .ellrow { flex-direction: row; }
   .tcsub { margin-top: 0; }
@@ -1592,16 +1620,11 @@ tr.self td { font-weight: 600; background: none; }
         </div>
         <div class="lqual" id="lqual" hidden></div>
       </div>
-      <!-- Pitch clusters Off / Clusters / Subclusters; a cluster is picked by clicking it in the map's key -->
-      <div class="hcl" id="clWrap">
-        <span class="find-lbl" id="clLbl">Pitch clusters</span>
-        <div class="mseg" id="clusterSeg" role="group" aria-labelledby="clLbl">
-          <button type="button" data-cl="off" aria-pressed="true" title="No cluster colors: pitches colored as chosen under Color pitchers by">Off</button>
-          <button type="button" data-cl="cat:cluster" aria-pressed="false" title="Color every pitch by its cluster, found from the data within its pitch type (letters mark each cluster; faint dots sit between two). Click a cluster in the key to light up only its pitches.">Clusters</button>
-          <button type="button" data-cl="cat:subcluster" aria-pressed="false" title="Color every pitch by its subcluster, in shades of its cluster's color. Click one in the key to light up only its pitches.">Subclusters</button>
-        </div>
-      </div>
+      <div class="hnav">
+      <button type="button" class="restart" id="navBack" data-nav="back" disabled>← Back</button>
+      <button type="button" class="restart" id="navFwd" data-nav="fwd" disabled>Forward →</button>
       <button type="button" class="restart" id="startOver" title="Back to how the page opens: All pitches, MLB, no one selected, no filters, colored by pitch type. Your saved groups stay.">↺ Start over</button>
+      </div>
     </div>
   </header>
 
@@ -1628,6 +1651,12 @@ tr.self td { font-weight: 600; background: none; }
         </div>
         <div class="lvlseg" id="lvlSeg" role="group" aria-label="Level shown" hidden>
           <button type="button" data-v="mlb" aria-pressed="true" title="Major-league pitchers">MLB</button><button type="button" data-v="aaa" aria-pressed="false" title="Triple-A pitchers on the same maps, every number measured against big-league norms">Triple-A</button>
+        </div>
+        <!-- the panels beside the map open from here; the open one is filled -->
+        <div class="panelnav" id="panelNav" role="group" aria-label="Panels beside the map">
+          <button type="button" class="ubtn" id="pnClusters" data-panel="clusters" aria-pressed="false">Clusters</button>
+          <button type="button" class="ubtn" id="pnPitchers" data-panel="pitchers" aria-pressed="false">Pitchers</button>
+          <button type="button" class="ubtn" id="pnGroups" data-panel="groups" aria-pressed="false">Groups</button>
         </div>
         <nav class="universe" id="universe" aria-label="Choose a map: all pitches or one pitch type"></nav>
         <div class="grp grp-color">
@@ -1688,7 +1717,6 @@ tr.self td { font-weight: 600; background: none; }
       </div>
       <div class="plotarea" id="plotArea">
         <div id="plot"></div>
-      <div class="pills" id="railPills" hidden></div>
       <div class="mapkey" id="mapKey" hidden></div>
       <p class="maptoast" id="mapnote" role="status" aria-live="polite" hidden></p>
       <div class="selcta" id="selCta" role="region" aria-label="Selected pitcher" hidden>
@@ -1710,13 +1738,24 @@ tr.self td { font-weight: 600; background: none; }
         </section>
       </div>
       </div>
-      <aside class="mrail" id="rail" aria-label="Pitchers and groups" hidden>
+      <aside class="mrail" id="rail" aria-label="Clusters, pitchers and groups" hidden>
         <div class="railtabs" role="tablist">
+          <button type="button" class="railtab" role="tab" id="tabClusters" data-tab="clusters" aria-selected="false" aria-controls="clusterBox">Clusters</button>
           <button type="button" class="railtab" role="tab" id="tabPitchers" data-tab="pitchers" aria-selected="false" aria-controls="matchBox">Pitchers</button>
           <button type="button" class="railtab" role="tab" id="tabGroups" data-tab="groups" aria-selected="false" aria-controls="savedBox">Groups</button>
-          <select class="railsel" id="onlySel" aria-label="Show only one group's pitchers on the map" title="Show only one group's pitchers on the map"></select>
           <button type="button" class="railx" id="railClose" aria-label="Close the panel" title="Close">×</button>
         </div>
+        <section class="railpane" id="clusterBox" role="tabpanel" aria-label="Pitch clusters" hidden>
+          <div class="cl-switch" id="clWrap">
+            <div class="mseg" id="clusterSeg" role="group" aria-label="Pitch cluster colors">
+              <button type="button" data-cl="off" aria-pressed="true" title="No cluster colors: pitches colored as chosen under Color pitchers by">Off</button>
+              <button type="button" data-cl="cat:cluster" aria-pressed="false" title="Color every pitch by its cluster, found from the data within its pitch type (letters mark each cluster; faint dots sit between two). Click a cluster below to light up only its pitches.">Clusters</button>
+              <button type="button" data-cl="cat:subcluster" aria-pressed="false" title="Color every pitch by its subcluster, in shades of its cluster's color. Click one below to light up only its pitches.">Subclusters</button>
+            </div>
+          </div>
+          <div class="mk-range" id="clPick" hidden></div>
+          <div class="mk-items" id="clList"></div>
+        </section>
         <section class="railpane" id="matchBox" role="tabpanel" aria-label="Highlighted pitchers" hidden>
           <div class="rp-head" id="mbTitle"></div>
           <p class="rp-def" id="mbDef"></p>
@@ -1736,7 +1775,8 @@ tr.self td { font-weight: 600; background: none; }
               <button type="button" class="obtn" id="svNewSave">Save as group</button><button type="button" class="obtn" id="svNewClear">Clear</button></div>
           </section>
           <div class="rp-head"><span id="svTitle">Your groups</span> <span class="rp-n" id="svCount"></span></div>
-          <div class="rp-acts"><button type="button" class="obtn" id="svOnly" aria-pressed="false" title="Keep the pitchers in your groups in color and gray out everyone else">Highlight my groups</button></div>
+          <div class="rp-acts"><button type="button" class="obtn" id="svOnly" aria-pressed="false" title="Keep the pitchers in your groups in color and gray out everyone else">Highlight my groups</button>
+            <select class="railsel" id="onlySel" aria-label="Show only one group's pitchers on the map" title="Show only one group's pitchers on the map"></select></div>
           <p class="rp-help" id="svEmpty">No groups yet. Save a pitcher’s lookalikes (click him on the map), or pick pitchers with Add (in the Pitchers list, on a profile or beside a lookalike) or Draw a group on the map; or save a highlighted pitcher list. A group is a region of the map: it is circled on the pitch type it was built on, and this panel lists everyone inside it, at either level.</p>
           <ul id="svList"></ul>
           <p class="sv-undo" id="svUndo" hidden></p>
@@ -2517,6 +2557,7 @@ function morphLayout() {
   requestAnimationFrame(step);
 }
 function render() {
+  navQueue();
   const view = state.view, kind = varKind(view), pal = mapPalette();
   const cardOpen = state.sel !== null && state.sel !== undefined && !state.preview;
   if (cardOpen !== !!state.cardOpen) {
@@ -2618,7 +2659,7 @@ function render() {
         marker: { size: muted ? fadeSize : size + (cg.v.key === "cat:fa" ? 2 : 0), color, opacity: muted ? FADE : 0.92,
           line: { width: muted ? 0 : 0.75, color: pal.surface } } });
     });
-    if (key && clArch) key.clusters = true;   // the key gets its × (turn clusters off)
+    if (key && clArch) key.clusters = true;   // drawn as the Clusters panel's list, not on the map
     // subclusters: each cluster heads its own subclusters (indented, smaller), and picking the head lights the whole cluster
     if (key && cg.v.clusterLevel === 2) {
       const cv = VMAP[kind]["cat:cluster"], ccol = cv && cv.colors ? cv.colors(pal) : [], out = [];
@@ -2907,7 +2948,8 @@ function render() {
   });
   }
 
-  drawKey(key);
+  // clusters list in the Clusters panel; every other key (measures, teams, free agents…) stays on the map
+  if (key && key.clusters) { drawClusterList(key); drawKey(null); } else { drawClusterList(null); drawKey(key); }
   syncLQ(); syncLayoutSeg();
   if (!keyIn) state.keyLabel = "";
   const listMatch = keyIn ? andMatch(match, r => keyIn.has(r)) : match;   // the list (and CSV) follow the key's range too
@@ -2954,28 +2996,37 @@ function hideToast() {
   const t = $("#mapnote"); t.classList.remove("show");
   clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 220);
 }
-// The rail docked on the map's right: Pitchers (the highlighted list), Comps (a previewed pitcher's lookalikes),
-// Groups. It opens by itself when a list appears, comps are asked for or a group is saved; × closes it and the
-// tabs stay available as pills under the toolbar.
-const RAIL_TABS = ["pitchers", "groups"];
+// The panel docked beside the controls column (left of the map): Clusters (the cluster switch and list), Pitchers (the
+// highlighted list), Groups. It opens from the rows at the top of the controls column or its own tabs, and by itself
+// when a list appears or a group is saved; × closes it.
+const RAIL_PANES = { clusters: "#clusterBox", pitchers: "#matchBox", groups: "#savedBox" };
+const railTabs = () => D.pitch_clusters ? ["clusters", "pitchers", "groups"] : ["pitchers", "groups"];
 function railOpen(tab) { state.rail.open = true; if (tab) state.rail.tab = tab; syncRail(); }
 function railClose() { state.rail.open = false; syncRail(); }
 function syncRail() {
-  const n = state.mbRows ? state.mbRows.length : 0, nG = saved.length;
-  const can = { pitchers: true, groups: true };
+  navQueue();
+  const tabs = railTabs(), nP = state.mbRows ? state.mbRows.length : 0, nG = saved.length;
+  if (!tabs.includes(state.rail.tab)) state.rail.tab = "pitchers";
   const open = !!state.rail.open;
   $("#rail").hidden = !open;
-  const label = { pitchers: "Pitchers", groups: `Groups${nG ? ` <b>${nG}</b>` : ""}` };
-  RAIL_TABS.forEach(t => {
-    const b = $("#tab" + t[0].toUpperCase() + t.slice(1));
-    b.disabled = !can[t]; b.innerHTML = label[t]; b.setAttribute("aria-selected", String(open && state.rail.tab === t));
+  const label = { clusters: "Clusters", pitchers: "Pitchers", groups: `Groups${nG ? ` <b>${nG}</b>` : ""}` };
+  const nav = { clusters: "Clusters", pitchers: `Pitchers${nP ? ` <b>${nP.toLocaleString()}</b>` : ""}`, groups: `Groups${nG ? ` <b>${nG}</b>` : ""}` };
+  Object.keys(RAIL_PANES).forEach(t => {
+    const T1 = t[0].toUpperCase() + t.slice(1), there = tabs.includes(t), on = open && state.rail.tab === t;
+    const b = $("#tab" + T1); b.hidden = !there; b.innerHTML = label[t]; b.setAttribute("aria-selected", String(on));
+    const n = $("#pn" + T1); n.hidden = !there; n.innerHTML = nav[t]; n.setAttribute("aria-pressed", String(on));   // the column's rows
+    $(RAIL_PANES[t]).hidden = !(there && on);
   });
-  $("#matchBox").hidden = !(open && state.rail.tab === "pitchers");
-  $("#savedBox").hidden = !(open && state.rail.tab === "groups");
-  $("#railPills").hidden = open;
   syncOnlySel();
-  $("#railPills").innerHTML = RAIL_TABS.filter(t => can[t]).map(t => `<button type="button" class="pill" data-tab="${t}">${label[t]}</button>`).join("");
   if (!$("#matchBox").hidden && state.mbDirty) renderMatchList();
+}
+// Opening a panel; Clusters turns the cluster colors on when they are off (the switch at its top turns them off)
+function openPanel(t) {
+  if (t === "clusters") {
+    const cur = state.color[varKind(state.view)];
+    if (cur !== "cat:cluster" && cur !== "cat:subcluster") { state.color.all = state.color.t = "cat:cluster"; state.op = "none"; buildVarSelects(); }
+  }
+  state.rail.open = true; state.rail.tab = t; render();
 }
 function setRailTab(t) { state.rail.open = true; state.rail.tab = t; syncRail(); }
 function syncOnlySel() {
@@ -3559,6 +3610,7 @@ function showClusterOf(j) {
   state.color.all = state.color.t = sub ? "cat:subcluster" : "cat:cluster"; state.op = "none";
   state.archetype = id;
   state.preview = true; state.showComps = false; state.noLook = true; state.lookFrom = null;
+  state.rail.open = true; state.rail.tab = "clusters";   // the cluster list beside the map, the picked one pressed
   setView(T.pitch_type[j], j);
   const b = $("#ctaOpen"); if (b && !$("#selCta").hidden) b.focus({ preventScroll: true });
 }
@@ -3844,14 +3896,14 @@ function render3D(traces, view, pal, layout, groups = []) {
 function keyDOM() {
   const box = $("#mapKey");
   if (box.dataset.built) return box;
-  box.innerHTML = `<div class="mk-head"><div class="mk-title" id="mkTitle"></div><button type="button" class="mk-x" id="mkX" aria-label="Turn off pitch clusters" title="Turn off pitch clusters" hidden>×</button></div><div class="mk-sub" id="mkSub"></div>
+  box.innerHTML = `<div class="mk-head"><div class="mk-title" id="mkTitle"></div></div><div class="mk-sub" id="mkSub"></div>
     <div id="mkNum"><div class="mk-dual"><div class="mk-bar" id="mkBar"></div><i class="mk-mask l" id="mkMaskL"></i><i class="mk-mask r" id="mkMaskR"></i>
       <input type="range" id="mkLo" min="0" max="100" step="1" value="0" aria-label="Show pitches from">
       <input type="range" id="mkHi" min="0" max="100" step="1" value="100" aria-label="Show pitches up to"></div>
       <div class="mk-ticks" id="mkTicks"></div><div class="mk-range" id="mkRange"></div>
       <div class="mk-scale" role="group" aria-label="Color scale"><button type="button" data-scale="pct">Percentile</button><button type="button" data-scale="value">Raw</button></div>
       <div class="mk-note" id="mkNote"></div></div>
-    <div class="mk-range" id="mkPick" hidden></div><div class="mk-items" id="mkItems"></div>`;
+    <div class="mk-items" id="mkItems"></div>`;
   box.dataset.built = "1";
   // handles: keep at least 1% apart, redraw at most once per frame
   let queued = false;
@@ -3871,7 +3923,6 @@ function drawKey(k) {
   if (!k) { box.hidden = true; return; }
   box.hidden = false;
   $("#mkTitle").textContent = k.title;
-  $("#mkX").hidden = !k.clusters;
   $("#mkSub").hidden = !k.num; $("#mkNum").hidden = !k.num; $("#mkItems").hidden = !!k.num;
   if (k.num) {
     $("#mkSub").textContent = k.sub;
@@ -3886,19 +3937,24 @@ function drawKey(k) {
     box.querySelectorAll("[data-scale]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.scale === state.scale)));
     $("#mkNote").textContent = k.missing ? `Open gray rings: no data (${k.missing.toLocaleString()})` : "";
     $("#mkNote").hidden = !k.missing;
-    $("#mkPick").hidden = true;
   } else {
     const items = k.items.concat(k.tail ? [k.tail] : []);
-    const inner = it => `<i style="background:${it.color}"></i>${esc(it.name)}<span class="mk-n">${it.n.toLocaleString()}</span>`;
-    $("#mkItems").classList.toggle("tree", !!k.tree);
-    $("#mkItems").innerHTML = items.map(it => it.arch
-      ? `<button type="button" class="mk-item mk-pick${it.par ? " mk-par" : it.kid ? " mk-kid" : ""}${it.muted ? " muted" : ""}" data-arch="${esc(it.arch)}" aria-pressed="${!!it.on}" title="${esc((ARCH_BY_ID[it.arch] || {}).def || "")}">${inner(it)}</button>`
-      : `<span class="mk-item${it.muted ? " muted" : ""}">${inner(it)}</span>`).join("");
-    $("#mkPick").hidden = !k.pick;
-    $("#mkPick").innerHTML = k.pick ? `${esc(k.pick)} · <button type="button" class="link" data-archclear>Show all</button>` : "";
+    $("#mkItems").innerHTML = items.map(it => `<span class="mk-item${it.muted ? " muted" : ""}"><i style="background:${it.color}"></i>${esc(it.name)}<span class="mk-n">${it.n.toLocaleString()}</span></span>`).join("");
   }
 }
 
+// The Clusters panel's list: a chip per cluster (or the subcluster tree), the picked one pressed, "Show all" above them
+function drawClusterList(k) {
+  const list = $("#clList"), pk = $("#clPick");
+  if (!k) { list.innerHTML = ""; list.classList.remove("tree"); pk.hidden = true; pk.innerHTML = ""; return; }
+  const inner = it => `<i style="background:${it.color}"></i>${esc(it.name)}<span class="mk-n">${it.n.toLocaleString()}</span>`;
+  list.classList.toggle("tree", !!k.tree);
+  list.innerHTML = k.items.filter(it => it.arch).map(it =>
+    `<button type="button" class="mk-item mk-pick${it.par ? " mk-par" : it.kid ? " mk-kid" : ""}${it.muted ? " muted" : ""}" data-arch="${esc(it.arch)}" aria-pressed="${!!it.on}" title="${esc((ARCH_BY_ID[it.arch] || {}).def || "")}">${inner(it)}</button>`
+  ).join("");
+  pk.hidden = !k.pick;
+  pk.innerHTML = k.pick ? `${esc(k.pick)} · <button type="button" class="link" data-archclear>Show all</button>` : "";
+}
 // -------------------------------------------------------- download (CSV)
 // One row per highlighted dot in the list (each pitcher's lit seasons and pitches; view, seasons and hand apply):
 // identity columns, then every measure on this map, raw values.
@@ -4087,8 +4143,7 @@ function renderDetail() {
   });
   const cs = dh.querySelector(".clearsel"); if (cs) cs.addEventListener("click", () => closeCard());
   const lb = dh.querySelector("#labBtn"); if (lb) lb.addEventListener("click", () => toggleSim(lb));   // the lab opens over the card
-  const bk = dh.querySelector(".backsel"); if (bk) bk.addEventListener("click", e => { goBack(); if (viaKeys(e)) focusCard(); });
-  const fw = dh.querySelector(".fwdsel"); if (fw) fw.addEventListener("click", e => { goForward(); if (viaKeys(e)) focusCard(); });
+  syncNavButtons();   // the card's ← Back / Forward → pair
   if (!had) try { window.scrollTo({ top: 0, behavior: "auto" }); } catch (e) {}   // the card replaced the map: start at its head
 }
 
@@ -4279,7 +4334,8 @@ function updateMatchBox(view, rows, match, cg) {
   $("#mbTitle").textContent = `${filtered ? title || "Highlighted" : og ? `Only “${og.name}”` : "Everyone on this map"} · ${items.length.toLocaleString()} pitcher${items.length === 1 ? "" : "s"}`;
   // the pitcher type's one-line definition leads the list, as it does under the finder
   const a = ARCH_BY_ID[state.archetype]; $("#mbDef").textContent = a && a.def ? a.def : "";
-  if (filtered && !had) railOpen("pitchers");   // a highlight just appeared: show its list
+  // a highlight just appeared: show its list (not while the Clusters tab is open: picking a cluster is what lit it)
+  if (filtered && !had && !(state.rail.open && state.rail.tab === "clusters")) railOpen("pitchers");
   if ($("#matchBox").hidden) state.mbDirty = true; else renderMatchList();   // drawn when its pane shows
 }
 function renderMatchList() {
@@ -5618,8 +5674,7 @@ function typeCard(view, j) {
     <span class="sv-barr">
       <button type="button" class="bigbtn simbtn" id="simBtn" aria-expanded="${!!state.showComps}" aria-controls="comps">${state.showComps ? "Hide similar pitchers ↑" : "Show similar pitchers ↓"}</button>
       <button type="button" class="bigbtn pickbtn" data-pick="${j}" aria-pressed="${state.picks.has(j)}" title="Pick his ${PTN[T.pitch_type[j]].toLowerCase()} for a new group; name and save it in the Groups tab">${state.picks.has(j) ? `In new group (${state.picks.size})` : "Add to group"}</button>
-      ${backTarget(j) ? `<button type="button" class="bigbtn backsel"${backTarget(j).lab ? ' title="Back to the Pitch Simulation Lab, as you left it"' : ""}>${esc(backLabel(backTarget(j)))}</button>` : ""}
-      ${fwdTarget(j) ? `<button type="button" class="bigbtn fwdsel">Go forward to ${esc(T.name[fwdTarget(j).sel])} →</button>` : ""}
+      <span class="cardnav" id="cardNav"></span>
       ${!flightData().none && trajOf(j) ? `<button type="button" class="bigbtn labbtn" id="labBtn" title="Fly his pitches, edit them, compare them with a lookalike's">▶ Pitch Simulation Lab</button>` : ""}
 </span>${headStats(view, j, i)}${arsenalStrip(view, j, ars)}</div>`;
   // ---------------- hero: what puts this pitch where it is in the 3D space ----------------
@@ -5721,50 +5776,86 @@ function spreadLabels2D(lx, ly, lt) {   // returns the labels' boxes on screen (
 }
 
 // ---------------------------------------------------------------- controls
-// Back stack: each time the selected pitch changes to another pitcher, remember where we were.
-// Moving between one pitcher's own pitches (search preview -> his card, the arsenal chips) is not a step back.
-// Forward stack, as in a browser: "Go back" leaves the pitcher it came from there; "Go forward" returns to him; a
-// step to a new pitcher any other way clears it.
-const backStack = [], fwdStack = [];
-let goingBack = false;   // true while Go back / Go forward navigates, so the move itself is not remembered
+// ---- Back / Forward: every change of screen is one step, as in a browser
+// A screen is the navigation state in navSnap(). render() (and the panel, drawer, table and lab switches, which do not
+// always render) queue navCommit once per task; it records a step when that state changed, so one click that renders
+// several times is one step, and every way of changing the screen counts: cards, the map's pitcher card, cluster picks
+// and tags, pitch types, level, the lab, tables, the side panel, Start over. Filters, zoom, 2D/3D and layout are
+// settings, not steps. Each step is also a browser history entry ({nav: i}), so the browser's Back/Forward and Alt+arrows
+// walk the same list; where pushState is refused, the page's buttons walk it on their own.
 const samePitcher = (a, b) => a !== null && a !== undefined && b !== null && b !== undefined && T.pitcher[a] === T.pitcher[b];
-function remember(view, sel, next) {
-  if (goingBack || sel === null || sel === undefined) return;
-  if (samePitcher(sel, next)) return;
-  fwdStack.length = 0;
-  const top = backStack[backStack.length - 1];
-  if (top && top.view === view && top.sel === sel) return;
-  backStack.push({ view, sel }); if (backStack.length > 50) backStack.shift();
+const NAV = { entries: [], idx: -1, queued: false, restoring: false, browser: true };
+const navCopy = x => x === null || x === undefined ? x : JSON.parse(JSON.stringify(x));
+function navSnap() {
+  return { level: state.level, view: state.view, sel: state.sel ?? null, preview: !!state.preview, showComps: !!state.showComps,
+    noLook: !!state.noLook, lookFrom: state.lookFrom ?? null, archetype: state.archetype || "", color: { ...state.color }, op: state.op,
+    colorB: { ...state.colorB }, simOpen: !!state.simOpen, sim: state.simOpen ? navCopy(state.sim) : null,
+    lookTbl: state.lookTbl ?? null, tblGroup: state.tblGroup ?? null, slidersOpen: !!state.slidersOpen,
+    rail: { open: !!state.rail.open, tab: state.rail.tab }, cardFrom: navCopy(state.cardFrom) };
 }
-// the entry "Go back" would land on: the newest one that is another pitcher than the one shown
-const backTarget = cur => { for (let k = backStack.length - 1; k >= 0; k--) if (!samePitcher(backStack[k].sel, cur)) return backStack[k]; return null; };
-const fwdTarget = cur => { for (let k = fwdStack.length - 1; k >= 0; k--) if (!samePitcher(fwdStack[k].sel, cur)) return fwdStack[k]; return null; };
-function goBack() {
-  let prev = backStack.pop();
-  while (prev && samePitcher(prev.sel, state.sel)) prev = backStack.pop();
-  if (!prev) return;
-  if (state.sel !== null && state.sel !== undefined) { fwdStack.push({ view: state.view, sel: state.sel }); if (fwdStack.length > 50) fwdStack.shift(); }
-  goingBack = true;
+// what makes two screens different (in the lab only which lab it is: slider edits are not steps, the snapshot keeps them)
+const navKey = s => JSON.stringify([s.level, s.view, s.sel, s.preview, s.showComps, s.noLook, s.lookFrom, s.archetype, s.color, s.op, s.colorB,
+  s.simOpen, s.sim ? [s.sim.key, s.sim.mode, s.sim.vs] : null, s.lookTbl, s.tblGroup, s.slidersOpen, s.rail.open, s.rail.open ? s.rail.tab : ""]);
+function navQueue() { if (NAV.queued) return; NAV.queued = true; queueMicrotask(navCommit); }
+function navCommit() {
+  NAV.queued = false;
+  if (NAV.idx < 0 || NAV.restoring || state.morphing || afterPlot) return;   // a morph records one step when it lands
+  const s = navSnap(), cur = NAV.entries[NAV.idx];
+  if (cur && navKey(cur) === navKey(s)) { NAV.entries[NAV.idx] = s; return; }   // same screen: keep its latest details
+  NAV.entries.length = NAV.idx + 1; NAV.entries.push(s); NAV.idx++;
+  if (NAV.browser) { try { history.pushState({ nav: NAV.idx }, "", hashFor()); } catch (e) { NAV.browser = false; } }
+  syncNavButtons();
+}
+function navTo(i) {
+  const s = NAV.entries[i];
+  if (!s) { applyHash(parseHash()); return; }   // an entry from before a reload
+  if (i === NAV.idx) return;
+  // the screen being left keeps its latest details (lab edits, a pick inside it), as a browser keeps a page's state
+  const here = navSnap(), was = NAV.entries[NAV.idx];
+  if (was && navKey(was) === navKey(here)) NAV.entries[NAV.idx] = here;
+  NAV.restoring = true; NAV.idx = i;
   try {
-    if (prev.lab && prev.lab.preview && state.cardOpen && state.cardFrom && state.cardFrom.sel === prev.sel) closeCard();   // the lab sat on the map
-    else if (prev.view !== state.view) setView(prev.view, prev.sel); else select(prev.sel);
-    if (prev.lab && state.sel === prev.sel) { state.sim = prev.lab.sim; openSim(); }
-  } finally { goingBack = false; }
+    state.morphing = false; afterPlot = null;
+    if (s.level !== state.level && levelLoaded(s.level)) { state.level = s.level; syncLevel(); svRowCache.clear(); }
+    Object.assign(state, { zoomK: s.view !== state.view ? 1 : state.zoomK, view: s.view, sel: s.sel, preview: s.preview, showComps: s.showComps,
+      noLook: s.noLook, lookFrom: s.lookFrom, archetype: s.archetype, color: { ...s.color }, op: s.op, colorB: { ...s.colorB },
+      lookTbl: s.lookTbl, tblGroup: s.tblGroup, cardFrom: navCopy(s.cardFrom), slPrev: false });
+    state.rail.open = s.rail.open; state.rail.tab = s.rail.tab;
+    if (s.simOpen) state.sim = navCopy(s.sim); else closeSim(true);
+    if (!!state.slidersOpen !== s.slidersOpen) setSlidersOpen(s.slidersOpen, true);
+    buildUniverse(); buildVarSelects(); buildSliders(); syncTable();
+    render(); renderDetail();
+    if (s.simOpen) openSim();
+    state.rail.open = s.rail.open; state.rail.tab = s.rail.tab; syncRail();   // a restored highlight must not reopen Pitchers
+    NAV.entries[i] = navSnap();
+  } finally { NAV.restoring = false; }
+  syncNavButtons();
 }
-// what the back button says: a lab comparison by its two names, a lab by his, anything else by the pitcher
-const backLabel = e => {
-  const sim = e.lab && e.lab.sim, vs = sim && sim.mode === "compare" ? sim.vs : null;
-  if (vs !== null && vs !== undefined) return `← Back to ${lastName(T.name[e.sel])} vs. ${lastName(T.name[vs])}`;
-  return sim ? `← Back to ${lastName(T.name[e.sel])}’s simulation` : `← Go back to ${T.name[e.sel]}`;
-};
-function goForward() {
-  let next = fwdStack.pop();
-  while (next && samePitcher(next.sel, state.sel)) next = fwdStack.pop();
-  if (!next) return;
-  if (state.sel !== null && state.sel !== undefined) { backStack.push({ view: state.view, sel: state.sel }); if (backStack.length > 50) backStack.shift(); }
-  goingBack = true;
-  try { if (next.view !== state.view) setView(next.view, next.sel); else select(next.sel); }
-  finally { goingBack = false; }
+function navBack() { if (NAV.idx <= 0) return; if (NAV.browser) history.back(); else navTo(NAV.idx - 1); }
+function navForward() { if (NAV.idx >= NAV.entries.length - 1) return; if (NAV.browser) history.forward(); else navTo(NAV.idx + 1); }
+// where a step leads, in words: "Back to Skubal’s card", "Back to the four-seam map, cluster B2 lit"
+function navLabel(s, verb) {
+  const nm = r => T.name[r] || "", where = s.view === "all" ? "All pitches" : `the ${PTN[s.view].toLowerCase()} map`;
+  const a = s.archetype && ARCH_BY_ID[s.archetype], lit = a ? `, cluster ${a.cid ? a.cid.split("-").slice(1).join("-") : a.name} lit` : "";
+  const has = s.sel !== null && s.sel !== undefined;
+  if (s.simOpen && has) {
+    const vs = s.sim && s.sim.mode === "compare" ? s.sim.vs : null;
+    return `${verb} ${vs !== null && vs !== undefined ? `${lastName(nm(s.sel))} vs. ${lastName(nm(vs))} in the lab` : `${lastName(nm(s.sel))}’s pitch simulation`}`;
+  }
+  if (has && !s.preview) return `${verb} ${nm(s.sel)}’s card`;
+  if (s.lookTbl !== null && s.lookTbl !== undefined) return `${verb} the lookalikes table`;
+  if (s.slidersOpen && s.tblGroup) return `${verb} the ${s.tblGroup.toLowerCase()} table`;
+  return `${verb} ${has ? `${nm(s.sel)} on ` : ""}${where}${lit}`;
+}
+// the header's ← Back / Forward → and the same pair in an open card's header (the card covers the page header)
+function syncNavButtons() {
+  const b = NAV.entries[NAV.idx - 1], f = NAV.entries[NAV.idx + 1];
+  const bb = $("#navBack"), fb = $("#navFwd");
+  bb.disabled = !b; fb.disabled = !f;
+  bb.title = b ? navLabel(b, "Back to") : "Nothing to go back to yet"; fb.title = f ? navLabel(f, "Forward to") : "Nothing to go forward to";
+  const cn = document.getElementById("cardNav");
+  if (cn) cn.innerHTML = (b ? `<button type="button" class="bigbtn backsel" data-nav="back">← ${esc(navLabel(b, "Back to"))}</button>` : "")
+    + (f ? `<button type="button" class="bigbtn fwdsel" data-nav="fwd">${esc(navLabel(f, "Forward to"))} →</button>` : "");
 }
 // a comp or a group member can sit at the other level: follow him there (selection kept)
 function followLevel(r) {
@@ -5789,7 +5880,6 @@ function select(r) {
   if (state.preview && r !== null && r !== undefined && s0 !== null && s0 !== undefined
       && T.pitcher[r] === T.pitcher[s0] && T.season[r] === T.season[s0]) { openCard(); return; }
   state.preview = false; state.noLook = false; closeSim(true);
-  if (r !== state.sel && r !== null && r !== undefined) remember(state.view, state.sel, r);
   if (r === null || r === undefined) state.showComps = false;
   state.sel = r; render(); renderDetail();
 }
@@ -5797,7 +5887,6 @@ function select(r) {
 // "See full player info" button. That opens the card on his most-used pitch, in that pitch's universe.
 function preview(r, opt = {}) {   // opt.from: the pitcher whose lookalike list this came from
   followLevel(r);
-  if (r !== state.sel) remember(state.view, state.sel, r);
   state.preview = true; state.showComps = true; state.lookFrom = opt.from ?? null; state.sel = r; state.noLook = false;
   if (state.lookTbl !== null && state.lookTbl !== undefined) state.lookTbl = r;   // an open lookalikes table follows the pitcher
   render(); renderDetail();
@@ -5970,11 +6059,11 @@ function toggleSim(opener) {
 function openSim(opener) {
   const ae = document.activeElement;
   state.simOpener = (opener && opener.nodeType) ? opener : (ae && ae !== document.body ? ae : null);
-  state.simOpen = true; renderSim({ focus: "title" }); syncCta(); $("#simScrim").hidden = false;
+  state.simOpen = true; renderSim({ focus: "title" }); syncCta(); $("#simScrim").hidden = false; navQueue();
 }
 function closeSim(quiet) {
   const was = !!state.simOpen;
-  state.simOpen = false; $("#simBox").hidden = true; $("#simScrim").hidden = true;
+  state.simOpen = false; $("#simBox").hidden = true; $("#simScrim").hidden = true; navQueue();
   if (FLS && FLS.cvId === "simCv") stopFlight();
   if (!quiet && was) { renderDetail(); syncCta(); }   // the card's own flight panel comes back
 }
@@ -5985,13 +6074,7 @@ const simProfBtn = r => `<button type="button" class="simprof" data-prof="${r}" 
 function simToProfile(r) {
   if (r === null || r === undefined) r = state.sel;
   if (r === null || r === undefined) return;
-  if (!samePitcher(r, state.sel)) {   // to the lookalike: Go back on his card returns to this lab, as it is now
-    const from = state.sel, lab = state.simOpen && state.sim ? { sim: state.sim, preview: !!state.preview } : null;
-    openPitcher(r);
-    const top = backStack[backStack.length - 1];
-    if (lab && top && top.sel === from) top.lab = lab;
-    return;
-  }
+  if (!samePitcher(r, state.sel)) { openPitcher(r); return; }   // to the lookalike: Back returns to this lab, as it was
   if (state.preview) { openCard(); return; }
   closeSim(); focusCard();
 }
@@ -6071,12 +6154,17 @@ function syncLevel(loading) {
 }
 // The address: "#FF", "#aaa/FF", and with a card open "#FF/tarik-skubal-2026", which reopens that card when shared
 const slugOf = r => fold(T.name[r]).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + "-" + T.season[r];
-function writeHash(view = state.view) {
+function hashFor(view = state.view) {
   let h = (state.level === LEVELS[0] ? "" : state.level + "/") + view;
   const r = state.sel;
   if (r !== null && r !== undefined && !state.preview) h += "/" + slugOf(r);
-  if ("#" + h === location.hash) return;
-  try { history.replaceState(null, "", "#" + h); } catch (e) { location.hash = h; }
+  return "#" + h;
+}
+function writeHash(view = state.view) {
+  if (NAV.queued && !NAV.restoring && NAV.idx >= 0) return;   // the step about to be recorded carries the new address
+  const h = hashFor(view);
+  if (h === location.hash) return;
+  try { history.replaceState(NAV.idx >= 0 ? { nav: NAV.idx } : null, "", h); } catch (e) { location.hash = h.slice(1); }
 }
 function parseHash() {
   const parts = location.hash.slice(1).split("/").filter(Boolean);
@@ -6100,7 +6188,6 @@ function applyHash(h) {
 }
 function setView(view, sel) {
   const prev = state.view;
-  if (sel !== undefined && sel !== null && (sel !== state.sel || prev !== view)) remember(prev, state.sel, sel);
   if (prev !== view) state.zoomK = 1;   // each map opens fully zoomed out
   state.sel = sel !== undefined ? sel : mapSelection(prev, view, state.sel);
   state.view = view;
@@ -6124,7 +6211,7 @@ function colorMenuHTML(pick, cur, filter) {
   const hit = v => !f.length || f.every(w => (v.label + " " + v.group).toLowerCase().includes(w));
   const head = [{ key: "cat:pitch_type", label: "Pitch type", group: "Groups" }]
     .concat(cur === "cat:team" ? [{ key: "cat:team", label: "Team (turn off on the map)", group: "Groups" }] : [])
-    .concat(cur === "cat:cluster" || cur === "cat:subcluster" ? [{ key: cur, label: `${cur === "cat:cluster" ? "Clusters" : "Subclusters"} (turn off at top)`, group: "Groups" }] : []);
+    .concat(cur === "cat:cluster" || cur === "cat:subcluster" ? [{ key: cur, label: `${cur === "cat:cluster" ? "Clusters" : "Subclusters"} (turn off in the Clusters panel)`, group: "Groups" }] : []);
   let html = "", g = null;
   head.concat(pick).forEach(v => {
     if (!hit(v)) return;
@@ -6239,7 +6326,7 @@ const TERMS = () => [
   ["Uniqueness", EXPLAIN.uniq_z],
   ["Comps, lookalikes, similar pitchers", "The ten other pitchers whose version of the pitch sits nearest his on what the pitch is: shape (velocity, spin, break), angles, dead-zone and seam-shifted-wake residuals, and delivery. Location, release and movement scatter, and usage are left out, so lookalikes can differ in how they use the same pitch. Same hand, arm angle within 7.5° (widened only when too few qualify), any season."],
   ["Fit (Close, Loose, Very Loose)", FIT_TIP.replace(/^Fit: /, "")],
-  ["Pitch clusters", "Clusters and subclusters within each pitch type (the Pitch clusters switch at the top; click one in the key to light it up), found from the data (consensus Leiden clustering on what the pitch is), named by what sets them apart. Core members light up; edge members, between two clusters, show in gray."],
+  ["Pitch clusters", "Clusters and subclusters within each pitch type (the Clusters panel beside the map: turn them on there and click one to light it up), found from the data (consensus Leiden clustering on what the pitch is), named by what sets them apart. Core members light up; edge members, between two clusters, show in gray."],
 ];
 function glossaryHTML() {
   const dl = rows => `<dl>${rows.map(([t, d]) => `<div><dt>${esc(t)}</dt><dd>${esc(d || "")}</dd></div>`).join("")}</dl>`;
@@ -6279,7 +6366,7 @@ function buildVarSelects() {
   const pick = vars.filter(v => !NOT_IN_LIST.has(v.key));
   const a = VMAP[kind][cur];
   const clOn = cur === "cat:cluster" || cur === "cat:subcluster";
-  $("#colorBtnTxt").textContent = cur === "cat:team" ? "Team (turn off on the map)" : clOn ? `${cur === "cat:cluster" ? "Clusters" : "Subclusters"} (turn off at top)` : a ? a.label : "Pitch type";
+  $("#colorBtnTxt").textContent = cur === "cat:team" ? "Team (turn off on the map)" : clOn ? `${cur === "cat:cluster" ? "Clusters" : "Subclusters"} (turn off in the Clusters panel)` : a ? a.label : "Pitch type";
   document.querySelectorAll("#clusterSeg [data-cl]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.cl === "off" ? !clOn : cur === b.dataset.cl)));
   if (!$("#colorMenu").hidden) $("#cmList").innerHTML = colorMenuHTML(pick, cur, $("#cmSearch").value);
   $("#colorB").innerHTML = optionsHTML(vars, state.colorB[kind], "", false);
@@ -6455,6 +6542,7 @@ function filterSliderList() {
   });
 }
 function setSlidersOpen(open, quiet) {   // quiet: no focus move (used when a card opens/closes)
+  navQueue();
   state.slidersOpen = open;
   $("#sliders").hidden = !open;
   $("#app").classList.toggle("with-sliders", open);
@@ -6475,6 +6563,7 @@ function setSlidersOpen(open, quiet) {   // quiet: no focus move (used when a ca
 const TABLE_CAP = 300;   // rows drawn per scroll step
 const relayout = () => requestAnimationFrame(() => { try { Plotly.Plots.resize(plotEl); } catch (e) {} });
 function syncTable() {
+  navQueue();
   const look = state.lookTbl !== null && state.lookTbl !== undefined;
   const on = look || (state.slidersOpen && !!state.tblGroup && sliderVars().some(v => v.group === state.tblGroup));
   $("#mTable").hidden = !on;
@@ -6655,9 +6744,22 @@ function buildStatic() {
   $("#mbList").addEventListener("click", e => { const b = e.target.closest("[data-mb]"); if (b) dotClick(+b.dataset.mb); });   // like a dot: his lookalikes card first
   $("#mbSearch").addEventListener("input", renderMatchList);
   // the rail: its tabs, its close button, and the pills that stand in for the tabs while it is closed
-  $("#rail").querySelector(".railtabs").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b && !b.disabled) setRailTab(b.dataset.tab); });
-  $("#railClose").addEventListener("click", railClose);
-  $("#railPills").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b) setRailTab(b.dataset.tab); });
+  $("#rail").querySelector(".railtabs").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b && !b.disabled) openPanel(b.dataset.tab); });
+  $("#railClose").addEventListener("click", () => { railClose(); render(); });
+  // the rows at the top of the controls column: open that panel, or close it when it is the one open
+  $("#panelNav").addEventListener("click", e => {
+    const b = e.target.closest("[data-panel]"); if (!b) return;
+    if (state.rail.open && state.rail.tab === b.dataset.panel) { railClose(); render(); } else openPanel(b.dataset.panel);
+  });
+  // the Clusters panel's list: a chip picks its cluster (again = unpick); Show all unpicks
+  $("#clusterBox").addEventListener("click", e => {
+    const pk = e.target.closest("[data-arch]");
+    if (!pk && !e.target.closest("[data-archclear]")) return;
+    const id = pk ? pk.dataset.arch : "";
+    state.archetype = id && state.archetype !== id ? id : "";
+    render(); renderDetail();
+    const nb = $("#clList").querySelector(id ? `[data-arch="${id}"]` : "[data-arch]"); if (nb) nb.focus({ preventScroll: true });
+  });
   $("#simScrim").addEventListener("click", () => closeSimFocus());
   $("#cardScrim").addEventListener("click", () => closeCard());
   $("#cardClose").addEventListener("click", () => closeCard());
@@ -6700,15 +6802,6 @@ function buildStatic() {
   // the scale switch lives inside the key, which is redrawn on every render
   $("#mapKey").addEventListener("click", e => {
     if (e.target.closest("[data-keyreset]")) { if (state.keyRange) { state.keyRange.lo = 0; state.keyRange.hi = 1; } render(); $("#mkLo").focus({ preventScroll: true }); return; }
-    if (e.target.closest("#mkX")) { clustersOff(); const o = document.querySelector('#clusterSeg [data-cl="off"]'); if (o) o.focus({ preventScroll: true }); return; }
-    const pk = e.target.closest("[data-arch]");
-    if (pk || e.target.closest("[data-archclear]")) {
-      const id = pk ? pk.dataset.arch : "";
-      state.archetype = id && state.archetype !== id ? id : "";
-      render(); renderDetail();
-      const nb = $("#mapKey").querySelector(id ? `[data-arch="${id}"]` : "[data-arch]"); if (nb) nb.focus({ preventScroll: true });
-      return;
-    }
     const b = e.target.closest("[data-scale]"); if (!b || b.dataset.scale === state.scale) return;
     state.scale = b.dataset.scale; render(); syncExplain();
     const nb = $("#mapKey").querySelector(`[data-scale="${state.scale}"]`); if (nb) nb.focus({ preventScroll: true });
@@ -6949,7 +7042,9 @@ function buildStatic() {
     if (g.scrollIntoView) g.scrollIntoView({ block: "start", behavior: reduced() ? "auto" : "smooth" });
   });
 
-  window.addEventListener("hashchange", () => applyHash(parseHash()));
+  window.addEventListener("hashchange", () => { if (history.state && Number.isInteger(history.state.nav)) return; applyHash(parseHash()); });   // our own steps come through popstate
+  window.addEventListener("popstate", e => { const i = e.state && Number.isInteger(e.state.nav) ? e.state.nav : null; if (i !== null) navTo(i); });
+  document.addEventListener("click", e => { const b = e.target.closest("[data-nav]"); if (!b || b.disabled) return; if (b.dataset.nav === "back") navBack(); else navForward(); });
 }
 // the search index: every pitcher once, with his newest season (MLB first when a call-up has both); rebuilt after a level loads
 let SUG = null;
@@ -7012,6 +7107,9 @@ async function refreshFreeAgents() {
   applyHash(h);
   refreshFreeAgents();
   state.booted = true;
+  NAV.entries = [navSnap()]; NAV.idx = 0;   // the opening screen is step 0
+  try { history.replaceState({ nav: 0 }, "", hashFor()); } catch (e) { NAV.browser = false; }
+  syncNavButtons();
   Object.keys(LAZY).forEach(l => ensureLevel(l));   // Triple-A in the background, now that the map is up
 })();
 </script>
