@@ -3946,8 +3946,12 @@ function glow3D(r) {
   const pos = new Float32Array(pts.length * 3); pts.forEach((c3, k) => { pos[3 * k] = c3[0]; pos[3 * k + 1] = c3[1]; pos[3 * k + 2] = c3[2]; });
   const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
   const size = Math.max(3, (view === "all" ? 6 : 9) * (state.zoomK || 1) * 0.6) * g.renderer.getPixelRatio() * 2.8;
-  const mat = new THREE.PointsMaterial({ size, sizeAttenuation: false, color: new THREE.Color(...parseRGB(mixHex(col, "#ffffff", 0.6))), map: sprite("disc"),
-    alphaTest: 0.5, transparent: true, opacity: 0.38, depthWrite: false });
+  // Solid, not see-through: three.js discards a fragment whose alpha (sprite alpha × opacity) falls under alphaTest, so a 0.38
+  // opacity halo with the sprites' alphaTest 0.5 never drew. The color is what a 50% veil of the light tint looks like over the
+  // slate map; drawn first (renderOrder -1) without writing depth, it sits behind every dot, as the 2D glow does.
+  const veil = mixHex(mixHex(col, "#ffffff", 0.6), mapPalette().surface, 0.5);
+  const mat = new THREE.PointsMaterial({ size, sizeAttenuation: false, color: new THREE.Color(...parseRGB(veil)), map: sprite("disc"),
+    alphaTest: 0.5, transparent: false, depthWrite: false });
   const halo = new THREE.Points(geo, mat); halo.renderOrder = -1; halo.frustumCulled = false; halo.userData = { pick: false };
   g.scene.add(halo);
   const med = k => pts.map(c3 => c3[k]).sort((a, b) => a - b)[pts.length >> 1];

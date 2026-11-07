@@ -342,8 +342,11 @@ const J = JSON.stringify;
   const n3 = run(`visibleRows(state.view).filter(q => clusterOf(q) === ${J(c3)} && xyz(state.view, q).every(isNum)).length`);
   run(`glow3D(${r3})`);
   const halo = G.glow && G.glow.pts;
-  ok(!!halo && G.scene.children.includes(halo) && halo.geometry.attributes.position.array.length === 3 * n3 && halo.material.transparent === true && halo.renderOrder < 0,
-    `3D: hovering lights its whole cluster (${n3} dots, behind the dots)`);
+  ok(!!halo && G.scene.children.includes(halo) && halo.geometry.attributes.position.array.length === 3 * n3 && halo.renderOrder < 0 && halo.material.depthWrite === false,
+    `3D: hovering lights its whole cluster (${n3} dots, drawn first, behind the dots)`);
+  // three.js discards fragments whose alpha (sprite × opacity when transparent) is under alphaTest: the halo must survive that
+  const hm = halo && halo.material, alpha = hm ? (hm.transparent ? (hm.opacity ?? 1) : 1) : 0;
+  ok(!!hm && alpha >= (hm.alphaTest || 0) && /^#?[0-9a-f]{6}$/i.test(run(`mixHex(mixHex("#3366cc", "#ffffff", 0.6), mapPalette().surface, 0.5)`)), `3D: the halo is not thrown away by alphaTest (alpha ${alpha} vs alphaTest ${hm && hm.alphaTest})`);
   ok(!!halo && G.labels.includes(G.glow.label) && /g3-glowlab/.test(G.glow.label.el.className) && G.glow.label.el.textContent.length > 0, "3D: and names it: " + (halo ? G.glow.label.el.textContent : ""));
   run(`glow3D(${r3})`);
   ok(G.glow && G.glow.pts === halo, "3D: the same cluster redraws nothing");
