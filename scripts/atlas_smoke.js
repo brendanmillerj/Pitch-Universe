@@ -7,7 +7,8 @@
 // CARC has no node on PATH: use code-server's, /apps/generic/code-server/4.117.0/lib/node (add --max-old-space-size=4096).
 // It runs the page's main inline script in a vm context with a permissive fake DOM, a recording fake Plotly and a fake
 // three.js (real vectors and buffers, no drawing), then drives it: layout, the cluster key and its subcluster tree, the
-// 2D and 3D morphs, the cluster tags on the map and player cards, the Pitch Simulation Lab's MLB average column and the
+// 2D and 3D morphs, the cluster tags on the map and player cards, the Pitch Simulation Lab's MLB average column, its
+// Edit (name it, Done adds a new pitch, the original never changes), the t-SNE coordinates download, the
 // colour menu, the Clusters panel and Back/Forward (with a fake browser history). CSS layout and real WebGL drawing
 // are not checked. Exit code 0 = every check passed.
 const fs = require("fs"), path = require("path"), vm = require("vm");
@@ -411,6 +412,72 @@ const J = JSON.stringify;
   }
   run(`state.sim = null; select(null)`); await tick();
 
+  // ---- the lab's Edit: name it, Done adds a NEW pitch; the original is never changed
+  run(`state.sim = null; state.simNorm = "off"; preview(${j}); toggleSim(null);`); await tick();
+  const box = () => getEl("#simBox").innerHTML, items = () => run("state.sim.items");
+  const own0 = run(`state.sim.items.find(it => it.kind === "own" && it.on)`), ownId = own0.id, v0 = run(`T.velo[${own0.r}]`);
+  getEl("#labEdit").onclick(); await tick();
+  ok(run("state.sim.edit") && run("state.sim.editId") === ownId, "Edit pitch starts a draft of his pitch");
+  ok(/<label class="labl" for="labName">Name the new pitch<\/label>/.test(box()) && /id="labDone">Done</.test(box()) && /id="labCancel">Cancel</.test(box()),
+    "the edit panel asks for a name, with Done and Cancel");
+  ok(/class="sim-replay simprimary" id="labDone"/.test(box()) && /Done adds it as a new pitch\. .+ stays as it was\./.test(box()), "Done is the filled button, and says what it does");
+  ok(/editing<\/span>/.test(box()) && !/>edited</.test(box()), "his chip says 'editing' while the draft is open");
+  run(`state.sim.items.find(it => it.id === ${J(ownId)}).d.mph += 2.5`);
+  const draftMph = run(`state.sim.items.find(it => it.id === ${J(ownId)}).d.mph`);
+  getEl("#labName").value = "Harder one"; getEl("#labName").oninput();
+  getEl("#labDone").onclick(); await tick();
+  const made = items().find(it => it.kind === "made");
+  ok(!!made && made.name === "Harder one" && made.base === "own" && made.on && Math.abs(made.d.mph - draftMph) < 1e-9 && made.t === own0.t, "Done adds a new pitch with the typed name and the edited values");
+  ok(run(`state.sim.items.find(it => it.id === ${J(ownId)}).d`) === null && run(`state.sim.items.find(it => it.id === ${J(ownId)}).on`) === true && !run("state.sim.edit"),
+    "the original is back as it was, still in the air; edit mode is over");
+  ok(new RegExp(`Harder one <span class="tm">${draftMph.toFixed(1)}</span>`).test(box()) && new RegExp(`>${run(`PTN[${J(own0.t)}]`)} <span class="tm">${v0.toFixed(1)}</span>`).test(box()),
+    "chips: the new pitch at its speed, the original at its own");
+  const P = run(`labPaths(${j}, state.sim).paths`);
+  ok(P.some(p => p.fade && Math.abs(p.velo - draftMph) < 1e-9) && P.some(p => !p.fade && !p.ghost && p.type === own0.t), "both fly: the original solid, the new one see-through");
+  ok(!P.some(p => p.ring), "his own made pitch flies from his release with no white ring");
+  const rows = run(`simTableRows(${j}, state.sim)`);
+  ok(rows.some(o => /^Harder one \(.+, edited\) [\d.]+$/.test(o.label) && /^Made in the lab: /.test(o.note) && o.who === j), "table and CSV row for it: " + (rows.find(o => /^Harder one/.test(o.label)) || {}).label);
+  ok(/<th scope="col"><i class="psw[^"]*"[^>]*><\/i>Harder one<\/th>/.test(run(`simScoreHTML(${j}, state.sim)`)), "the scorecard names its column after it");
+  // editing the made pitch, then Cancel: nothing changes, nothing added
+  run(`startEdit(state.sim, state.sim.items.find(it => it.kind === "made")); state.sim.items.find(it => it.kind === "made").d.mph += 5; renderSim();`); await tick();
+  ok(/Harder one, made from .+, edited\. The edit flies see-through\./.test(box()) && /<span class="labr">saved [\d.]+/.test(box()), "editing a made pitch: its note, sliders against the saved values");
+  getEl("#labCancel").onclick(); await tick();
+  ok(items().filter(it => it.kind === "made").length === 1 && Math.abs(items().find(it => it.kind === "made").d.mph - draftMph) < 1e-9 && !run("state.sim.edit"), "Cancel drops the draft; the made pitch is as saved");
+  // no name: a default; Enter in the name field is Done
+  getEl("#labEdit").onclick(); await tick();
+  getEl("#labName").value = ""; getEl("#labName").oninput();
+  getEl("#labName").onkeydown({ key: "Enter", preventDefault() {} }); await tick();
+  const m2 = items().filter(it => it.kind === "made");
+  ok(m2.length === 2 && m2[1].name === `New ${run(`PTN[${J(own0.t)}]`).toLowerCase()} 2`, "Enter saves too; no name gives a default: " + (m2[1] || {}).name);
+  // names are text, never markup
+  getEl("#labEdit").onclick(); await tick();
+  getEl("#labName").value = "<img src=x onerror=alert(1)>"; getEl("#labName").oninput(); getEl("#labDone").onclick(); await tick();
+  ok(!box().includes("<img src=x") && box().includes("&lt;img src=x onerror=alert(1)&gt;"), "a typed name is escaped in the chips");
+  // another pitcher's pitch: made from it, release matching still applies
+  if (look >= 0) {
+    run(`state.sim.items.push({ id: "add:" + (++state.sim.nAdd), ...labOther(${look}) }); startEdit(state.sim, state.sim.items[state.sim.items.length - 1]); state.sim.editName = "His version"; renderSim();`); await tick();
+    getEl("#labDone").onclick(); await tick();
+    const mo = items().find(it => it.name === "His version");
+    ok(!!mo && mo.base === "other" && items().filter(it => it.kind === "other").every(it => !("d0" in it)), "made from another pitcher's pitch: base 'other', the added original untouched");
+    run(`state.simNorm = "v"`);
+    const ro = run(`simTableRows(${j}, state.sim)`).find(o => o.it && o.it.name === "His version");
+    ok(ro && ro.matched === true && ro.who === mo.r, "release matching applies to it, and it is his pitch, not ours");
+    run(`state.simNorm = "off"`);
+  }
+  // Compare mid-edit drops the draft; turning the edited pitch off ends the edit
+  const nMade = items().filter(it => it.kind === "made").length;
+  getEl("#labEdit").onclick(); await tick();
+  run(`state.sim.items.find(it => it.id === ${J(ownId)}).d.mph += 3`);
+  if (look >= 0) {
+    run(`compareSim(${look})`); await tick();
+    ok(run(`state.sim.items.find(it => it.id === ${J(ownId)}).d`) === null && items().filter(it => it.kind === "made").length === nMade && !run("state.sim.edit"), "Compare mid-edit: draft dropped, nothing added");
+    run(`toggleSim(null); toggleSim(null);`); await tick();
+  }
+  run(`startEdit(state.sim, state.sim.items.find(it => it.id === ${J(ownId)})); state.sim.items.find(it => it.id === ${J(ownId)}).d.mph += 3;`);
+  run(`(() => { const it = state.sim.items.find(x => x.id === ${J(ownId)}); it.on = false; endEdit(state.sim, false); })()`);
+  ok(run(`state.sim.items.find(it => it.id === ${J(ownId)}).d`) === null && !run("state.sim.edit"), "turning the edited pitch off restores it");
+  run(`closeSim(true); state.sim = null; select(null)`); await tick();
+
   // ---- Back / Forward (one step per screen change; the browser's history walks the same list)
   run(`state.sim = null; clustersOff(); railClose(); select(null); setView(${J(pt)});`); await tick();
   const n0 = run("NAV.idx"), nm = run(`T.name[${j}]`);
@@ -456,6 +523,17 @@ const J = JSON.stringify;
   ok(run("state.view") === vS, "Back undoes Start over");
   for (const f of winL.popstate || []) f({ state: { nav: 0 } }); await tick();
   ok(run("NAV.idx") === 0 && run("state.view") === "all" && run("state.sel") === null, "a popstate for step 0 restores the opening screen");
+
+  // ---- download: the t-SNE coordinates of every dot (the data line at the bottom)
+  ok(getEl("#embLine").hidden === false && (getEl("#embDl")._h.click || []).length === 1, "the t-SNE download link shows on a standalone page and is wired");
+  const emb = run("embeddingCSV()"), eL = emb.csv.trim().split("\r\n"), eH = eL[0].split(",");
+  const nEmb = run("(() => { let n = 0; for (let r = 0; r < NT; r++) if (isNum(T.gx[r]) || isNum(T.tx[r])) n++; return n; })()");
+  ok(emb.n === nEmb && eL.length === nEmb + 1 && nEmb > 10000, `one row per dot with a place on the maps (${emb.n.toLocaleString()})`);
+  ok(["All-pitches map x", "All-pitches map y", "Pitch-type map x", "Pitch-type map y", "All-pitches 3D z", "Cluster", "Subcluster"].every(h => eH.includes(h)) && eH.length === 20, "header: identity, both maps flat and 3D, clusters: " + eH.length + " columns");
+  const eRow = run(`(() => { const r = ${j}; return { name: T.name[r], gx: +T.gx[r].toFixed(3), ty: +T.ty[r].toFixed(3), id: T.pitcher[r], s: T.season[r], pt: PTN[T.pitch_type[r]] }; })()`);
+  const line = eL.find(l => l.includes("," + eRow.id + "," + eRow.s + ",MLB,") && l.includes("," + eRow.pt + ","));
+  ok(!!line && line.split(",").includes(String(eRow.gx)) && line.split(",").includes(String(eRow.ty)), "a known pitch's coordinates match the map: " + (line || "").slice(0, 90));
+  ok(eL.some(l => l.includes(",Triple-A,")) && /^clusterpitch_tsne_coordinates_\d{4}-\d{4}\.csv$/.test(emb.name), "Triple-A rows included; file " + emb.name);
 
   // ---- color menu: fixed beside its button on a wide screen
   getEl("#colorMenu").hidden = true;
