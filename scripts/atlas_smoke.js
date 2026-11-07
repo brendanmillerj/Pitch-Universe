@@ -336,6 +336,22 @@ const J = JSON.stringify;
   run(`goView(${J(other)})`); ok(run("state.view") === "all" && run("state.morphing"), "3D type -> type: first leg");
   await pump(1000); await tick(); ok(run("state.view") === other && run("state.morphing"), "3D: second leg");
   await pump(1000); await tick(); ok(run("state.view") === other && !run("state.morphing"), "3D type -> type lands");
+  // the hover glow in 3D: the whole cluster gets a halo and a name that rides with the map
+  run(`state.color.all = state.color.t = "cat:subcluster"; render();`); await tick(); await pump(16);
+  const r3 = run(`visibleRows(state.view).find(r => clusterOf(r))`), c3 = run(`clusterOf(${r3})`);
+  const n3 = run(`visibleRows(state.view).filter(q => clusterOf(q) === ${J(c3)} && xyz(state.view, q).every(isNum)).length`);
+  run(`glow3D(${r3})`);
+  const halo = G.glow && G.glow.pts;
+  ok(!!halo && G.scene.children.includes(halo) && halo.geometry.attributes.position.array.length === 3 * n3 && halo.material.transparent === true && halo.renderOrder < 0,
+    `3D: hovering lights its whole cluster (${n3} dots, behind the dots)`);
+  ok(!!halo && G.labels.includes(G.glow.label) && /g3-glowlab/.test(G.glow.label.el.className) && G.glow.label.el.textContent.length > 0, "3D: and names it: " + (halo ? G.glow.label.el.textContent : ""));
+  run(`glow3D(${r3})`);
+  ok(G.glow && G.glow.pts === halo, "3D: the same cluster redraws nothing");
+  run(`glow3D(null)`);
+  ok(!G.glow && !G.scene.children.includes(halo) && !G.labels.some(l => /g3-glowlab/.test(l.el.className || "")), "3D: leaving clears the halo and the name");
+  run(`hover3 = ${r3}; glow3D(${r3}); render();`); await tick();
+  ok(!!G.glow && G.scene.children.includes(G.glow.pts) && G.scene.children.filter(o => G.glow && o === G.glow.pts).length === 1, "3D: a redraw with the pointer still there puts the glow back (once)");
+  run(`hover3 = null; glow3D(null); state.color.all = state.color.t = "cat:pitch_type"; render();`); await tick();
   run(`state.dim = 2; dispose3D(); setView(${J(pt)});`); await tick(); await tick();
 
   // ---- the pitcher's cluster: on the map's selected-pitcher card and on his player card

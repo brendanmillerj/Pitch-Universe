@@ -801,6 +801,8 @@ button, input, select { font: inherit; color: inherit; }
 .g3-tlabel { font-size: 13px; text-align: center; line-height: 1.2; }
 .g3-badge { color: var(--map); font: 700 13px var(--font-ui); text-shadow: none; }
 .g3-saved { font-size: 14px; font-weight: 700; }
+/* the hovered cluster's name in 3D, styled like the 2D one: a dark chip edged in the cluster's color */
+.g3-glowlab { font: 700 14px var(--font-ui); color: #ffffff; text-shadow: none; background: rgba(20, 24, 30, 0.9); border: 1.5px solid; border-radius: 4px; padding: 3px 7px; }
 .g3-tip { position: absolute; z-index: 5; pointer-events: none; max-width: 300px; padding: 4px 8px; border-radius: 6px;
   background: var(--map-panel); color: var(--map-ink); border: 1px solid var(--map-line); font: 14px/1.35 var(--font-ui); }
 .g3-legend { position: absolute; left: var(--mi); top: var(--mi); z-index: 4; max-width: 46%; padding: 6px 8px; border-radius: 6px;
@@ -3775,14 +3777,19 @@ function init3D() {
         tip.style.left = Math.min(e.clientX - r.left + 14, r.width - 220) + "px"; tip.style.top = (e.clientY - r.top + 14) + "px";
         plotEl.classList.add("dot-hover");
       } else { tip.hidden = true; plotEl.classList.remove("dot-hover"); }
+      const row = h && h.object.userData.rows ? h.object.userData.rows[h.index] : undefined;   // the cluster under the pointer glows
+      clearTimeout(glowOff3);
+      if (typeof row === "number") { hover3 = row; glow3D(row); }
+      else glowOff3 = setTimeout(() => { hover3 = null; glow3D(null); }, 90);
     });
   });
-  el.addEventListener("pointerleave", () => { tip.hidden = true; plotEl.classList.remove("dot-hover"); });
+  el.addEventListener("pointerleave", () => { tip.hidden = true; plotEl.classList.remove("dot-hover"); clearTimeout(glowOff3); hover3 = null; glow3D(null); });
   el.addEventListener("dblclick", () => { G3.view = null; render(); });   // double-click resets the view
   return G3;
 }
 function dispose3D() {
   if (!G3) return;
+  glow3Drop(G3); hover3 = null; clearTimeout(glowOff3);
   cancelAnimationFrame(G3.raf); G3.ro.disconnect(); G3.controls.dispose();
   G3.objs.forEach(o => { o.geometry.dispose(); o.material.dispose(); });
   G3.renderer.dispose(); plotEl.innerHTML = ""; G3 = null; plotReady = false;
@@ -3828,7 +3835,7 @@ function render3D(traces, view, pal, layout, groups = []) {
   const g = init3D();
   g.renderer.setClearColor(0x000000, 0);
   g.objs.forEach(o => { g.scene.remove(o); o.geometry.dispose(); o.material.dispose(); }); g.objs = [];
-  g.overlay.innerHTML = ""; g.labels = [];
+  glow3Drop(g); g.overlay.innerHTML = ""; g.labels = [];
   if (g.view !== view) {   // frame the map once per view; afterwards the user's camera is kept
     const pts = viewRows(view).map(r => xyz(view, r)).filter(q => q.every(isNum));
     const lo = [0, 1, 2].map(k => Math.min(...pts.map(q => q[k]))), hi = [0, 1, 2].map(k => Math.max(...pts.map(q => q[k])));
@@ -3913,6 +3920,43 @@ function render3D(traces, view, pal, layout, groups = []) {
     });
   });
   g.needs = true;
+  if (hover3 !== null) glow3D(hover3);
+}
+// 3D: the cluster under the pointer glows (a halo of larger see-through dots in a lighter tint, behind its dots) and its
+// name rides above it as the map turns; same rules as the 2D glow (clusterGlow)
+let glow3Id = null, glowOff3 = null, hover3 = null;
+function glow3Drop(g) {
+  if (!g || !g.glow) return;
+  g.scene.remove(g.glow.pts); g.glow.pts.geometry.dispose(); g.glow.pts.material.dispose();
+  const i = g.labels.indexOf(g.glow.label); if (i >= 0) g.labels.splice(i, 1);
+  if (g.glow.label.el.remove) g.glow.label.el.remove();
+  g.glow = null; glow3Id = null; g.needs = true;
+}
+function glow3D(r) {
+  const g = G3; if (!g) return;
+  const id = clustersOn() && is3D() && !state.morphing && !state.cardOpen && r !== null && r !== undefined ? clusterOf(r) : null;
+  if (id === glow3Id) return;
+  glow3Drop(g);
+  if (!id) return;
+  const view = state.view, v = VMAP[varKind(view)]["cat:subcluster"], ci = v ? v.cats.indexOf(id) : -1;
+  const col = ci >= 0 && v.colors ? v.colors(mapPalette())[ci] : "#ffffff";
+  const pts = [];
+  visibleRows(view).forEach(q => { if (clusterOf(q) !== id) return; const c3 = xyz(view, q); if (c3.every(isNum)) pts.push(c3); });
+  if (!pts.length) return;
+  const pos = new Float32Array(pts.length * 3); pts.forEach((c3, k) => { pos[3 * k] = c3[0]; pos[3 * k + 1] = c3[1]; pos[3 * k + 2] = c3[2]; });
+  const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  const size = Math.max(3, (view === "all" ? 6 : 9) * (state.zoomK || 1) * 0.6) * g.renderer.getPixelRatio() * 2.8;
+  const mat = new THREE.PointsMaterial({ size, sizeAttenuation: false, color: new THREE.Color(...parseRGB(mixHex(col, "#ffffff", 0.6))), map: sprite("disc"),
+    alphaTest: 0.5, transparent: true, opacity: 0.38, depthWrite: false });
+  const halo = new THREE.Points(geo, mat); halo.renderOrder = -1; halo.frustumCulled = false; halo.userData = { pick: false };
+  g.scene.add(halo);
+  const med = k => pts.map(c3 => c3[k]).sort((a, b) => a - b)[pts.length >> 1];
+  const nm = ci >= 0 && v.names ? v.names[ci] : id, text = view !== "all" && nm.startsWith(PTN[view] + " ") ? nm.slice(PTN[view].length + 1) : nm;
+  const el = document.createElement("div"); el.className = "g3-label g3-glowlab"; el.style.borderColor = col; el.textContent = text;
+  g.overlay.appendChild(el);
+  const label = { v: new THREE.Vector3(med(0), med(1), med(2)), el, dy: "-160%" };
+  g.labels.push(label);
+  g.glow = { pts: halo, label }; glow3Id = id; g.needs = true;
 }
 
 // The color key: bottom left of the map, large. Measures get a gradient bar with the percentile/raw
