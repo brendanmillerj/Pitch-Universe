@@ -252,6 +252,31 @@ const J = JSON.stringify;
   ok(run("state.rail.open") && run("state.rail.tab") === "clusters" && run("state.color.t") === "cat:subcluster", "clicking the switch then brings the list back (still ON)");
   run("clustersOff()"); await tick();
   ok(!run("state.rail.open") && pill() === "OFF", "Off closes the list too");
+  // ---- clusters on the map: no labels; the cluster under the pointer glows and is named; a click picks it
+  run(`setView(${J(pt)}); openPanel("clusters")`); await tick(); await tick();
+  const lastReact = calls.filter(c => c.f === "react").pop();
+  ok(!lastReact.data.some(t => t.meta === "clusterlabels") && lastReact.data[0].meta === "glow" && lastReact.data[0].x.length === 0, "no cluster labels on the map; an empty glow layer under the dots");
+  const hov = getEl("#plot")._h["plotly:plotly_hover"][0], unhov = getEl("#plot")._h["plotly:plotly_unhover"][0];
+  const r0 = run(`visibleRows(state.view).find(r => clusterOf(r))`), cid = run(`clusterOf(${r0})`);
+  const inC = run(`visibleRows(state.view).filter(q => clusterOf(q) === ${J(cid)})`), nIn = inC.length;
+  const g0 = calls.length; hov({ points: [{ customdata: r0 }] }); await tick();
+  const rs = calls.slice(g0).find(c => c.f === "restyle"), rl = calls.slice(g0).find(c => c.f === "relayout");
+  ok(rs && rs.d.x[0].length === nIn && rs.idx[0] === 0, `hovering a dot fills the glow with its whole cluster (${nIn} dots)`);
+  const lab = rl && rl.d.annotations[rl.d.annotations.length - 1];
+  ok(rl && rl.d.annotations.length === (lastReact.layout.annotations || []).length + 1 && lab && /<b>.+<\/b>/.test(lab.text) && !lab.text.includes(ptn + " "), "…and names it above the cluster: " + (lab && lab.text));
+  const g1 = calls.length; hov({ points: [{ customdata: inC[inC.length - 1] }] }); await tick();
+  ok(!calls.slice(g1).some(c => c.f === "restyle"), "moving within the same cluster redraws nothing");
+  unhov(); await new Promise(r => setTimeout(r, 150));
+  const clr = calls.slice(g1).find(c => c.f === "restyle");
+  ok(clr && clr.d.x[0].length === 0, "leaving the dots clears the glow");
+  run(`dotClick(${r0})`); await tick();
+  ok(run("state.archetype") === "pc:" + cid && !run("state.preview"), "a click picks the dot's cluster");
+  run(`dotClick(${r0})`); await tick();
+  ok(run("state.sel") === r0 && run("state.preview") && run("state.archetype") === "pc:" + cid, "a click inside the picked cluster opens that pitcher");
+  run("select(null); clustersOff()"); await tick();
+  run(`dotClick(${r0})`); await tick();
+  ok(run("state.sel") === r0 && run("state.preview") && run("state.archetype") === "", "clusters off: a click opens the pitcher as before");
+  run("select(null)"); await tick();
 
   // ---- morphs, 2D
   run(`setView("all")`); await tick(); await tick();

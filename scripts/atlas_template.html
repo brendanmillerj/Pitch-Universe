@@ -2584,6 +2584,8 @@ function render() {
   const others = andMatch(andMatch(ruleMatcher(kind, rows), faMatcher()), state.groupsHi && groupsOn() ? inGroups : null);
   const match = andMatch(others, archetypeMatcher(view)), edgeM = archetypeEdge();
   const traces = [];
+  if (cg.v && cg.v.clusterLevel && !is3D())   // under everything: the hovered cluster's halo (clusterGlow fills it)
+    traces.push({ meta: "glow", type: "scatter", mode: "markers", x: [], y: [], hoverinfo: "skip", showlegend: false, marker: { size: 1, color: "#ffffff", opacity: 0.35 } });
   // dots grow as you zoom in (state.zoomK, set from the visible x-range), so a close-up isn't specks
   const size = (view === "all" ? 6 : 9) * (state.zoomK || 1);
   // dots that don't apply (filtered out, other teams, not a free agent) recede into the background
@@ -2768,19 +2770,7 @@ function render() {
     traces.push({ meta: "typelabels", type: "scatter", mode: "text", x: lx, y: ly, text: lt, hoverinfo: "skip", showlegend: false,
       textfont: { family: UI_FONT, size: 13, color: pal.ink, shadow: `0 0 3px ${pal.bg}, 0 0 3px ${pal.bg}, 0 0 2px ${pal.bg}` } });
   }
-  // coloured by pitch cluster: each cluster's letter (A, A1; "FF A" in All pitches) at the median of its core members
-  if (cg.v && cg.v.clusterLevel) {
-    const conf = cg.v.clusterLevel === 1 ? T.conf1 : T.conf2, lx = [], ly = [], lt = [], sets = [];
-    cg.v.cats.forEach(c => {
-      const rs = on.filter(r => cg.get(r) === c); if (!rs.length) return;
-      const core = rs.filter(r => !(isNum(conf[r]) && conf[r] < PCL.core)), use = core.length ? core : rs;
-      const xs = use.map(r => xy(view, r)[0]).filter(isNum).sort((a, b) => a - b), ys = use.map(r => xy(view, r)[1]).filter(isNum).sort((a, b) => a - b);
-      if (!xs.length) return;
-      lx.push(xs[xs.length >> 1]); ly.push(ys[ys.length >> 1]); lt.push(`<b>${view === "all" ? c.replace("-", " ") : c.split("-")[1]}</b>`); sets.push(use);
-    });
-    if (lt.length) traces.push({ meta: "clusterlabels", type: "scatter", mode: "text", x: lx, y: ly, text: lt, rowsets: sets, hoverinfo: "skip", showlegend: false,
-      textfont: { family: UI_FONT, size: 14, color: pal.ink, shadow: `0 0 3px ${pal.bg}, 0 0 3px ${pal.bg}, 0 0 2px ${pal.bg}` } });
-  }
+  // clusters carry no labels on the map (it was a wall of names): the cluster under the pointer glows and is named (clusterGlow)
   traces.push(...savedTraces(view, pal, typeBoxes));   // saved groups: always drawn, whatever the filters
   // pitches picked for a new group: a white ring each (only those on this map, at this level)
   const picked = [...state.picks].filter(r => T.level[r] === state.level && (view === "all" || T.pitch_type[r] === view));
@@ -2829,7 +2819,7 @@ function render() {
     const srcOf = r => traces.find(t => Array.isArray(t.customdata) && t.marker && t.customdata.includes(r));
     const srcs = arsenal.map(srcOf);
     // (with his lookalikes shown, everything but him, the spokes and the numbered lookalikes fades further)
-    const dimTo = compsOnMap() ? LOOK_DIM : SEL_DIM, keepLit = compsOnMap() ? new Set(["typelabels", "clusterlabels", "saved", "comps", "spokes"]) : new Set(["typelabels", "clusterlabels", "saved"]);
+    const dimTo = compsOnMap() ? LOOK_DIM : SEL_DIM, keepLit = compsOnMap() ? new Set(["glow", "typelabels", "clusterlabels", "saved", "comps", "spokes"]) : new Set(["glow", "typelabels", "clusterlabels", "saved"]);
     traces.forEach(t => { if (!keepLit.has(t.meta) && t.fill !== "toself") { t.opacity = dimTo; t.dimK = dimTo; } });
     // ...and his pitch(es) are redrawn on top at full strength in their own colors; in All pitches each
     // carries its pitch code (the selected one below the dot, clear of the name label above it)
@@ -2945,13 +2935,17 @@ function render() {
     });
     outLayout = { ...outLayout, annotations: [...anns, ...(outLayout.annotations || [])], shapes: [...(outLayout.shapes || []), ...shapes] };
   }
+  LAST_ANNS = outLayout.annotations || []; glowId = null;   // the map's own labels; any glow is redrawn below
   Plotly.react(plotEl, outTraces, outLayout, config).then(() => {
+    if (hoverRow !== null) clusterGlow(hoverRow);
     if (afterPlot) { const a = afterPlot; afterPlot = null; if (a.view === state.view && !is3D() && !state.morphing) a.run(); }
     if (!plotReady) {
       plotEl.on("plotly_click", e => { const p = e.points && e.points[0]; if (p && p.customdata !== undefined) dotClick(p.customdata); });
       // a pointing hand over anything clickable, an open hand (drag to pan) everywhere else
-      plotEl.on("plotly_hover", e => { const p = e.points && e.points[0]; plotEl.classList.toggle("dot-hover", !!(p && p.customdata !== undefined)); });
-      plotEl.on("plotly_unhover", () => plotEl.classList.remove("dot-hover"));
+      plotEl.on("plotly_hover", e => { const p = e.points && e.points[0], has = !!(p && p.customdata !== undefined);
+        plotEl.classList.toggle("dot-hover", has); clearTimeout(glowOff); if (has) { hoverRow = p.customdata; clusterGlow(hoverRow); } });
+      // the glow lets go a moment after the pointer leaves, so moving between dots of one cluster never flickers
+      plotEl.on("plotly_unhover", () => { plotEl.classList.remove("dot-hover"); clearTimeout(glowOff); glowOff = setTimeout(() => { hoverRow = null; clusterGlow(null); }, 90); });
       plotEl.on("plotly_relayout", onZoom);
       plotEl.on("plotly_selected", e => lassoDone(e));
       plotReady = true;
@@ -5896,9 +5890,38 @@ function followLevel(r) {
 // A dot on the map: with a player card open, the card moves to him; otherwise he is shown the way a search shows
 // him (arsenal ringed, his lookalikes card with Show Profile / Show Simulation), and a second click on one of his
 // own dots opens his profile. Clicking one of the numbered lookalikes keeps a way back to the first pitcher's list.
+// Clusters on: the cluster under the pointer glows (its dots get a soft halo in a lighter tint of its color, under the dots)
+// and its name sits just above it; nothing else on the map is labelled by cluster.
+let glowId = null, glowOff = null, hoverRow = null, LAST_ANNS = [];
+const clustersOn = () => { const c = state.color[varKind(state.view)]; return c === "cat:cluster" || c === "cat:subcluster"; };
+const clusterOf = r => T.cl2 && T.cl2[r] ? T.cl2[r] : T.cl1 && T.cl1[r] ? T.cl1[r] : null;
+function clusterGlow(r) {
+  const id = clustersOn() && !is3D() && !state.morphing && !state.cardOpen && r !== null && r !== undefined ? clusterOf(r) : null;
+  if (id === glowId) return;
+  glowId = id;
+  const k = (plotEl.data || []).findIndex(t => t.meta === "glow"); if (k < 0) return;
+  if (!id) { Plotly.restyle(plotEl, { x: [[]], y: [[]] }, [k]); Plotly.relayout(plotEl, { annotations: LAST_ANNS }); return; }
+  const view = state.view, v = VMAP[varKind(view)]["cat:subcluster"], ci = v ? v.cats.indexOf(id) : -1, pal = mapPalette();
+  const col = ci >= 0 && v.colors ? v.colors(pal)[ci] : "#ffffff";
+  const X = [], Y = [];
+  visibleRows(view).forEach(q => { if (clusterOf(q) !== id) return; const [x, y] = xy(view, q); if (isNum(x) && isNum(y)) { X.push(x); Y.push(y); } });
+  if (!X.length) return;
+  const size = (view === "all" ? 6 : 9) * (state.zoomK || 1);
+  Plotly.restyle(plotEl, { x: [X], y: [Y], "marker.size": size * 2.8, "marker.color": mixHex(col, "#ffffff", 0.6), "marker.opacity": 0.38 }, [k]);
+  const nm = ci >= 0 && v.names ? v.names[ci] : id, label = view !== "all" && nm.startsWith(PTN[view] + " ") ? nm.slice(PTN[view].length + 1) : nm;
+  const xs = X.slice().sort((a, b) => a - b), ys = Y.slice().sort((a, b) => a - b);
+  Plotly.relayout(plotEl, { annotations: [...LAST_ANNS, { x: xs[xs.length >> 1], y: ys[Math.floor(ys.length * 0.9)], xref: "x", yref: "y", yanchor: "bottom", yshift: 12,
+    text: `<b>${esc(label)}</b>`, showarrow: false, font: { family: UI_FONT, size: 14, color: "#ffffff" }, bgcolor: "rgba(20,24,30,0.9)", bordercolor: col, borderwidth: 1.5, borderpad: 5 }] });
+}
 function dotClick(r) {
   if (r === null || r === undefined) return;
   if (state.cardOpen) { select(r); return; }
+  // clusters on: a click picks the clicked dot's cluster; a click inside the picked cluster opens that pitcher as before
+  if (clustersOn() && !state.simOpen) {
+    const id = clusterOf(r), pk = id ? "pc:" + id : null;
+    const h = isCluster(state.archetype) ? clusterHits(state.archetype) : null, inside = !!h && (h.rows.has(r) || h.edge.has(r));
+    if (pk && isCluster(pk) && !inside) { state.archetype = pk; render(); renderDetail(); return; }
+  }
   const s0 = state.sel;
   if (state.preview && !state.simOpen && s0 !== null && s0 !== undefined && T.pitcher[r] === T.pitcher[s0] && T.season[r] === T.season[s0] && T.level[r] === T.level[s0]) { openCard(); return; }
   const from = compsOnMap() && compsOf(state.view, s0).some(([c]) => c === r) ? s0 : null;   // one of the numbered lookalikes
