@@ -269,6 +269,23 @@ const J = JSON.stringify;
   unhov(); await new Promise(r => setTimeout(r, 150));
   const clr = calls.slice(g1).find(c => c.f === "restyle");
   ok(clr && clr.d.x[0].length === 0, "leaving the dots clears the glow");
+  // the hover card: clusters on, Plotly's tooltip gives way to a card with "Select pitcher"
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  ok(calls.filter(c => c.f === "react").pop().data.filter(t => Array.isArray(t.customdata) && t.customdata.length).every(t => t.hoverinfo !== "text"), "clusters on: Plotly's own tooltip is off");
+  const hcard = getEl("#hovCard"), rB = inC.length > 1 ? inC[1] : run(`visibleRows(state.view).find(q => q !== ${r0})`);
+  await sleep(600);   // let the earlier unhover's hide run
+  hov({ points: [{ customdata: r0 }], event: { clientX: 300, clientY: 300 } }); await tick();
+  ok(hcard.hidden === false && getEl("#hcSel").dataset.row === String(r0) && getEl("#hcBody").innerHTML.includes(run(`esc(T.name[${r0}])`)), "hovering a dot shows its card with Select pitcher");
+  hov({ points: [{ customdata: rB }], event: { clientX: 310, clientY: 305 } }); await tick();
+  ok(getEl("#hcSel").dataset.row === String(r0), "a dot crossed on the way doesn't swap the card at once");
+  await sleep(220);
+  ok(getEl("#hcSel").dataset.row === String(rB), "resting on another dot moves the card to it");
+  hcard._h.pointerenter[0]({}); unhov(); await sleep(600);
+  ok(hcard.hidden === false, "the card stays while the pointer is on it");
+  getEl("#hcSel")._h.click[0]({}); await tick();
+  ok(run("state.sel") === rB && run("state.preview") === true && hcard.hidden === true, "Select pitcher selects him (and the card goes)");
+  run("select(null)"); await tick();
+  hcard._h.pointerleave[0]({}); await sleep(350);
   run(`dotClick(${r0})`); await tick();
   ok(run("state.archetype") === "pc:" + cid && !run("state.preview"), "a click picks the dot's cluster");
   run(`dotClick(${r0})`); await tick();

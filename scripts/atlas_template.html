@@ -446,6 +446,14 @@ button, input, select { font: inherit; color: inherit; }
 .selcta { position: absolute; z-index: 7; top: var(--mi); left: var(--mi); width: min(280px, calc(100% - 2 * var(--mi))); display: flex; flex-direction: column; gap: 8px;
   padding: 10px 12px 12px; border-radius: var(--r-lg); background: var(--field); color: var(--ink); box-shadow: var(--shmap); }
 .selcta[hidden] { display: none; }
+/* clusters on: the dot under the pointer gets this card in place of Plotly's tooltip (a click picks the cluster, the
+   button selects the pitcher); it waits for the pointer to reach it */
+.hovcard { position: absolute; z-index: 8; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; max-width: 260px; padding: 8px 10px 10px;
+  border-radius: var(--r); background: var(--field); color: var(--ink); box-shadow: var(--shmap); font: 400 13px/1.35 var(--font-ui); }
+.hovcard[hidden] { display: none; }
+.hovcard .hc-sel { width: auto; min-height: 30px; font-size: 13px; }
+.hc-body b { font-weight: 700; }
+.hc-cl { color: var(--ink2); }
 .selcta :focus-visible { outline-color: var(--focus); }
 .cta-head { display: flex; align-items: flex-start; gap: 8px; }
 .cta-name { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
@@ -1732,6 +1740,10 @@ tr.self td { font-weight: 600; background: none; }
         <div id="plot"></div>
       <div class="mapkey" id="mapKey" hidden></div>
       <p class="maptoast" id="mapnote" role="status" aria-live="polite" hidden></p>
+      <div class="hovcard" id="hovCard" role="group" aria-label="Pitcher under the pointer" hidden>
+        <button type="button" class="ctabtn primary hc-sel" id="hcSel">Select pitcher</button>
+        <div class="hc-body" id="hcBody"></div>
+      </div>
       <div class="selcta" id="selCta" role="region" aria-label="Selected pitcher" hidden>
         <div class="cta-head"><div class="cta-name"><b id="ctaName"></b><div class="cta-cl" id="ctaCl"></div><span id="ctaSub"></span></div>
           <button type="button" class="ctaclose" id="ctaClose" aria-label="Clear the selection" title="Clear">×</button></div>
@@ -2898,6 +2910,8 @@ function render() {
       uirevision: view + "|3d", annotations: [] };
     delete outLayout.xaxis; delete outLayout.yaxis; delete outLayout.dragmode;
   }
+  if (clustersOn()) outTraces.forEach(t => { if (t.hoverinfo === "text") t.hoverinfo = "none"; });   // the hover card speaks instead
+  else hoverCard(null, 0, 0, true);
   if (state.cardOpen && state.cardFrom) {
     // the map behind an open card stays exactly as it was, zoom included: it is redrawn only when the card closes
   } else if (is3D() && window.THREE && THREE.OrbitControls) {
@@ -2945,9 +2959,10 @@ function render() {
       plotEl.on("plotly_click", e => { const p = e.points && e.points[0]; if (p && p.customdata !== undefined) dotClick(p.customdata); });
       // a pointing hand over anything clickable, an open hand (drag to pan) everywhere else
       plotEl.on("plotly_hover", e => { const p = e.points && e.points[0], has = !!(p && p.customdata !== undefined);
-        plotEl.classList.toggle("dot-hover", has); clearTimeout(glowOff); if (has) { hoverRow = p.customdata; clusterGlow(hoverRow); } });
+        plotEl.classList.toggle("dot-hover", has); clearTimeout(glowOff); if (has) { hoverRow = p.customdata; clusterGlow(hoverRow); }
+        hoverCard(has ? p.customdata : null, e.event ? e.event.clientX : 0, e.event ? e.event.clientY : 0); });
       // the glow lets go a moment after the pointer leaves, so moving between dots of one cluster never flickers
-      plotEl.on("plotly_unhover", () => { plotEl.classList.remove("dot-hover"); clearTimeout(glowOff); glowOff = setTimeout(() => { hoverRow = null; clusterGlow(null); }, 90); });
+      plotEl.on("plotly_unhover", () => { plotEl.classList.remove("dot-hover"); clearTimeout(glowOff); glowOff = setTimeout(() => { hoverRow = null; clusterGlow(null); }, 90); hoverCard(null); });
       plotEl.on("plotly_relayout", onZoom);
       plotEl.on("plotly_selected", e => lassoDone(e));
       plotReady = true;
@@ -3772,18 +3787,19 @@ function init3D() {
     pending = requestAnimationFrame(() => {
       pending = null; if (!G3) return;
       const h = pick(e), r = plotEl.getBoundingClientRect();
-      if (h && h.object.userData.tips[h.index]) {
+      const row = h && h.object.userData.rows ? h.object.userData.rows[h.index] : undefined;   // the cluster under the pointer glows
+      if (clustersOn() && typeof row === "number") { tip.hidden = true; plotEl.classList.add("dot-hover"); hoverCard(row, e.clientX, e.clientY); }
+      else if (h && h.object.userData.tips[h.index]) {
         tip.innerHTML = h.object.userData.tips[h.index]; tip.hidden = false;
         tip.style.left = Math.min(e.clientX - r.left + 14, r.width - 220) + "px"; tip.style.top = (e.clientY - r.top + 14) + "px";
-        plotEl.classList.add("dot-hover");
-      } else { tip.hidden = true; plotEl.classList.remove("dot-hover"); }
-      const row = h && h.object.userData.rows ? h.object.userData.rows[h.index] : undefined;   // the cluster under the pointer glows
+        plotEl.classList.add("dot-hover"); hoverCard(null);
+      } else { tip.hidden = true; plotEl.classList.remove("dot-hover"); hoverCard(null); }
       clearTimeout(glowOff3);
       if (typeof row === "number") { hover3 = row; glow3D(row); }
       else glowOff3 = setTimeout(() => { hover3 = null; glow3D(null); }, 90);
     });
   });
-  el.addEventListener("pointerleave", () => { tip.hidden = true; plotEl.classList.remove("dot-hover"); clearTimeout(glowOff3); hover3 = null; glow3D(null); });
+  el.addEventListener("pointerleave", () => { tip.hidden = true; plotEl.classList.remove("dot-hover"); clearTimeout(glowOff3); hover3 = null; glow3D(null); hoverCard(null); });
   el.addEventListener("dblclick", () => { G3.view = null; render(); });   // double-click resets the view
   return G3;
 }
@@ -5961,6 +5977,37 @@ function clusterGlow(r) {
   Plotly.relayout(plotEl, { annotations: [...LAST_ANNS, { x: xs[xs.length >> 1], y: ys[Math.floor(ys.length * 0.9)], xref: "x", yref: "y", yanchor: "bottom", yshift: 12,
     text: `<b>${esc(label)}</b>`, showarrow: false, font: { family: UI_FONT, size: 14, color: "#ffffff" }, bgcolor: "rgba(20,24,30,0.9)", bordercolor: col, borderwidth: 1.5, borderpad: 5 }] });
 }
+// Clusters on: a click on a dot picks its cluster, so the dot under the pointer gets a card with "Select pitcher" in place
+// of Plotly's tooltip. It sits just past the pointer; once showing it follows another dot only after the pointer rests
+// there, so dots crossed on the way to the button don't swap it; it goes once the pointer has left the dot and the card.
+let hcRow = null, hcShow = null, hcHide = null, hcIn = false;
+function hoverCard(r, x, y, now) {   // r: the row under the pointer (null: none); x, y: client coordinates; now: hide at once
+  const card = $("#hovCard");
+  const gone = () => { clearTimeout(hcShow); clearTimeout(hcHide); card.hidden = true; hcRow = null; hcIn = false; };
+  if (now) { gone(); return; }
+  if (r === null || r === undefined || !clustersOn() || state.morphing || state.cardOpen) {
+    clearTimeout(hcShow);
+    if (!hcIn) { clearTimeout(hcHide); hcHide = setTimeout(() => { if (!hcIn) gone(); }, 450); }
+    return;
+  }
+  clearTimeout(hcHide);
+  if (hcIn) return;   // on the card: it stays as it is
+  if (r === hcRow && !card.hidden) { clearTimeout(hcShow); return; }
+  const place = () => {
+    hcRow = r; hcShow = null;
+    const cn = clusterName(r);
+    $("#hcBody").innerHTML = hoverHTML(r) + (cn ? `<br><span class="hc-cl">${esc(cn)}</span>` : "");
+    $("#hcSel").dataset.row = String(r);
+    card.hidden = false;
+    const a = $("#plotArea").getBoundingClientRect(), w = card.offsetWidth || 220, h = card.offsetHeight || 80;
+    let left = x - a.left + 10, top = y - a.top + 10;
+    if (left + w > a.width - 6) left = Math.max(6, x - a.left - w - 10);
+    if (top + h > a.height - 6) top = Math.max(6, y - a.top - h - 10);
+    card.style.left = left + "px"; card.style.top = top + "px";
+  };
+  clearTimeout(hcShow);
+  if (card.hidden) place(); else hcShow = setTimeout(place, 160);
+}
 function dotClick(r) {
   if (r === null || r === undefined) return;
   if (state.cardOpen) { select(r); return; }
@@ -6854,6 +6901,10 @@ function buildStatic() {
     if (state.rail.open && state.rail.tab === b.dataset.panel) { railClose(); render(); } else openPanel(b.dataset.panel);
   });
   // the Clusters panel's list: a chip picks its cluster (again = unpick); Show all unpicks
+  const hc = $("#hovCard");
+  hc.addEventListener("pointerenter", () => { hcIn = true; clearTimeout(hcHide); clearTimeout(hcShow); });
+  hc.addEventListener("pointerleave", () => { hcIn = false; clearTimeout(hcHide); hcHide = setTimeout(() => { if (!hcIn) { hc.hidden = true; hcRow = null; } }, 300); });
+  $("#hcSel").addEventListener("click", () => { const r = +$("#hcSel").dataset.row; hoverCard(null, 0, 0, true); if (Number.isInteger(r)) preview(r); });
   $("#clusterBox").addEventListener("click", e => {
     const pk = e.target.closest("[data-arch]");
     if (!pk && !e.target.closest("[data-archclear]")) return;
