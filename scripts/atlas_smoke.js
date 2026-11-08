@@ -1,4 +1,4 @@
-// Smoke test for the ClusterPitch atlas page (no browser needed).
+// Smoke test for the Pitch-omics atlas page (no browser needed).
 //
 //   node scripts/atlas_smoke.js                  the built page, analysis/pitch_atlas.html
 //   node scripts/atlas_smoke.js --template       the current scripts/atlas_template.html with the built page's data
@@ -172,7 +172,7 @@ const J = JSON.stringify;
   ok(!markup.includes('id="railPills"') && !markup.includes('id="mkX"'), "no pills or × on the map");
   ok(markup.indexOf('class="measseg"') > markup.indexOf('id="typeCol"') && markup.indexOf('class="measseg"') < markup.indexOf('id="lvlSeg"'), "filter at the top of the left column, above MLB | Triple-A");
   ok(!markup.includes('id="mapTool"') && !markup.includes('id="ptype"') && !markup.includes("Find pitchers"), "toolbar row and finder menus removed");
-  ok(/<title>ClusterPitch<\/title>/.test(html) && /<h1>ClusterPitch<\/h1>/.test(html), "named ClusterPitch");
+  ok(/<title>Pitch-omics<\/title>/.test(html) && /<h1>Pitch-omics<\/h1>/.test(html), "named Pitch-omics");
   ok(run("!!D.pitch_clusters") === !getEl("#clWrap").hidden, "cluster switch visibility follows the data");
 
   // ---- the Clusters panel beside the controls column: Off | On on top, the subcluster tree below
@@ -533,7 +533,7 @@ const J = JSON.stringify;
   const eRow = run(`(() => { const r = ${j}; return { name: T.name[r], gx: +T.gx[r].toFixed(3), ty: +T.ty[r].toFixed(3), id: T.pitcher[r], s: T.season[r], pt: PTN[T.pitch_type[r]] }; })()`);
   const line = eL.find(l => l.includes("," + eRow.id + "," + eRow.s + ",MLB,") && l.includes("," + eRow.pt + ","));
   ok(!!line && line.split(",").includes(String(eRow.gx)) && line.split(",").includes(String(eRow.ty)), "a known pitch's coordinates match the map: " + (line || "").slice(0, 90));
-  ok(eL.some(l => l.includes(",Triple-A,")) && /^clusterpitch_tsne_coordinates_\d{4}-\d{4}\.csv$/.test(emb.name), "Triple-A rows included; file " + emb.name);
+  ok(eL.some(l => l.includes(",Triple-A,")) && /^pitchomics_tsne_coordinates_\d{4}-\d{4}\.csv$/.test(emb.name), "Triple-A rows included; file " + emb.name);
 
   // ---- color menu: fixed beside its button on a wide screen
   getEl("#colorMenu").hidden = true;

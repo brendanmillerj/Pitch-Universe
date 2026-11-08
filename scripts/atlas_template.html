@@ -1,4 +1,4 @@
-<title>ClusterPitch</title>
+<title>Pitch-omics</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -99,6 +99,7 @@ button, input, select { font: inherit; color: inherit; }
 .hnav .restart { margin-left: 0; }
 .cardnav { display: contents; }
 .brand { display: flex; flex-direction: column; gap: 2px; }
+.brand h1 { white-space: nowrap; }   /* "Pitch-omics" never breaks at its hyphen */
 .hview { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
 .hview .lqual { margin-left: 4px; }
 .hcl { display: flex; flex-direction: column; gap: 4px; }
@@ -1628,7 +1629,7 @@ tr.self td { font-weight: 600; background: none; }
   </div></section>
   <header class="head">
     <div class="hdrow hdrow1">
-      <div class="brand"><h1>ClusterPitch</h1></div>
+      <div class="brand"><h1>Pitch-omics</h1></div>
       <div class="finders">
         <form class="find" role="search" id="findForm">
           <label class="find-lbl" for="search">Search for pitcher by name</label>
@@ -4071,7 +4072,7 @@ function pitcherCSV() {
   const lines = rows.map(r => [T.name[r], T.pitcher[r], T.season[r], teamStr(r), T.p_throws[r], PTN[T.pitch_type[r]], T.n[r],
     faName[faStatus(r)] || "", archNames(r).join("; "), ...vars.map(v => num(v.get(r)))].map(q).join(","));
   return { csv: [head.map(q).join(","), ...lines].join("\r\n") + "\r\n", n: rows.length,
-    name: `clusterpitch_${state.view === "all" ? "all_pitches" : PTN[state.view].toLowerCase().replace(/[^a-z]+/g, "_")}_${[...state.seasons].sort().join("-")}.csv` };
+    name: `pitchomics_${state.view === "all" ? "all_pitches" : PTN[state.view].toLowerCase().replace(/[^a-z]+/g, "_")}_${[...state.seasons].sort().join("-")}.csv` };
 }
 // The t-SNE coordinates of every dot, for anyone who wants to redraw or reuse the maps: the all-pitches map and each pitch
 // type's own map, flat and 3D, MLB and Triple-A (Triple-A rows are placed on the MLB maps, never refit), with clusters.
@@ -4087,7 +4088,7 @@ function embeddingCSV() {
     || sortName(T.name[a]).localeCompare(sortName(T.name[b])) || T.season[a] - T.season[b]);
   const lines = rows.map(r => [T.name[r], T.pitcher[r], T.season[r], T.level[r] === "mlb" ? "MLB" : "Triple-A", teamStr(r), T.p_throws[r], PTN[T.pitch_type[r]], T.n[r],
     ...cols.map(([k]) => csvN(T[k][r], 3)), cl(T.cl1, r), T.cl2 && T.cl2[r] && T.cl2[r] !== (T.cl1 && T.cl1[r]) ? cl(T.cl2, r) : ""].map(csvQ).join(","));
-  return { csv: [head.map(csvQ).join(","), ...lines].join("\r\n") + "\r\n", n: rows.length, name: `clusterpitch_tsne_coordinates_${seasonSpan().replace("–", "-")}.csv` };
+  return { csv: [head.map(csvQ).join(","), ...lines].join("\r\n") + "\r\n", n: rows.length, name: `pitchomics_tsne_coordinates_${seasonSpan().replace("–", "-")}.csv` };
 }
 async function downloadEmbeddings() {
   const msg = $("#embMsg");
@@ -4227,7 +4228,7 @@ function renderDetail() {
     return;
   }
   el.innerHTML = typeCard(view, r) + (wantComps ? `<section class="compsin" id="compsIn" aria-label="Similar pitchers"></section>` : "");
-  // the name sits level with "ClusterPitch" and Defining Traits level with "Color pitchers by"
+  // the name sits level with "Pitch-omics" and Defining Traits level with "Color pitchers by"
   const bar = el.querySelector(".sv-bar"), hero = el.querySelector(".sv-hero"), dh = $("#dHead");
   if (bar) dh.appendChild(bar);
   if (hero) $("#dTraits").appendChild(hero);
@@ -4909,14 +4910,14 @@ function flightDraw(frame) {
   if (F.empty) halo("Nothing to show — turn on a pitch above", W / 2, H / 2, `500 ${Math.round(15 * k)}px ${uiFont}`, pal.ink2, "center");
   if (F.rec) drawMark(ctx, W, H, pal, F.keyLines);
 }
-// ClusterPitch mark for saved animations: the name bottom left, with the key above it so a viewer of the video
+// Pitch-omics mark for saved animations: the name bottom left, with the key above it so a viewer of the video
 // knows who is who
 function drawMark(ctx, W, H, pal, lines) {
   const s = Math.max(13, Math.round(W / 46)), x0 = Math.round(s * 0.9);
   let y = H - Math.round(s * 0.9);
   ctx.save(); ctx.globalAlpha = 0.9; ctx.setLineDash([]);
   ctx.fillStyle = pal.ink; ctx.font = `600 ${s}px ${css("--font-serif") || "Georgia, serif"}`; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-  ctx.fillText("ClusterPitch", x0, y);
+  ctx.fillText("Pitch-omics", x0, y);
   if (lines && lines.length) {
     const f = Math.max(11, Math.round(s * 0.78)); ctx.font = `500 ${f}px ${css("--font-ui") || "sans-serif"}`;
     for (let i = lines.length - 1; i >= 0; i--) {
@@ -5359,7 +5360,7 @@ function simFindHTML(j, q) {
     <span class="tm">${T.season[r]}${T.level[r] === "mlb" ? "" : " · Triple-A"} · ${T.p_throws[r] === "R" ? "RHP" : "LHP"} · ${fmt(T.velo[r], 1)} mph · ${(T.n[r] || 0).toLocaleString("en-US")} pitches</span></button></li>`).join("");
 }
 // Save video: replay the flight while the browser records the canvas (mp4 where it can, else webm), with the key and
-// "ClusterPitch" drawn in. Anything that redraws the lab mid-recording stops it, and nothing is saved.
+// "Pitch-omics" drawn in. Anything that redraws the lab mid-recording stops it, and nothing is saved.
 const REC_TYPES = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
 function recType() {
   if (typeof MediaRecorder !== "function" || typeof MediaRecorder.isTypeSupported !== "function") return null;
@@ -5391,7 +5392,7 @@ async function saveSimVideo() {
   const blob = new Blob(chunks, { type: type.split(";")[0] });
   if (!blob.size) { if (m2) m2.textContent = "This browser could not record the animation."; return; }
   const g = S.mode === "compare" && S.vs !== null && S.vs !== undefined ? S.vs : null, ext = type.startsWith("video/mp4") ? "mp4" : "webm";
-  const name = `clusterpitch_${fileSlug(T.name[j])}_${T.season[j]}${g !== null ? `_vs_${fileSlug(T.name[g])}_${T.season[g]}` : ""}_${state.flightCam || "catcher"}.${ext}`;
+  const name = `pitchomics_${fileSlug(T.name[j])}_${T.season[j]}${g !== null ? `_vs_${fileSlug(T.name[g])}_${T.season[g]}` : ""}_${state.flightCam || "catcher"}.${ext}`;
   await saveFile(name, blob, blob.type, m2, `Saved ${name}`);
 }
 function renderSim(opt = {}) {
@@ -5503,7 +5504,7 @@ function renderSim(opt = {}) {
       <canvas id="simCv" class="simcv" role="img" aria-label="Animated flight of the pitches shown" aria-describedby="simLive"></canvas>
       <p class="simkey" id="simKey" hidden></p>
       <p class="simnote">${spd === 1 ? "Real time" : `${spd}× slow motion`} · season-average path per pitch type, not one thrown pitch · every pitch leaves the hand at the same instant, so the slower ones arrive later</p>
-      <div class="simexports">${canRecord() ? `<button type="button" class="sim-replay" id="simRec" title="The flight as a video, with the key and the ClusterPitch mark">${recLabel()}</button>` : ""}${canSave() ? `<button type="button" class="sim-replay" id="simCsv" title="Every pitch shown, as numbers">Download CSV</button>` : ""}<span class="labnote" id="simRecMsg" aria-live="polite"></span></div></div></div>`;
+      <div class="simexports">${canRecord() ? `<button type="button" class="sim-replay" id="simRec" title="The flight as a video, with the key and the Pitch-omics mark">${recLabel()}</button>` : ""}${canSave() ? `<button type="button" class="sim-replay" id="simCsv" title="Every pitch shown, as numbers">Download CSV</button>` : ""}<span class="labnote" id="simRecMsg" aria-live="polite"></span></div></div></div>`;
   const nAir = S.items.filter(it => it.on).length, tblOpen = S.tblOpen === null || S.tblOpen === undefined ? (!cmp && nAir > 2) : S.tblOpen;
   const table = `<details class="simtbl" id="simTbl"${tblOpen ? " open" : ""}><summary>Every pitch shown, as numbers</summary>
       <div class="simtblscroll"><table class="simtab"><thead><tr><th>Pitch</th><th>Pitcher</th>${SIM_COLS.map(([, l, u]) => `<th class="num">${esc(l)} <span class="tm">(${esc(u)})</span></th>`).join("")}</tr></thead><tbody id="simTbody"></tbody></table></div>
@@ -5578,7 +5579,7 @@ function renderSim(opt = {}) {
     inp.onchange = () => labRun(false, true);
   });
   const rb = $("#simRec"); if (rb) rb.onclick = saveSimVideo;
-  const cb2 = $("#simCsv"); if (cb2) cb2.onclick = () => saveFile(`clusterpitch_lab_${fileSlug(T.name[j])}_${T.season[j]}${cmp ? `_vs_${fileSlug(T.name[S.vs])}_${T.season[S.vs]}` : ""}.csv`, simCSV(j, S), "text/csv;charset=utf-8", $("#simRecMsg"), "Saved the table.");
+  const cb2 = $("#simCsv"); if (cb2) cb2.onclick = () => saveFile(`pitchomics_lab_${fileSlug(T.name[j])}_${T.season[j]}${cmp ? `_vs_${fileSlug(T.name[S.vs])}_${T.season[S.vs]}` : ""}.csv`, simCSV(j, S), "text/csv;charset=utf-8", $("#simRecMsg"), "Saved the table.");
   const bd = $("#simBuild"); if (bd) bd.ontoggle = () => { S.buildOpen = !!bd.open; };
   const td = $("#simTbl"); if (td) td.ontoggle = () => { S.tblOpen = !!td.open; };
   // keep the keyboard inside the lab: Tab wraps; ←/→ on the lookalike switcher
@@ -5848,7 +5849,7 @@ function typeCard(view, j) {
   const items = measureItems(VARS.t.filter(v => !v.cat && v.key.startsWith("t:")), j, pName, pool);
 
   // ---------------- header bar ----------------
-  // header (moved into the page grid beside "ClusterPitch" by renderDetail): the name, then the actions
+  // header (moved into the page grid beside "Pitch-omics" by renderDetail): the name, then the actions
   let h = `<div class="card sv"><div class="sv-bar">
     <h2 class="cname" tabindex="-1">${esc(T.name[j])}${T.level[j] === "aaa" ? `<span class="lvlbadge">Triple-A</span>` : ""}${clusterTag(j)}</h2>
     <span class="sv-barr">
@@ -6837,7 +6838,7 @@ function lookCSV(r) {
       q === undefined ? "" : fitOf(q)[1], i >= 0 ? csvN(P.xera[i], 2) : "", ...cols.map(v => csvN(v.get(c)))].map(csvQ).join(","); };
   const lines = [line(r, null), ...comps.map(([c, q], k) => line(c, k, q))];
   return { csv: [head.map(csvQ).join(","), ...lines].join("\r\n") + "\r\n", n: comps.length,
-    name: `clusterpitch_lookalikes_${fileSlug(T.name[r])}_${T.season[r]}_${fileSlug(PTN[T.pitch_type[r]])}.csv` };
+    name: `pitchomics_lookalikes_${fileSlug(T.name[r])}_${T.season[r]}_${fileSlug(PTN[T.pitch_type[r]])}.csv` };
 }
 function wireHeatRows(el) {   // rows open the pitcher, by click or Enter / Space
   el.querySelectorAll("[data-go]").forEach(tr => {

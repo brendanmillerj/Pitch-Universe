@@ -1,6 +1,6 @@
 # MLB pitch store
 
-**Live atlas: [ClusterPitch](https://huggingface.co/spaces/brmiller/Pitch-Universe)**,
+**Live atlas: [Pitch-omics](https://huggingface.co/spaces/brmiller/Pitch-Universe)**,
 built from this store by `scripts/atlas_build.py`.
 
 Every pitch thrown in the 2026 MLB regular season, in a verified local parquet
