@@ -259,7 +259,7 @@ const J = JSON.stringify;
   ok(["hBoards", "hSim", "navBack", "navFwd", "startOver"].every(id => markup.indexOf(`id="${id}"`) < hEnd && markup.indexOf(`id="${id}"`) > 0), "header: ← Back, Leaderboards, Pitch simulation, Start over, Forward →");
   const hStart = markup.indexOf('<header class="head">'), hIds = [...markup.slice(hStart, hEnd).matchAll(/<button[^>]* id="(\w+)"/g)].map(m => m[1]);
   ok(hIds[0] === "navBack" && hIds[hIds.length - 1] === "navFwd" && !markup.includes('id="navHome"'), "like a browser: ← Back first in the header, Forward → last, no Home button (the title leads home): " + hIds.join(", "));
-  const pa = markup.indexOf('id="plotArea"'), pl = markup.indexOf('<div id="plot">');
+  const pa = markup.indexOf('id="plotArea"'), pl = markup.indexOf('<div id="plot"');
   ok(["mapTools", "dimSeg", "laySeg", "lqual"].every(id => { const k = markup.indexOf(`id="${id}"`); return k > pa && k < pl && k > hEnd; }), "2D/3D, Movement/t-SNE and the meter sit on the map, beside #plot (which Plotly empties)");
   ok(!markup.includes('id="clusterSeg"') && /id="pnClusters"[^>]*role="switch"/.test(markup), "the Clusters row is the one switch (no switch inside the panel)");
   ok(markup.indexOf('id="panelNav"') > markup.indexOf('id="lvlSeg"') && markup.indexOf('id="panelNav"') < markup.indexOf('id="universe"'), "Clusters · Pitchers · Groups rows under MLB | Triple-A");
@@ -794,6 +794,35 @@ const J = JSON.stringify;
   ok(run(`typeCard("FF", ${hr}).includes('class="sv-chg"')`), "the player card carries it (under Defining Traits)");
   const hancock = run(`tRow(676106, Math.max(...D.seasons), "FF", "mlb")`);
   if (Number.isInteger(hancock)) ok(run(`whatChanged(${hancock}).big.some(x => x.k === "arm_angle" && x.dl < 0)`), "Emerson Hancock's four-seamer: a big drop in arm angle, as on the home list");
+
+  // ---- usability audit, batch 1 (2026-11-14): quick fixes that keep the look
+  run(`showHome(false); state.sim = null; select(null); setView("FF", null)`); await tick();
+  const under = ["header.head", "#controls", "main.map", ".caption", "#mTable", "#sliders"];
+  run(`select(${hr})`); await tick();
+  const inertOn = under.every(s => getEl(s).inert === true);
+  run("closeCard()"); await tick();
+  ok(inertOn && under.every(s => !getEl(s).inert), "the player card is modal: the page under it is inert while it is open, and only then");
+  run(`preview(${hr})`); await tick();
+  ok(under.every(s => !getEl(s).inert), "a preview on the map (the map card) leaves the page usable");
+  run("select(null)"); await tick();
+  ok(run("savantInk(90)") === "#000000" && run("savantInk(99)") === "#ffffff" && run("savantInk(2)") === "#ffffff", "percentile pills: black on the pastel middle, white on the saturated ends");
+  const worstPill = run(`(() => { let w = 99; for (let p = 0; p <= 100; p++) { const L = relLum(savantRGB(p)), ink = savantInk(p) === "#ffffff" ? 1 : 0;
+    const c = ink ? 1.05 / (L + 0.05) : (L + 0.05) / 0.05; w = Math.min(w, c); } return w; })()`);
+  ok(worstPill >= 4.5, `every percentile pill clears 4.5:1 (worst ${worstPill.toFixed(2)}:1)`);
+  ok(/id="cbPool" class="poolseg"/.test(markup) && /#cbPool\[hidden\] \{ display: none; \}/.test(html), "the map card's MLB similar | AAA similar switch has its switch look, and still hides");
+  ok(/<h2 class="mt-title" id="mtTitle">/.test(markup) && /aria-labelledby="mtTitle"/.test(markup), "the leaderboard has a heading that names its table");
+  ok(/<div id="plot" role="img" aria-label="[^"]+"/.test(markup), "the map has a name for screen readers");
+  ok(/id="selCta" role="region" aria-labelledby="ctaName"/.test(markup), "the map card is named by the pitcher on it");
+  ok(/>Both<\/button>/.test(markup) && !/R \+ L/.test(markup) && !/id="thR"[^>]*aria-label/.test(markup), "Hand: Both | RHP | LHP, names matching what they show");
+  ok(!/sel\.setAttribute\("aria-pressed"/.test(html) && /railsel\[data-on="true"\]/.test(html), "the group select is not announced as a toggle");
+  ok(/id="slReset">Clear measure filters</.test(markup) && /id="slExpand">Expand all</.test(markup), "drawer links say what they do");
+  run(`setTableGroup("Results", "t:whiff")`); await tick();
+  const whiffHead = String(getEl("#mtHeadRow").innerHTML).replace(/<[^>]+>/g, "");
+  ok(/Whiff%/.test(whiffHead) && !/Whiff% \(%\)/.test(whiffHead), "no doubled unit in the leaderboard's headers (Whiff%, not Whiff% (%))");
+  run("closeTable()"); await tick();
+  ok(!/text-transform: uppercase/.test(html.match(/\.hs-tiles dt \{[^}]*\}/)[0]), "the card's tiles print xERA, not XERA");
+  ok(!/turn off on the map/.test(html) && !/group: "Groups"/.test(html), "colour menu: Team says where it turns off; its first section is Categories, not Groups");
+  ok(/html\.at-home \.app \{ visibility: hidden; \}/.test(html), "before the script runs, the page under home is out of the tab order");
 
   // ---- color menu: fixed beside its button on a wide screen
   getEl("#colorMenu").hidden = true;

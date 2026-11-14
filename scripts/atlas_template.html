@@ -121,8 +121,10 @@ button, input, select { font: inherit; color: inherit; }
 .hclmenu[hidden] { display: none; }
 .hclmenu button { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 36px; padding: 0 10px; border: 0; border-radius: var(--r);
   background: none; color: var(--ink); font: 600 14px var(--font-ui); text-align: left; cursor: pointer; }
-.hclmenu button:hover, .hclmenu button:focus-visible { background: var(--wash); outline: none; }
+.hclmenu button:hover { background: var(--wash); }
+.hclmenu button:focus-visible { background: var(--wash); outline: 2px solid var(--focus); outline-offset: -2px; }
 .hclmenu button[aria-current="true"] { background: var(--ink); color: var(--field); }
+.hclmenu button[aria-current="true"]:focus-visible { outline-color: var(--field); outline-offset: -4px; }
 .hclmenu .ul { display: inline-flex; align-items: center; gap: 8px; }
 .hcm-n { font: 400 13px var(--font-ui); color: var(--ink2); white-space: nowrap; }
 .hclmenu button[aria-current="true"] .hcm-n { color: var(--field); opacity: 0.85; }
@@ -285,7 +287,7 @@ button, input, select { font: inherit; color: inherit; }
 /* Show Only Groups: a dropdown of the saved groups beside the tabs (same setting as a group's "Only these") */
 .railsel { flex: 1 1 auto; min-width: 0; align-self: center; margin: 0 4px 0 6px; font: 600 13px var(--font-ui); min-height: 32px; padding: 0 6px; border: 1.5px solid var(--map-muted);
   border-radius: var(--r); background: var(--map-chrome); color: var(--map-ink); cursor: pointer; text-overflow: ellipsis; }
-.railsel[aria-pressed="true"] { border-color: var(--map-ink); background: var(--field); color: var(--ink); }
+.railsel[data-on="true"] { border-color: var(--map-ink); background: var(--field); color: var(--ink); }
 .railsel:disabled { color: var(--map-muted); cursor: default; }
 .railsel option { color: var(--ink); background: var(--field); }
 .railx { flex: none; width: var(--ctl); border: 0; background: none; color: var(--map-ink); font: 400 22px/1 var(--font-ui); cursor: pointer; }
@@ -410,7 +412,7 @@ button, input, select { font: inherit; color: inherit; }
 #rail .railtab b { color: var(--ink2); }
 #rail .railsel { border: 1.5px solid var(--ink); background: var(--field); color: var(--ink); }
 #rail .railsel:hover:not(:disabled) { background: var(--wash); }
-#rail .railsel[aria-pressed="true"] { background: var(--ink); color: var(--field); border-color: var(--ink); }
+#rail .railsel[data-on="true"] { background: var(--ink); color: var(--field); border-color: var(--ink); }
 #rail .railsel:disabled { color: var(--muted); border-color: var(--line); }
 #rail .railsel option { color: var(--ink); background: var(--field); }
 #rail .railx { color: var(--ink); }
@@ -536,7 +538,8 @@ button, input, select { font: inherit; color: inherit; }
 .lk-chips button { display: inline-flex; align-items: center; gap: 6px; font: 600 13px var(--font-ui); min-height: 30px; padding: 0 10px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--field); color: var(--ink2); cursor: pointer; }
 .lk-chips button:hover { border-color: var(--ink); color: var(--ink); }
 .lk-chips button[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
-#cbPool .poolseg { margin: 0; }
+#cbPool.poolseg { margin: 0; align-self: flex-start; }
+#cbPool[hidden] { display: none; }
 .lk-help { margin: 0; font: 400 13px/1.4 var(--font-ui); color: var(--ink2); }
 .lk-help:empty { display: none; }
 /* above the list: what he and his lookalikes have in common, as Savant-coloured tags (numbers in the tooltips) */
@@ -782,6 +785,13 @@ button, input, select { font: inherit; color: inherit; }
 #simBox .simprimary:disabled { background: var(--field); color: var(--muted); border-color: var(--line); }
 #simBox .simsel { font: 600 13px var(--font-ui); min-height: 32px; padding: 0 8px; }
 #simBox .simsel option { color: var(--ink); background: var(--field); }
+/* phones: the lab's buttons (lookalike switch, Home, ×) take their own row at the top right, so × is never off the screen */
+@media (max-width: 719px) {
+  #simBox .sim-head { flex-wrap: wrap; }
+  #simBox .simhr { order: -1; flex: 1 1 100%; flex-wrap: wrap; justify-content: flex-end; }
+  #simBox .simhr .simsw { flex: 1 1 auto; min-width: 0; }
+  #simBox .simhr .simsel { flex: 1 1 auto; min-width: 0; max-width: none; }
+}
 #simBox .simx { width: 30px; height: 30px; border-color: var(--rule); color: var(--ink2); font-size: 15px; margin-left: 4px; }
 /* show/hide chips: on = ink with a check and a solid swatch; off = outline, softer text, a hollow swatch in the pitch colour */
 #simBox .simtype { font: 600 14px var(--font-ui); }
@@ -922,6 +932,7 @@ button, input, select { font: inherit; color: inherit; }
 .sugg li .sg-name { flex: 1 1 auto; min-width: 0; }
 .sugg li .sg-sub { flex: none; font: 400 13px var(--font-ui); color: var(--ink2); white-space: nowrap; }
 .sugg li[aria-selected="true"], .sugg li:hover { background: var(--wash); }
+.sugg li[aria-selected="true"] { box-shadow: inset 3px 0 0 var(--ink); }   /* the arrow-key choice, visible beyond the wash */
 .sugg li.none { cursor: default; color: var(--ink2); font-style: italic; }
 .sugg mark { background: none; color: inherit; font-weight: 700; }
 /* MLB | Triple-A beside the title: which level's pitchers the maps show */
@@ -1029,7 +1040,7 @@ button, input, select { font: inherit; color: inherit; }
 .hs-seasons button[aria-pressed="true"] { background: var(--ink); color: var(--field); cursor: default; }
 .hs-seasons button:disabled { color: var(--muted); cursor: default; text-decoration: line-through; }
 .hs-tiles { display: grid; grid-template-columns: repeat(6, minmax(0, auto)); gap: 0 18px; margin: 0; flex: 1 1 360px; min-width: 0; }
-.hs-tiles dt { font: 700 13px var(--font-ui); color: var(--ink2); text-transform: uppercase; letter-spacing: 0.04em; }
+.hs-tiles dt { font: 700 13px var(--font-ui); color: var(--ink2); letter-spacing: 0.02em; }
 .dhead { container-type: inline-size; }
 .hs-tiles dd { margin: 2px 0 0; font: 600 clamp(20px, 4cqi, 28px)/1.05 var(--font-ui); color: var(--ink); font-variant-numeric: tabular-nums lining-nums; white-space: nowrap; }
 .arsenal { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
@@ -1264,7 +1275,7 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
 .mtable[hidden] { display: none; }
 .mt-in { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
 .mt-head { display: flex; align-items: center; gap: 12px; padding: 10px 12px 0; }
-.mt-title { font: 600 20px/1.1 var(--font-serif); color: var(--ink); }
+.mt-title { margin: 0; font: 600 20px/1.1 var(--font-serif); color: var(--ink); }
 .mtable input.mt-search { display: block; width: calc(100% - 24px); margin: 0 12px 8px; padding: 6px 10px; border: 1px solid var(--ink2);
   border-radius: 6px; background: var(--field); font: 400 14px var(--font-ui); color: var(--ink); }
 .mtable input.mt-search:focus-visible { outline: 2px solid var(--focus); outline-offset: 0; border-color: var(--focus); }
@@ -1451,7 +1462,7 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
 .k-ring, .k-dia, .k-path, .legendkey .badge { display: inline-block; margin-right: 6px; vertical-align: middle; }
 .k-ring { width: 12px; height: 12px; border: 2px solid var(--ink); border-radius: 50%; }
 .k-dia { width: 8px; height: 8px; border: 2px solid var(--ink); transform: rotate(45deg); }
-.k-path { width: 18px; height: 0; border-top: 1.5px dotted var(--ink2); }
+.k-path { width: 18px; height: 0; border-top: 1.5px solid var(--ink2); }
 .badge { display: inline-block; width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: var(--bg);
   font: 600 13px/22px var(--font-ui); text-align: center; font-style: normal; font-variant-numeric: tabular-nums lining-nums; }
 .badge.self { background: none; border: 1.5px solid var(--ink); }
@@ -1769,7 +1780,20 @@ html.at-home, html.at-home body { overflow: hidden; }
   .hcard h2 { font-size: 26px; }
   .home-tag { font-size: 17px; }
   .home-foot { justify-content: center; padding: 32px 16px 20px; }
+  /* the leaderboard: its controls scroll away with the page, so the rows get most of the screen */
+  .mtable { height: auto; }
+  .mt-scroll { flex: none; max-height: 80vh; }
+  /* the header's popovers span the green buttons' row, so they never run off the screen */
+  .hacts { position: relative; }
+  .hsimwrap, .hclwrap { position: static; }
+  .hsimpop, .hclmenu { left: 0; right: 0; width: auto; }
+  /* the three green buttons fit one row */
+  .hact { padding: 0 10px; }
 }
+/* the page under home: out of the tab order before the script has run too (boot then sets inert) */
+html.at-home .app { visibility: hidden; }
+/* iOS zooms the page when a field under 16px takes focus */
+@media (pointer: coarse) { #simBox .simsel, .railsel { font-size: 16px; } }
 </style>
 
 <!-- Home: the front door (the user's mockup, 2026-11-14). Plain HTML, so it paints before the data arrives; the map
@@ -1876,14 +1900,14 @@ html.at-home, html.at-home body { overflow: hidden; }
       <button type="button" id="slHide" data-v="hide" data-label="Hide">Hide</button>
     </div>
     <input id="slSearch" type="search" placeholder="Search measures" autocomplete="off" aria-label="Search measures">
-    <div class="sl-count"><span class="count" id="slCount"></span><button type="button" class="link" id="slReset">Reset all</button></div>
-    <div class="sl-all"><button type="button" class="link" id="slExpand">Open all</button><button type="button" class="link" id="slCollapse">Close all</button></div>
+    <div class="sl-count"><span class="count" id="slCount"></span><button type="button" class="link" id="slReset">Clear measure filters</button></div>
+    <div class="sl-all"><button type="button" class="link" id="slExpand">Expand all</button><button type="button" class="link" id="slCollapse">Collapse all</button></div>
     <div id="slList"></div>
   </aside>
   <section class="mtable" id="mTable" aria-label="Pitchers by measure" hidden><div class="mt-in">
     <div class="mt-head">
       <button type="button" class="bigbtn" id="mtHide">← Back to map</button>
-      <span class="mt-title" id="mtTitle"></span>
+      <h2 class="mt-title" id="mtTitle"></h2>
       <button type="button" class="bigbtn" id="mtDl" hidden>Download CSV</button><span class="mt-msg" id="mtMsg" aria-live="polite"></span>
     </div>
     <!-- the leaderboard's own controls: which measures (one tab per category), which pitches, which seasons, which level -->
@@ -1897,12 +1921,12 @@ html.at-home, html.at-home body { overflow: hidden; }
     </div>
     <p class="mt-sub" id="mtSub"></p>
     <input id="mtSearch" class="mt-search" type="search" placeholder="Find a pitcher in this table" autocomplete="off" aria-label="Find a pitcher in this table">
-    <div class="mt-scroll" id="mtScroll"><table class="mt"><thead id="mtHeadRow"></thead><tbody id="mtBody"></tbody></table></div>
+    <div class="mt-scroll" id="mtScroll"><p class="vh" id="mtRowHelp">Enter on a row shows that pitcher on the map.</p><table class="mt" aria-labelledby="mtTitle" aria-describedby="mtRowHelp"><thead id="mtHeadRow"></thead><tbody id="mtBody"></tbody></table></div>
     <div class="mt-look" id="mtLook" hidden></div>
   </div></section>
   <header class="head">
     <div class="hdrow hdrow1">
-      <button type="button" class="restart navback" id="navBack" data-nav="back" disabled>← Back</button>
+      <button type="button" class="restart navback" id="navBack" data-nav="back" disabled><span aria-hidden="true">←</span> Back</button>
       <div class="brand"><h1><a href="#" class="homelink" id="homeLink" title="Home: search, leaderboards, a pitch to simulate, every map">Pitch-omics</a></h1></div>
       <div class="finders">
         <form class="find" role="search" id="findForm">
@@ -1938,8 +1962,8 @@ html.at-home, html.at-home body { overflow: hidden; }
         </div>
       </div>
       <div class="hnav">
-      <button type="button" class="restart" id="startOver" title="The full map as it first opens: All pitches, MLB, no one selected, no filters, colored by pitch type. Your saved groups stay.">↺ Start over</button>
-      <button type="button" class="restart" id="navFwd" data-nav="fwd" disabled>Forward →</button>
+      <button type="button" class="restart" id="startOver" title="The full map as it first opens: All pitches, MLB, no one selected, no filters, colored by pitch type. Your saved groups stay."><span aria-hidden="true">↺</span> Start over</button>
+      <button type="button" class="restart" id="navFwd" data-nav="fwd" disabled>Forward <span aria-hidden="true">→</span></button>
       </div>
     </div>
   </header>
@@ -2022,9 +2046,9 @@ html.at-home, html.at-home body { overflow: hidden; }
         <div class="mseg" id="seasonChips" role="group" aria-labelledby="seasonLbl"></div>
         <span class="tcsub" id="handLbl">Hand</span>
         <div class="mseg" id="throwsSeg" role="group" aria-labelledby="handLbl">
-          <button type="button" id="thAll" data-v="all" aria-label="Both hands">R + L</button>
-          <button type="button" id="thR" data-v="R" aria-label="Right-handed pitchers">RHP</button>
-          <button type="button" id="thL" data-v="L" aria-label="Left-handed pitchers">LHP</button>
+          <button type="button" id="thAll" data-v="all" title="Both hands">Both</button>
+          <button type="button" id="thR" data-v="R" title="Right-handed pitchers">RHP</button>
+          <button type="button" id="thL" data-v="L" title="Left-handed pitchers">LHP</button>
         </div>
         <label class="tcsub" for="minIP">Innings that season</label>
         <span class="sel mselect tcsel"><select id="minIP" aria-describedby="ipNote" title="Keep only pitchers who threw at least this many innings in the season each dot is from">
@@ -2047,14 +2071,14 @@ html.at-home, html.at-home body { overflow: hidden; }
           </div>
           <div class="lqual" id="lqual" hidden></div>
         </div>
-        <div id="plot"></div>
+        <div id="plot" role="img" aria-label="The pitch map: each dot is one pitcher's pitch in one season. To reach a pitcher by keyboard, use the search or the Pitchers list."></div>
       <div class="mapkey" id="mapKey" hidden></div>
       <p class="maptoast" id="mapnote" role="status" aria-live="polite" hidden></p>
       <div class="hovcard" id="hovCard" role="group" aria-label="Pitcher under the pointer" hidden>
         <button type="button" class="ctabtn primary hc-sel" id="hcSel">Select pitcher</button>
         <div class="hc-body" id="hcBody"></div>
       </div>
-      <div class="selcta" id="selCta" role="region" aria-label="Selected pitcher" hidden>
+      <div class="selcta" id="selCta" role="region" aria-labelledby="ctaName" hidden>
         <div class="cta-head"><div class="cta-name"><b id="ctaName"></b><div class="cta-cl" id="ctaCl"></div><span id="ctaSub"></span></div>
           <button type="button" class="ctaclose" id="ctaClose" aria-label="Clear the selection" title="Clear">×</button></div>
         <button type="button" class="link lk-from" id="ctaFrom" hidden></button>
@@ -2067,7 +2091,7 @@ html.at-home, html.at-home body { overflow: hidden; }
         <section class="cta-look" id="compBox" aria-label="Lookalikes of the selected pitcher" hidden>
           <div class="lk-head"><b id="cbTitle"></b></div>
           <div class="lk-chips" id="cbChips" role="group" aria-label="Lookalikes for which of his pitches"></div>
-          <div id="cbPool" role="group" aria-label="Lookalikes among which pitchers" hidden></div>
+          <div id="cbPool" class="poolseg" role="group" aria-label="Lookalikes among which pitchers" hidden></div>
           <div class="lk-acts"><button type="button" class="savebtn" id="cbTable" aria-pressed="false" title="A table of him and his lookalikes on every measure, in the map's place">Show table</button><button type="button" class="savebtn" id="cbSave" title="Keep him and his lookalikes as a named group">Save as group</button></div>
           <div class="lk-share" id="cbShare" aria-label="What he and his lookalikes have in common"></div>
           <p class="lk-help" id="cbHelp"></p>
@@ -2107,7 +2131,7 @@ html.at-home, html.at-home body { overflow: hidden; }
           <div class="rp-head"><span id="svTitle">Your groups</span> <span class="rp-n" id="svCount"></span></div>
           <div class="rp-acts"><button type="button" class="obtn" id="svOnly" aria-pressed="false" title="Keep the pitchers in your groups in color and gray out everyone else">Highlight my groups</button>
             <select class="railsel" id="onlySel" aria-label="Show only one group's pitchers on the map" title="Show only one group's pitchers on the map"></select></div>
-          <p class="rp-help" id="svEmpty">No groups yet. Save a pitcher’s lookalikes (click him on the map), or pick pitchers with Add (in the Pitchers list, on a profile or beside a lookalike) or Draw a group on the map; or save a highlighted pitcher list. A group is a region of the map: it is circled on the pitch type it was built on, and this panel lists everyone inside it, at either level.</p>
+          <p class="rp-help" id="svEmpty">No groups yet. Save a pitcher’s lookalikes from the map card, pick pitchers with Add (in the Pitchers list or on a profile), or Draw a group on the map. A group is circled on its pitch type’s map, and this panel lists everyone inside it, at either level.</p>
           <ul id="svList"></ul>
           <p class="sv-undo" id="svUndo" hidden></p>
         </section>
@@ -2425,7 +2449,7 @@ const PITCHER_DELIVERY = [
   ["release_spread", "Release-point spread across pitch types", "in", 1],
 ];
 const mk = (key, label, unit, dec, group, div, get) => ({ key, label, unit, dec, group, div: !!div, get });
-const cat = (key, label, cats, get) => ({ key, label, group: "Groups", cat: true, cats, get });
+const cat = (key, label, cats, get) => ({ key, label, group: "Categories", cat: true, cats, get });
 // a colour toward black (t > 0) or white (t < 0) by |t|: subclusters as shades of their cluster's colour
 function shadeHex(hex, t) {
   const n = parseInt(hex.slice(1), 16), c = [n >> 16, (n >> 8) & 255, n & 255], to = t > 0 ? 0 : 255, a = Math.min(1, Math.abs(t));
@@ -3430,7 +3454,7 @@ function syncOnlySel() {
   const sel = $("#onlySel"), og = state.onlyGroup && saved.some(e => e.id === state.onlyGroup) ? state.onlyGroup : "";
   sel.innerHTML = `<option value="">${saved.length ? "Show Only Groups" : "Show Only Groups (none saved)"}</option>`
     + saved.map(e => `<option value="${esc(e.id)}">${esc(e.name)}</option>`).join("");
-  sel.value = og; sel.disabled = !saved.length; sel.setAttribute("aria-pressed", String(!!og));
+  sel.value = og; sel.disabled = !saved.length; sel.dataset.on = String(!!og);
 }
 
 // ----------------------------------------------------------------- ellipses
@@ -4535,7 +4559,8 @@ function savantRGB(p) {
 const savantColor = p => `rgb(${savantRGB(p).join(",")})`;
 // text on a percentile circle: white only where it reads (the saturated ends), page ink on the pastel middle
 const relLum = rgb => rgb.reduce((a, v, k) => { const c = v / 255; return a + [0.2126, 0.7152, 0.0722][k] * (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4); }, 0);
-const savantInk = p => relLum(savantRGB(p)) < 0.21 ? "#ffffff" : "#1b2430";   // 0.21: where white and ink tie on contrast
+// 0.18 and pure black: every pill clears 4.5:1 (worst 4.61:1); the old ink (#1b2430) at 0.21 fell to 3.9:1 near the 90th
+const savantInk = p => relLum(savantRGB(p)) < 0.18 ? "#ffffff" : "#000000";
 const SAVANT_SCALE = SAVANT_STOPS.map(([q, c]) => [q / 100, `rgb(${c.join(",")})`]);
 const pdot = (p, title) => `<span class="pdot" title="${esc(title)}" style="background:${savantColor(p)};color:${savantInk(p)}">${Math.round(p)}</span>`;
 // Every percentile badge, bar and table cell takes the Savant blue-gray-red scale (user, 2026-11-03: a gray ramp
@@ -4552,6 +4577,7 @@ function pctSub(poolName, rows, v, r, lowGood) {
 
 const focusCard = () => { const t = $("#dHead").querySelector(".cname") || $("#detail").querySelector(".cname, .empty"); if (t) t.focus({ preventScroll: true }); };
 
+const CARD_UNDER = ["header.head", "#controls", "main.map", ".caption", "#mTable", "#sliders"];
 function renderDetail() {
   const el = $("#detail"), view = state.view, r = state.sel;
   let cp = $("#comps");   // replaced by the in-card container when similar pitchers are open
@@ -4564,6 +4590,8 @@ function renderDetail() {
     // the map's width changed: let Plotly re-measure once the grid has reflowed
     requestAnimationFrame(() => { try { Plotly.Plots.resize(plotEl); } catch (e) {} });
   }
+  // the card is a modal dialog: the page under its scrim leaves the tab order and the screen reader (as home does)
+  CARD_UNDER.forEach(s => { const e = $(s); if (e) e.inert = has; });
   $("#dHead").innerHTML = ""; $("#dTraits").innerHTML = "";
   if (!has) {
     if (!state.simOpen) stopFlight();   // the simulation overlay keeps its own flight running
@@ -6201,7 +6229,7 @@ function typeCard(view, j) {
       <button type="button" class="bigbtn simbtn" id="simBtn" aria-expanded="${!!state.showComps}" aria-controls="comps">${state.showComps ? "Hide similar pitchers ↑" : "Show similar pitchers ↓"}</button>
       <button type="button" class="bigbtn pickbtn" data-pick="${j}" aria-pressed="${state.picks.has(j)}" title="Pick his ${PTN[T.pitch_type[j]].toLowerCase()} for a new group; name and save it in the Groups tab">${state.picks.has(j) ? `In new group (${state.picks.size})` : "Add to group"}</button>
       <span class="cardnav" id="cardNav"></span>
-      ${!flightData().none && trajOf(j) ? `<button type="button" class="bigbtn labbtn" id="labBtn" title="Fly his pitches, edit them, compare them with a lookalike's">▶ Pitch Simulation Lab</button>` : ""}
+      ${!flightData().none && trajOf(j) ? `<button type="button" class="bigbtn labbtn" id="labBtn" title="Fly his pitches, edit them, compare them with a lookalike's"><span aria-hidden="true">▶</span> Pitch Simulation Lab</button>` : ""}
 </span>${headStats(view, j, i)}${arsenalStrip(view, j, ars)}</div>`;
   // ---------------- hero: what puts this pitch where it is in the 3D space ----------------
   // the measures on which his pitch sits farthest from a typical pitch of its type: these are what
@@ -6608,7 +6636,7 @@ function renderCompBox() {
       + `<span class="lk-who"><span class="lk-name">${esc(T.name[c])} <span class="lk-yr">’${String(T.season[c]).slice(2)} · ${esc(teamStr(c))}${T.level[c] === "mlb" ? "" : " · AAA"}</span></span>`
       + `<span class="lk-diff"${df.tip ? ` title="${esc(df.tip)}"` : ""}>${esc(df.text)}</span></span>`
       + `<span class="lk-fit lk-${fc}">${ft}</span></button>`
-      + (canFly ? `<button type="button" class="lk-cmp" data-cmp="${c}"${trajOf(c) ? "" : " disabled"} title="${trajOf(c) ? `Open the Pitch Simulation Lab: ${esc(lastName(T.name[r]))}’s ${PTN[t].toLowerCase()} flying beside ${esc(T.name[c])}’s` : "No tracked flight for this pitch"}"><span aria-hidden="true">▶</span> Simulate</button>` : "") + `</li>`; }).join("");
+      + (canFly ? `<button type="button" class="lk-cmp" data-cmp="${c}"${trajOf(c) ? "" : " disabled"} title="${trajOf(c) ? `Open the Pitch Simulation Lab: ${esc(lastName(T.name[r]))}’s ${PTN[t].toLowerCase()} flying beside ${esc(T.name[c])}’s` : "No tracked flight for this pitch"}" aria-label="Simulate beside ${esc(T.name[c])}"><span aria-hidden="true">▶</span> Simulate</button>` : "") + `</li>`; }).join("");
 }
 // The map card's quick look at the pitch on screen (user, 2026-11-14), above his lookalikes: its run value and the
 // measures that most define it (picked as the player card's Defining Traits, at most CTA_TRAITS), each a percentile
@@ -6854,9 +6882,9 @@ const colorPick = () => VARS[varKind(state.view)].filter(v => !NOT_IN_LIST.has(v
 function colorMenuHTML(pick, cur, filter) {
   const f = String(filter || "").toLowerCase().split(/\s+/).filter(Boolean);
   const hit = v => !f.length || f.every(w => (v.label + " " + v.group).toLowerCase().includes(w));
-  const head = [{ key: "cat:pitch_type", label: "Pitch type", group: "Groups" }]
-    .concat(cur === "cat:team" ? [{ key: "cat:team", label: "Team (turn off on the map)", group: "Groups" }] : [])
-    .concat(cur === "cat:cluster" || cur === "cat:subcluster" ? [{ key: cur, label: "Clusters (turn off with the Clusters switch)", group: "Groups" }] : []);
+  const head = [{ key: "cat:pitch_type", label: "Pitch type", group: "Categories" }]
+    .concat(cur === "cat:team" ? [{ key: "cat:team", label: "Team (turn off with Team colors)", group: "Categories" }] : [])
+    .concat(cur === "cat:cluster" || cur === "cat:subcluster" ? [{ key: cur, label: "Clusters (turn off with the Clusters switch)", group: "Categories" }] : []);
   let html = "", g = null;
   head.concat(pick).forEach(v => {
     if (!hit(v)) return;
@@ -7011,7 +7039,7 @@ function buildVarSelects() {
   const pick = vars.filter(v => !NOT_IN_LIST.has(v.key));
   const a = VMAP[kind][cur];
   const clOn = cur === "cat:cluster" || cur === "cat:subcluster";
-  $("#colorBtnTxt").textContent = cur === "cat:team" ? "Team (turn off on the map)" : clOn ? "Clusters (turn off with the Clusters switch)" : a ? a.label : "Pitch type";
+  $("#colorBtnTxt").textContent = cur === "cat:team" ? "Team (turn off with Team colors)" : clOn ? "Clusters (turn off with the Clusters switch)" : a ? a.label : "Pitch type";
   if (!$("#colorMenu").hidden) $("#cmList").innerHTML = colorMenuHTML(pick, cur, $("#cmSearch").value);
   $("#colorB").innerHTML = optionsHTML(vars, state.colorB[kind], "", false);
   $("#colorAWrap").classList.toggle("on", !NOT_IN_LIST.has(cur));   // filled in while a measure is the color
@@ -7339,7 +7367,7 @@ function renderTable() {
     floorTxt, match ? `${lit.length.toLocaleString()} matching your filters` : ""].filter(Boolean).join(" · ");
   const arrow = k => k === sk ? `<span class="ar" aria-hidden="true">${dir < 0 ? "▼" : "▲"}</span>` : `<span class="ar"></span>`;
   const ariaSort = k => k === sk ? ` aria-sort="${dir < 0 ? "descending" : "ascending"}"` : "";
-  const unitTxt = v => v.unit ? ` <span class="tm">(${esc(v.unit)})</span>` : "";
+  const unitTxt = v => v.unit && !shortLabel(v).endsWith(v.unit) ? ` <span class="tm">(${esc(v.unit)})</span>` : "";   // no "Whiff% (%)"
   const sc = k => k === sk ? ` class="mt-sorted"` : "";
   $("#mtHeadRow").innerHTML = `<tr><th scope="col"${ariaSort("name")}><button type="button" data-k="name">${ci === 0 ? `<span class="mt-rkh" aria-hidden="true">#</span>` : ""}Pitcher${arrow("name")}</button></th>` +
     cols.map(v => `<th scope="col"${sc(v.key)}${ariaSort(v.key)}><button type="button" data-k="${esc(v.key)}" title="${esc(tipFor(v))}"><span class="mt-h">${esc(shortLabel(v))}${unitTxt(v)}</span>${arrow(v.key)}</button></th>`).join("") + "</tr>";
