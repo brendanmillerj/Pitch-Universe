@@ -1883,12 +1883,12 @@ html.at-home .app { visibility: hidden; }
 /* ---- experiment (user, 2026-11-14): no left column. Header row 1 = back, title, a shorter search, Show leaderboard,
    Pitch Types/Clusters (a pop-over), Start over, forward; row 2 = Level, Season, Hand, Innings, Free agents. On the map:
    Filter by measures leads the top-right row; Pitchers and Groups sit at the bottom right. */
-.hdrow2 { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 16px; }
-.hdrow2 .lvlseg button { min-height: calc(var(--ctl) - 3px); }
-.hdrow2 .grp-fa .tchead { display: flex; align-items: baseline; gap: 8px; }
-.hdrow2 .asof { font: 400 12px var(--font-ui); color: var(--muted); }
-.hdrow2 .facount { font: 400 12px var(--font-ui); color: var(--ink2); }
-.hdrow2 .facount:empty { display: none; }
+.hdrow1 .hfilt { display: flex; align-items: flex-end; }
+.hdrow1 .hfilt .lvlseg button { min-height: calc(var(--ctl) - 3px); }
+.hdrow1 .hfilt .grp-fa .tchead { display: flex; align-items: baseline; gap: 8px; }
+.hdrow1 .hfilt .asof { font: 400 12px var(--font-ui); color: var(--muted); }
+.hdrow1 .hfilt .facount { font: 400 12px var(--font-ui); color: var(--ink2); }
+.hdrow1 .hfilt .facount:empty { display: none; }
 .hcbtn { display: inline-flex; align-items: center; gap: 8px; }
 .hcbtn .lsl { font: inherit; }
 .hcbtn .lsnow { font: 400 13px var(--font-ui); color: var(--ink2); }
@@ -1910,15 +1910,40 @@ html.at-home .app { visibility: hidden; }
 .mappanels .ubtn { min-height: calc(var(--ctl) - 3px); gap: 8px; background: var(--field); }
 .mappanels .ubtn[aria-pressed="true"] { background: var(--ink); color: var(--field); }
 .plotarea .maptoast { bottom: calc(var(--mi) + 52px); }
-.typeR { width: 150px; }
-.typeR .universe { gap: 4px; }
+/* ---- one header row (user, 2026-11-14): Back, title, search, Leaderboard, Level, Season, Hand, Innings, Free agents,
+   Start over, Forward; compact so it fits a 1440 px screen (narrower screens wrap) */
+.hdrow1 { flex-wrap: wrap; gap: 8px 10px; }
+.hdrow1 .hfilt { gap: 8px; flex-wrap: nowrap; }
+.head h1 { font-size: 30px; }
+.hdrow1 .finders { flex: 1 1 150px; min-width: 120px; max-width: 280px; }
+.hdrow1 > * { flex-shrink: 0; }
+.hdrow1 > .finders { flex-shrink: 1; }
+@media (min-width: 1260px) { .hdrow1 { flex-wrap: nowrap; } }
+/* under 1400 px: Back, Start over and Forward show only their arrows (the words stay for screen readers and in the tooltips) */
+@media (max-width: 1399px) { .hdrow1 .btxt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .hdrow1 .restart { min-width: var(--ctl); padding: 0 10px; font-size: 17px; } }
+.hdrow1 .find-lbl { font-size: 12px; }
+.hdrow1 .restart, .hdrow1 .hact { padding: 0 10px; }
+.hdrow1 .mseg button, .hdrow1 .lvlseg button { padding: 0 8px; }
+.hdrow1 .hsel select { padding: 0 24px 0 8px; }
+.hdrow1 #faWrap select { max-width: 110px; }
+.hdrow1 .asof, .hdrow1 .facount { display: none; }
+.hdrow1 .hnav { flex-wrap: nowrap; }
+@media (max-width: 1259px) { .hdrow1 .hfilt { flex-wrap: wrap; } }
+.maptools .mt-types { display: flex; flex-direction: column; align-items: stretch; gap: 4px; width: 150px; }
+.maptools .mt-types .ubtn { width: 100%; justify-content: flex-start; min-height: 30px; padding: 0 10px; background: var(--field); color: var(--ink);
+  border: 1.5px solid var(--field); border-radius: var(--r); }
+.maptools .mt-types .ubtn:hover { background: var(--wash); }
+.maptools .mt-types .ubtn[aria-pressed="true"] { background: var(--ink); color: var(--field); border-color: var(--field); }
+.maptools .mt-types .ubtn[aria-pressed="true"] .psw { box-shadow: 0 0 0 1.5px var(--field); }
+.maptools .mt-types .udiv { width: 100%; height: 1px; margin: 2px 0; background: rgba(255, 255, 255, 0.25); }
 .maptools .mt-clu { display: flex; }
 .maptools .mt-clu .ubtn { min-height: calc(var(--ctl) - 3px); gap: 10px; background: var(--field); color: var(--ink); border: 1.5px solid var(--field); border-radius: var(--r); padding: 0 10px; }
 .maptools .mt-clu .ubtn:hover { background: var(--wash); }
 .maptools .mt-clu .ubtn[aria-checked="true"] { background: var(--ink); color: var(--field); border-color: var(--field); }
 #pnClusters[aria-checked="true"] .pnswv i { background: var(--field); }
 #pnClusters[aria-checked="true"] .pnswv i::after { background: var(--ink); }
-@media (max-width: 719px) { .typeR { width: auto; } }
+@media (max-width: 719px) { .maptools .mt-types { width: auto; flex-direction: row; flex-wrap: wrap; } .maptools .mt-types .ubtn { width: auto; } .maptools .mt-types .udiv { display: none; } }
 @media (max-width: 719px) { .mappanels { position: static; margin: 8px 0 0; } .mappanels .ubtn { flex: 1 1 0; justify-content: space-between; } .hcpanel { width: min(300px, calc(100vw - 32px)); } }
 @media (max-width: 719px) { .typecol > .lsec, .typecol > .measseg, .typecol > .lsdiv { flex: 1 1 100%; } .typecol .lsdiv { height: 1px; margin: 4px 0; } }
 /* ---- the map card in two sections (user, 2026-11-14: "I can't tell what goes with what"): the pitch, then its
@@ -2078,14 +2103,14 @@ html.at-home .app { visibility: hidden; }
   </div></section>
   <header class="head">
     <div class="hdrow hdrow1">
-      <button type="button" class="restart navback" id="navBack" data-nav="back" disabled><span aria-hidden="true">←</span> Back</button>
+      <button type="button" class="restart navback" id="navBack" data-nav="back" disabled><span aria-hidden="true">←</span><span class="btxt"> Back</span></button>
       <div class="brand"><h1><a href="#" class="homelink" id="homeLink" title="Home: search, leaderboards, a pitch to simulate, every map">Pitch-omics</a></h1></div>
       <div class="finders">
         <form class="find" role="search" id="findForm">
           <label class="find-lbl" for="search">Search for pitcher by name</label>
           <div class="find-box">
             <svg class="find-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-            <input id="search" type="search" placeholder="e.g. Tarik Skubal" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sugg">
+            <input id="search" type="search" placeholder="e.g. Skubal" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sugg">
             <ul class="sugg" id="sugg" role="listbox" aria-label="Matching pitchers" hidden></ul>
           </div>
           <span class="help" id="searchMsg" role="status" aria-live="polite"></span>
@@ -2093,18 +2118,13 @@ html.at-home .app { visibility: hidden; }
       </div>
       <!-- the actions (user, 2026-11-14 experiment): the leaderboard and the maps -->
       <div class="hacts" role="group" aria-label="Leaderboard">
-        <button type="button" class="hact" id="hBoards" aria-pressed="false" title="Every pitcher in a table, ranked by any measure">Show leaderboard</button>
+        <button type="button" class="hact" id="hBoards" aria-pressed="false" title="Every pitcher in a table, ranked by any measure">Leaderboard</button>
       </div>
-      <div class="hnav">
-      <button type="button" class="restart" id="startOver" title="The full map as it first opens: All pitches, MLB, no one selected, no filters, colored by pitch type. Your saved groups stay."><span aria-hidden="true">↺</span> Start over</button>
-      <button type="button" class="restart" id="navFwd" data-nav="fwd" disabled>Forward <span aria-hidden="true">→</span></button>
-      </div>
-    </div>
-    <!-- which pitches the map shows -->
-    <div class="hdrow hdrow2 hfilt" role="group" aria-label="Which pitches the map shows">
+      <!-- which pitches the map shows: in the one header row (user, 2026-11-14) -->
+      <div class="hfilt" role="group" aria-label="Which pitches the map shows">
         <div class="hf"><span class="find-lbl">Level</span>
           <div class="lvlseg" id="lvlSeg" role="group" aria-label="Level shown" hidden>
-            <button type="button" data-v="mlb" aria-pressed="true" title="Major-league pitchers">MLB</button><button type="button" data-v="aaa" aria-pressed="false" title="Triple-A pitchers on the same maps, every number measured against big-league norms">Triple-A</button>
+            <button type="button" data-v="mlb" aria-pressed="true" title="Major-league pitchers">MLB</button><button type="button" data-v="aaa" aria-pressed="false" title="Triple-A pitchers on the same maps, every number measured against big-league norms">AAA</button>
           </div></div>
 
         <div class="hf"><span class="find-lbl" id="seasonLbl">Season</span><div class="mseg" id="seasonChips" role="group" aria-labelledby="seasonLbl"></div></div>
@@ -2131,6 +2151,11 @@ html.at-home .app { visibility: hidden; }
           </select></span>
           <span class="count facount" id="faCount" aria-live="polite"></span>
         </div>
+      </div>
+      <div class="hnav">
+      <button type="button" class="restart" id="startOver" title="The full map as it first opens: All pitches, MLB, no one selected, no filters, colored by pitch type. Your saved groups stay."><span aria-hidden="true">↺</span><span class="btxt"> Start over</span></button>
+      <button type="button" class="restart" id="navFwd" data-nav="fwd" disabled><span class="btxt">Forward </span><span aria-hidden="true">→</span></button>
+      </div>
     </div>
   </header>
 
@@ -2150,10 +2175,6 @@ html.at-home .app { visibility: hidden; }
     <div class="plotwrap" id="plotWrap">
       <div class="mapbody">
       <!-- left of the map: the measure filter, level, the pitch types, coloring and map tools, then who is shown -->
-      <!-- the maps: All pitches and each pitch type, in a column right of the map (user, 2026-11-14 experiment) -->
-      <div class="typecol typeR" id="typeCol">
-        <nav class="universe" id="universe" aria-label="Choose a map: all pitches or one pitch type"></nav>
-      </div>
       <div class="plotarea" id="plotArea">
         <!-- the map's view, on the map (user, 2026-11-14): flat or 3D, movement chart or t-SNE, and how well each layout
              keeps similar pitches together; a sibling of #plot, which Plotly and the 3D setup empty -->
@@ -2194,6 +2215,8 @@ html.at-home .app { visibility: hidden; }
             </div>
           </div>
           <div class="lqual" id="lqual" hidden></div>
+          <!-- the maps, on the map's right edge (user, 2026-11-14 experiment): All pitches and each pitch type -->
+          <nav class="universe mt-types" id="universe" aria-label="Choose a map: all pitches or one pitch type"></nav>
         </div>
         <div id="plot" role="img" aria-label="The pitch map: each dot is one pitcher's pitch in one season. To reach a pitcher by keyboard, use the search or the Pitchers list."></div>
       <!-- Pitchers and Groups, bottom right of the map: each opens its panel beside the map -->
@@ -3389,7 +3412,8 @@ function render() {
 
   const layout = {
     paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",   // the map color is #plot's CSS background
-    margin: layKey() === "move" ? { l: 48, r: 8, b: 44, t: onPhone ? 30 : 8 } : { l: 4, r: 4, b: 4, t: onPhone ? 30 : 6 },   // phone: clear the always-on modebar
+    // phone: clear the always-on modebar; wide screens: keep the dots clear of the pitch-type column on the map's right edge
+    margin: layKey() === "move" ? { l: 48, r: onPhone ? 8 : 172, b: 44, t: onPhone ? 30 : 8 } : { l: 4, r: onPhone ? 4 : 168, b: 4, t: onPhone ? 30 : 6 },
     ...(layKey() === "move" ? moveAxes(pal) : { xaxis: { visible: false }, yaxis: { visible: false, scaleanchor: "x" } }),
     // on phones a one-finger drag must scroll the page, so panning waits for the modebar's pan tool
     hovermode: "closest", dragmode: onPhone ? false : state.lasso ? "lasso" : "pan", uirevision: view + "|" + layKey(),
@@ -8161,7 +8185,7 @@ function buildStatic() {
   { const ex = ["Tarik Skubal", "Paul Skenes", "Shota Imanaga", "Garrett Crochet", "Jacob Misiorowski", "Mason Miller", "Hunter Greene", "Yoshinobu Yamamoto"]
       .filter(n => suggIndex().latest[n]);
     let k = 0;
-    const show = () => { if (sInp.value || document.activeElement === sInp || !ex.length) return; sInp.placeholder = `e.g. ${ex[k++ % ex.length]}`; };
+    const show = () => { if (sInp.value || document.activeElement === sInp || !ex.length) return; sInp.placeholder = `e.g. ${String(ex[k++ % ex.length]).split(" ").slice(-1)[0]}`; };
     show();
     if (ex.length > 1 && !reduced() && typeof setInterval === "function") setInterval(show, 3000); }
   const sBox = suggestBox(sInp, $("#sugg"), () => sInp.dispatchEvent(new Event("change")), $("#searchMsg"));

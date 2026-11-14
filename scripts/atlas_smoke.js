@@ -256,12 +256,13 @@ const J = JSON.stringify;
 
   // ---- layout
   const hEnd = markup.indexOf("</header>");
-  const at = id => markup.indexOf(`id="${id}"`), r2 = markup.indexOf('class="hdrow hdrow2');
-  ok(["navBack", "search", "hBoards", "startOver", "navFwd"].every(id => at(id) > 0 && at(id) < r2) && at("hClu") < 0 && ["lvlSeg", "seasonChips", "throwsSeg", "minIP", "fa"].every(id => at(id) > r2 && at(id) < hEnd),
-    "header row 1: Back, search, Show leaderboard, Start over, Forward; row 2: Level, Season, Hand, Innings, Free agents (user, 2026-11-14 experiment)");
-  ok(at("hSim") < 0 && /class="typecol typeR" id="typeCol"/.test(markup) && at("universe") > at("typeCol") && at("universe") < at("plotArea"), "no Simulate pitch; the pitch types sit in their own column (right of the map on wide screens)");
+  const at = id => markup.indexOf(`id="${id}"`), r2 = hEnd;
+  const order = ["navBack", "homeLink", "search", "hBoards", "lvlSeg", "seasonChips", "throwsSeg", "minIP", "fa", "startOver", "navFwd"];
+  ok(order.every((id, k) => at(id) > 0 && at(id) < hEnd && (k === 0 || at(id) > at(order[k - 1]))) && at("hClu") < 0 && !markup.includes('class="hdrow hdrow2') && (markup.slice(markup.indexOf('<header class="head">'), hEnd).match(/class="hdrow /g) || []).length === 1,
+    "one header row: Back, title, search, Leaderboard, Level, Season, Hand, Innings, Free agents, Start over, Forward (user, 2026-11-14)");
+  ok(at("hSim") < 0 && at("typeCol") < 0 && at("universe") > at("mapTools") && at("universe") > at("dimSeg") && at("universe") < markup.indexOf('<div id="plot"'), "no Simulate pitch, no side column: the pitch types sit on the map's right edge, under its top row");
   ok(at("pnClusters") > at("mapTools") && at("pnClusters") < at("dimSeg") && /\.mapbody > \.plotarea \{ order: 0; \} \.mapbody > \.typecol \{ order: 1; \} \.mapbody > \.mrail \{ order: 2; \}/.test(html),
-    "the Clusters switch sits on the map just before 2D | 3D; map, then the types, then the panel at the far right");
+    "the Clusters switch sits on the map just before 2D | 3D; the panel opens at the far right");
   ok(["ellOn", "teamOn", "lassoOn", "lsColorBtn", "lbList"].every(id => at(id) < 0), "no ellipses, Team colors or Draw a group options, and no leaderboard drop-down (user, 2026-11-14)");
   const hStart = markup.indexOf('<header class="head">'), hIds = [...markup.slice(hStart, hEnd).matchAll(/<button[^>]* id="(\w+)"/g)].map(m => m[1]);
   const r1Ids = [...markup.slice(hStart, r2).matchAll(/<button[^>]* id="(\w+)"/g)].map(m => m[1]);
