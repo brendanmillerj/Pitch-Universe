@@ -6634,7 +6634,9 @@ function writeHash(view = state.view) {
   if (NAV.queued && !NAV.restoring && NAV.idx >= 0) return;   // the step about to be recorded carries the new address
   const h = hashFor(view);
   if (state.home ? !location.hash : h === location.hash) return;
-  try { history.replaceState(NAV.idx >= 0 ? { nav: NAV.idx } : null, "", h); } catch (e) { location.hash = h.slice(1); }
+  // where replaceState is refused (a sandboxed frame), the hash carries a map's address; home's is the bare page, so
+  // writing its path into the hash would read as a map address and leave home
+  try { history.replaceState(NAV.idx >= 0 ? { nav: NAV.idx } : null, "", h); } catch (e) { if (!state.home) location.hash = h.slice(1); }
 }
 function parseHash() {
   const parts = location.hash.slice(1).split("/").filter(Boolean);
