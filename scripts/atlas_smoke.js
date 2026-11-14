@@ -861,6 +861,19 @@ const J = JSON.stringify;
     "the map card's pitch chips sit up top, above the pitch and its Lookalikes");
   run(`select(null); setView("FF", null)`); await tick();
 
+  // ---- the leaderboard's Team drop-down (user, 2026-11-14)
+  run(`state.seasons = new Set([Math.max(...D.seasons)]); syncSeasonChips(); setView("FF", null); setTableGroup("Results", "t:whiff")`); await tick();
+  const allN = [...getEl("#mtBody").innerHTML.matchAll(/<tr data-r="(\d+)"/g)].length;
+  getEl("#mtTeam").value = "LAD"; getEl("#mtTeam")._h.change[0]({ target: { value: "LAD" } }); await tick();
+  const ladRows = [...getEl("#mtBody").innerHTML.matchAll(/<tr data-r="(\d+)"/g)].map(m => +m[1]);
+  ok(ladRows.length > 0 && ladRows.length < allN && run(`${J(ladRows)}.every(r => tOrgs[r].includes("LAD"))`) && getEl("#mtSub").textContent.includes("Los Angeles Dodgers"),
+    `Team: only that club's pitchers (${ladRows.length} of ${allN}), named in the board's line`);
+  ok(/<option value="all">All teams<\/option>/.test(getEl("#mtTeam").innerHTML) && (getEl("#mtTeam").innerHTML.match(/<option /g) || []).length === 31, "the drop-down: All teams and the 30 clubs");
+  getEl("#mtTeam")._h.change[0]({ target: { value: "all" } }); await tick();
+  ok([...getEl("#mtBody").innerHTML.matchAll(/<tr data-r="(\d+)"/g)].length === allN, "…All teams brings everyone back");
+  run("closeTable()"); await tick();
+  ok(/\.capbar \{ display: flex; justify-content: flex-end;/.test(html), "Glossary and Contact sit at the bottom right");
+
   // ---- under the map (user, 2026-11-14): no footer; Glossary at the left, Contact at the right; the Glossary pop-up
   const capStart = markup.indexOf('<div class="caption">'), capEnd = markup.indexOf('<div class="tblscrim glscrim"');
   const cap = markup.slice(capStart, capEnd);
