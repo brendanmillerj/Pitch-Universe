@@ -256,7 +256,9 @@ const J = JSON.stringify;
 
   // ---- layout
   const hEnd = markup.indexOf("</header>");
-  ok(["hBoards", "hSim", "navHome", "navBack", "navFwd", "startOver"].every(id => markup.indexOf(`id="${id}"`) < hEnd && markup.indexOf(`id="${id}"`) > 0), "header: Leaderboards, Pitch simulation, Home, ← Back, Forward →, Start over");
+  ok(["hBoards", "hSim", "navBack", "navFwd", "startOver"].every(id => markup.indexOf(`id="${id}"`) < hEnd && markup.indexOf(`id="${id}"`) > 0), "header: ← Back, Leaderboards, Pitch simulation, Start over, Forward →");
+  const hStart = markup.indexOf('<header class="head">'), hIds = [...markup.slice(hStart, hEnd).matchAll(/<button[^>]* id="(\w+)"/g)].map(m => m[1]);
+  ok(hIds[0] === "navBack" && hIds[hIds.length - 1] === "navFwd" && !markup.includes('id="navHome"'), "like a browser: ← Back first in the header, Forward → last, no Home button (the title leads home): " + hIds.join(", "));
   const pa = markup.indexOf('id="plotArea"'), pl = markup.indexOf('<div id="plot">');
   ok(["mapTools", "dimSeg", "laySeg", "lqual"].every(id => { const k = markup.indexOf(`id="${id}"`); return k > pa && k < pl && k > hEnd; }), "2D/3D, Movement/t-SNE and the meter sit on the map, beside #plot (which Plotly empties)");
   ok(!markup.includes('id="clusterSeg"') && /id="pnClusters"[^>]*role="switch"/.test(markup), "the Clusters row is the one switch (no switch inside the panel)");
@@ -693,10 +695,10 @@ const J = JSON.stringify;
   ok(!!mp && Math.abs(mp.got - mp.want) < 1e-9, "the map colours by the same MLB percentile: " + J(mp));
   run(`state.color.t = "cat:pitch_type"; state.seasons = new Set(D.seasons); syncSeasonChips(); setView("all", null)`); await tick();
 
-  // ---- Home (user, 2026-11-14): the header and the lab (not the player card); Back returns to where you were
+  // ---- Home (user, 2026-11-14): the header's title and the lab's Home button (none on the player card or in the header); Back returns to where you were
   run(`showHome(false); state.sim = null; select(null); setView("FF", null)`); await tick();
   const hr = run(`visibleRows("FF").find(r => T.level[r] === "mlb" && T.n[r] >= 300 && !!trajOf(r))`);
-  ok((getEl("#navHome")._h.click || []).length === 0 && /id="navHome" data-gohome/.test(markup), "the header has a Home button");
+  ok(/id="homeLink"/.test(markup) && (getEl("#homeLink")._h.click || []).length === 1, "the header's title leads home");
   run(`select(${hr})`); await tick();
   ok(run("state.cardOpen") && !/data-gohome/.test(getEl("#cardNav").innerHTML), "the player card has no Home button of its own (user, 2026-11-14)");
   const nH = run("NAV.idx");
@@ -720,6 +722,17 @@ const J = JSON.stringify;
   ok(/Run value \/ 100/.test(cp) && cp.includes(`>${rvP}</b>`) && /Defining traits/.test(cp) && nRows >= 4 && nRows <= 5 && cp.includes(run(`PTN[T.pitch_type[${hr}]]`)),
     `the map card shows the pitch's run value (${rvP}th percentile among MLB pitches of its type) and ${nRows - 1} defining traits`);
   run("select(null)"); await tick();
+
+  // ---- a name searched in the header while the leaderboard is open: the map comes back to show him (user, 2026-11-14)
+  run(`setView("FF", null); setTableGroup("Results", "t:whiff")`); await tick();
+  const nTb = run("NAV.idx");
+  getEl("#search").value = run(`T.name[${hr}]`);
+  getEl("#search")._h.change[0]({ target: getEl("#search") }); await tick();
+  ok(getEl("#mTable").hidden === true && !run("state.tblGroup") && run("state.preview") && run("T.pitcher[state.sel]") === run(`T.pitcher[${hr}]`) && run("NAV.idx") === nTb + 1,
+    "a name searched from the leaderboard closes it and shows him on the map, as one step");
+  run("navBack()"); await tick(); await tick();
+  ok(run("state.tblGroup") === "Results" && getEl("#mTable").hidden === false, "…and Back returns to the leaderboard");
+  run("closeTable(); select(null)"); await tick();
 
   // ---- the header's Pitch simulation: his lab, or a box to find someone
   getEl("#hSim")._h.click[0]({}); await tick();
