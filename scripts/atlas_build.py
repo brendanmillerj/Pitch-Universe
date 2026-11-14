@@ -922,6 +922,145 @@ def uniqueness(types):
     return out
 
 
+# ---- the home page's "Biggest changes since <last season>" (user, 2026-11-14)
+# First-draft thresholds, to tune after reading analysis/biggest_changes.csv.
+CHANGE_MIN_N = {"mlb": 500, "aaa": 300}   # pitches thrown in each of the two seasons, at that level
+CHANGE_NOW, CHANGE_THEN, CHANGE_NEW = 0.10, 0.05, 0.02   # usage that counts this season / last season; under 2% last season = new
+CHANGE_TOP, CHANGE_REVIEW = 5, 25
+CHANGE_CSV = paths.ROOT / "analysis" / "biggest_changes.csv"
+PTN_NAME = {"FF": "Four-seam", "SI": "Sinker", "FC": "Cutter", "SL": "Slider", "ST": "Sweeper", "CU": "Curveball",
+            "CH": "Changeup", "FS": "Splitter"}   # the page's PTN
+# the measures a reason can name, in the page's display units (type_display): key, value, unit, decimals, words (up, down)
+CHANGE_WORDS = [
+    ("velo", lambda t: t.release_speed, "mph", 1, ("harder", "softer")),
+    ("ivb", lambda t: 12 * t.pfx_z, "in", 1, None),
+    ("hb", lambda t: -12 * t.pfx_x, "in", 1, None),
+    ("spin", lambda t: t.release_spin_rate, "rpm", 0, ("more spin", "less spin")),
+    ("spin_axis", lambda t: spin_axis_deg(t.spin_sin, t.spin_cos), "°", 0, ("new spin direction", "new spin direction")),
+    ("arm_angle", lambda t: t.arm_angle, "°", 1, ("higher arm angle", "lower arm angle")),
+    ("rel_height", lambda t: t.release_pos_z, "ft", 2, ("higher release", "lower release")),
+    ("rel_side", lambda t: -t.release_pos_x, "ft", 2, ("wider release", "narrower release")),   # arm-side +, as the page's rel_side
+    ("extension", lambda t: t.release_extension, "ft", 2, ("more extension", "less extension")),
+    ("vaa", lambda t: t.vaa_above_avg, "°", 2, ("flatter approach", "steeper approach")),
+]
+
+
+def _delta(key, x0, x1):
+    """x1 - x0; for the spin axis the short way round the circle."""
+    return (x1 - x0 + 180) % 360 - 180 if key == "spin_axis" else x1 - x0
+
+
+def _y2y_scale(t, W):
+    """How much each reason measure usually moves for the same MLB pitch from one season to the next, per pitch type
+    (a robust SD, 1.4826 x MAD, so the big changes being looked for don't set their own yardstick). An 11-degree drop
+    in arm angle is the headline though arm angles vary a lot between pitchers; a 1 mph change is not."""
+    keys = list(W)
+    V = pd.DataFrame(W).assign(pitcher=t.pitcher.to_numpy(), season=t.season.to_numpy(), pitch_type=t.pitch_type.to_numpy())
+    V = V[(t.level == "mlb").to_numpy() & (t.n >= 100).to_numpy()]
+    parts = []
+    for s in SEASONS[1:]:
+        a = V[V.season == s - 1].set_index(["pitcher", "pitch_type"])
+        b = V[V.season == s].set_index(["pitcher", "pitch_type"])
+        j = a.index.intersection(b.index)
+        parts.append(pd.DataFrame({k: _delta(k, a.loc[j, k].to_numpy(), b.loc[j, k].to_numpy()) for k in keys})
+                     .assign(pitch_type=j.get_level_values("pitch_type")))
+    dd = pd.concat(parts, ignore_index=True)
+    mad = lambda x: 1.4826 * float((x - x.median()).abs().median())
+    return {k: dd.groupby("pitch_type")[k].agg(mad) for k in keys}
+
+
+def _change_word(key, x0, x1, words, tip=False):
+    """A change in plain words, worded as the page's SHAPE_DIFFS: a pitch's "ride" is drop when it sinks. tip: the
+    form that follows an amount ("8.8 in more ride", not "8.8 in rides more")."""
+    up = x1 > x0
+    if words:
+        return words[0] if up else words[1]
+    if key == "ivb":
+        if x0 >= 0 and x1 >= 0:
+            return "more ride" if up else "less ride"
+        if x0 <= 0 and x1 <= 0:
+            return "less drop" if up else "more drop"
+        return ("more ride" if up else "more drop") if tip else ("rides more" if up else "drops more")
+    if x0 >= 0 and x1 >= 0:   # hb, arm-side +
+        return "more arm-side run" if up else "less arm-side run"
+    if x0 <= 0 and x1 <= 0:
+        return "less glove-side break" if up else "more glove-side break"
+    return ("more arm-side break" if up else "more glove-side break") if tip else ("breaks more to the arm side" if up else "breaks more to the glove side")
+
+
+def biggest_changes(types, pitchers, write_csv=True):
+    """The pitchers whose pitches changed most since last season, five per level, for the home page.
+
+    In the all-pitches map's space (the 15 identity measures, scaled as that map scales them, fitted on MLB rows so
+    Triple-A is measured the same way), each pitch he throws >= CHANGE_NOW of the time this season is matched to the
+    nearest pitch he threw >= CHANGE_THEN of the time last season, and his score is those distances averaged by
+    usage: how far his arsenal moved on the map. Matching to the nearest pitch means a relabel (the same slider now
+    called a sweeper) scores ~0, and a new arm slot moves every pitch. The reason names the pitch that moved most:
+    "New sweeper" when he threw that type under CHANGE_NEW of the time last season (trajectories.py's add threshold),
+    else its one or two measures that moved most for how much they usually move in a year (_y2y_scale), in words; numbers go in `tip`.
+    Writes the top CHANGE_REVIEW per level to CHANGE_CSV for review.
+    """
+    S = max(SEASONS)
+    S0 = S - 1
+    t = types.reset_index(drop=True)
+    mlb = (t.level == "mlb").to_numpy()
+    sc = scaler_fit(t.loc[mlb, MAP_FEATURES], t.loc[mlb, "pitch_type"].to_numpy(), MAP_BLOCKS)
+    X = scaler_apply(sc, t[MAP_FEATURES], t.pitch_type.to_numpy())
+    W = {k: f(t).astype("float64") for k, f, *_ in CHANGE_WORDS}
+    sd = _y2y_scale(t, W)
+    pk = pitchers.set_index(["pitcher", "season", "level"])
+    rows = []
+    for (level, pid), g in t[t.season.isin([S0, S])].groupby(["level", "pitcher"]):
+        a, b = g[g.season == S0], g[g.season == S]
+        if a.empty or b.empty or (pid, S0, level) not in pk.index or (pid, S, level) not in pk.index:
+            continue
+        p0, p1 = pk.loc[(pid, S0, level)], pk.loc[(pid, S, level)]
+        if not (p0.n >= CHANGE_MIN_N.get(level, 500) and p1.n >= CHANGE_MIN_N.get(level, 500)):
+            continue
+        now, then = b[b.usage >= CHANGE_NOW], a[a.usage >= CHANGE_THEN]
+        if now.empty or then.empty:
+            continue
+        D = np.linalg.norm(X[now.index.to_numpy()][:, None, :] - X[then.index.to_numpy()][None, :, :], axis=2)
+        d, w = D.min(axis=1), now.usage.to_numpy(dtype="float64")
+        k = int(np.argmax(w * d))
+        top, near = now.iloc[k], then.iloc[int(np.argmin(D[k]))]
+        pt, name = top.pitch_type, PTN_NAME.get(top.pitch_type, top.pitch_type)
+        before = p0.get(f"{pt}_usage_all", np.nan)
+        moved = []
+        if not (before >= CHANGE_NEW):   # NaN (never thrown) or under 2%: a new pitch
+            reason = f"New {name.lower()}"
+            tip = f"New {name.lower()} in {S}: {100 * top.usage:.0f}% of his pitches ({100 * (before if before == before else 0):.0f}% in {S0})"
+        else:
+            same = a[a.pitch_type == pt]
+            ref = same.iloc[0] if len(same) else near   # his same pitch last season (it has a row with 40+ pitches)
+            for key, _, unit, dec, words in CHANGE_WORDS:
+                x0, x1, s = W[key][ref.name], W[key][top.name], sd[key].get(pt, np.nan)
+                if np.isfinite(x0) and np.isfinite(x1) and s > 0:
+                    moved.append((abs(_delta(key, x0, x1)) / s, key, x0, x1, unit, dec, words))
+            moved.sort(key=lambda m: -m[0])
+            pick = [m for m in moved[:2] if m[0] >= 1.5] or moved[:1]   # at least 1.5 of its usual season-to-season moves
+            reason = f"{name}: " + ", ".join(_change_word(m[1], m[2], m[3], m[6]) for m in pick)
+            amt = lambda m: f"{abs(_delta(m[1], m[2], m[3])):.{m[5]}f}" + (m[4] if m[4] == "°" else " " + m[4])
+            said = lambda m: f"{amt(m)} change in spin direction" if m[1] == "spin_axis" else f"{amt(m)} {_change_word(m[1], m[2], m[3], m[6], tip=True)}"
+            tip = f"{name}, {S0} to {S}: " + ", ".join(said(m) for m in pick)
+        rows.append({"level": level, "pitcher": int(pid), "name": first_last(top.player_name), "season": S, "pt": pt,
+                     "score": float((w * d).sum() / w.sum()), "reason": reason, "tip": tip,
+                     "moved_most": float(d[k]), "usage": float(top.usage), "n_before": int(p0.n), "n_now": int(p1.n),
+                     **{f"d_{m[1]}": round(_delta(m[1], m[2], m[3]), 3) for m in moved},
+                     **{f"z_{m[1]}": round(m[0], 2) for m in moved}})
+    if not rows:
+        return None
+    res = pd.DataFrame(rows).sort_values(["level", "score"], ascending=[True, False])
+    res["rank"] = res.groupby("level").cumcount() + 1
+    if write_csv:
+        res[res["rank"] <= CHANGE_REVIEW].to_csv(CHANGE_CSV, index=False, float_format="%.3f")
+    top5 = res[res["rank"] <= CHANGE_TOP]
+    log("biggest changes since " + str(S0) + ": " + "; ".join(f"{l}: " + ", ".join(f"{r.name} ({r.reason})" for r in g.itertuples())
+                                                              for l, g in top5.groupby("level")))
+    return {"from": S0, "to": S, "changes": {l: [{k: r[k] for k in ("pitcher", "season", "pt", "name", "reason", "tip")}
+                                                 for r in g.to_dict("records")] for l, g in top5.groupby("level")}}
+
+
 def pitcher_display(p):
     d = pd.DataFrame(index=p.index)
     d["arm_angle"] = p.arm_angle
@@ -1012,9 +1151,12 @@ def export(types, pitchers, t_space, lead, fa, spin, mv, tj, teams, levels, team
         + "; ".join(f"{l}: {int((pitchers.level == l).sum()):,} pitcher-seasons, {int((types.level == l).sum()):,} pitches"
                     for l in levels))
 
+    home = biggest_changes(types, pitchers)   # the home page's "Biggest changes since <last season>"
+
     data = {
         "seasons": list(SEASONS),
         "levels": list(levels),
+        **({"home": home} if home else {}),
         "teams_aaa": {c: v for c, v in teams_aaa.items() if c in set(",".join(teams.teams).split(","))},
         "pitchers": columnar(p_out),
         "types": columnar(t_out),

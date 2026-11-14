@@ -175,6 +175,20 @@ const J = JSON.stringify;
   ok(homeMk.includes('href="https://github.com/brendanmillerj"') && homeMk.includes(">Contact Brendan Miller<") && run("METHODS_URL") === "" && /id="homeMethods"[^>]*hidden/.test(homeMk), "Contact links to GitHub; no methodology button until the paper is out");
   const boardChips = [...homeMk.matchAll(/data-home="board" data-g="([^"]+)" data-k="([^"]+)" data-v="(\w+)"[^>]*>([^<]+)</g)].map(m => ({ g: m[1], k: m[2], v: m[3], t: m[4] }));
   ok(boardChips.length === 5 && boardChips.every(b => run(`!!VMAP.t[${J(b.k)}] && VMAP.t[${J(b.k)}].group === ${J(b.g)} && !!VIEWS[${J(b.v)}]`)), "five leaderboard chips, each a real measure in its tab: " + boardChips.map(b => b.t).join(", "));
+  // "Biggest changes since <last season>" (D.home from atlas_build.biggest_changes; data built before it gets a
+  // stand-in list of five real pitches, so the chips and their way in are still checked)
+  if (!run("!!(D.home && D.home.changes && D.home.changes.mlb && D.home.changes.mlb.length)"))
+    run(`(() => { const S = Math.max(...D.seasons), rs = ALL_ROWS.filter(r => T.level[r] === "mlb" && T.season[r] === S && T.n[r] >= 300).slice(0, 5);
+      D.home = { from: S - 1, to: S, changes: { mlb: rs.map(r => ({ pitcher: T.pitcher[r], season: S, pt: T.pitch_type[r], name: T.name[r],
+        reason: PTN[T.pitch_type[r]] + ": harder", tip: PTN[T.pitch_type[r]] + ", " + (S - 1) + " to " + S + ": 2.0 mph harder" })) } };
+      paintHomeChanges(); })()`);
+  const chgList = run("D.home.changes.mlb"), chgHTML = getEl("#homeChgChips").innerHTML;
+  const chgBtns = [...chgHTML.matchAll(/data-home="chg" data-pid="(\d+)" data-season="(\d+)" data-pt="(\w+)" data-level="mlb" title="([^"]+)"[^>]*>([^<]+)</g)];
+  ok(getEl("#homeChg").hidden === false && getEl("#homeChgLbl").textContent === `Biggest changes since ${run("D.home.from")}` && chgBtns.length === chgList.length
+    && chgBtns.every((m, k) => +m[1] === chgList[k].pitcher && m[5] === run(`esc(${J(chgList[k].name)})`)), `five name chips under "${getEl("#homeChgLbl").textContent}", each with what changed as its tooltip`);
+  const chg0 = chgList[0], chg0row = run(`tRow(${chg0.pitcher}, ${chg0.season}, ${J(chg0.pt)}, "mlb")`);
+  ok(Number.isInteger(chg0row), "the first change is a pitch on the map");
+
   // each way in: a fresh map at the chosen level, one Back/Forward step from home
   const homeStep = async (dataset, what) => { await run(`homeAct(${J({ dataset })})`); await tick(); await pump(1000); await tick(); await pump(1000); await tick();
     const ok1 = !run("state.home") && getEl("#home").hidden === true && !getEl("#app").inert && run("NAV.idx") === 1;
@@ -184,6 +198,9 @@ const J = JSON.stringify;
   ok(run("state.view") === "all" && run("state.color.all") === "cat:pitch_type" && !run("state.rail.open") && run("hashFor()") === "#all", "…the full map, clusters off, at #all");
   await back();
   ok(run("state.home") === true && run("NAV.idx") === 0 && getEl("#home").hidden === false, "Back from the map: home again");
+  await homeStep({ home: "chg", pid: String(chg0.pitcher), season: String(chg0.season), pt: chg0.pt, level: "mlb" }, "a biggest-changes chip");
+  ok(run("state.preview") && run("state.sel") === chg0row && run("state.view") === "all", `…${chg0.name} on the map, on the pitch that changed`);
+  await back();
   await homeStep({ home: "clusters", v: "SL" }, "the Slider chip");
   ok(run("state.view") === "SL" && run("state.color.t") === "cat:subcluster" && run("state.rail.open") && run("state.rail.tab") === "clusters", "…the slider map with its clusters on and listed");
   await back();

@@ -7402,6 +7402,16 @@ function syncHome(fromMap) {
   if (fromMap) { const lv = document.getElementById(state.level === "aaa" ? "homeAAA" : "homeMLB"); if (lv) lv.checked = true; }
   const aaa = homeLevel() === "aaa";
   $("#homeBoards").querySelectorAll("[data-mlb-only]").forEach(b => { b.hidden = aaa; });
+  paintHomeChanges();
+}
+// "Biggest changes since <last season>": the five pitchers at this level whose pitches changed most (atlas_build's
+// biggest_changes); a chip shows him on the map on the pitch that changed, its tooltip says what changed
+function paintHomeChanges() {
+  const H = D.home, lv = homeLevel(), list = H && H.changes ? H.changes[lv] || [] : [];
+  $("#homeChgLbl").textContent = H ? `Biggest changes since ${H.from}` : "Biggest changes";
+  $("#homeChgChips").innerHTML = list.map(c => `<button type="button" class="hchip" data-home="chg" data-pid="${c.pitcher}" data-season="${c.season}" data-pt="${esc(c.pt)}" data-level="${lv}"`
+    + ` title="${esc(c.tip)}" aria-label="${esc(c.name)}: ${esc(c.reason)}">${esc(c.name)}</button>`).join("");
+  $("#homeChg").hidden = !list.length;
 }
 // home's dynamic parts and wiring, once at boot
 function buildHome() {
