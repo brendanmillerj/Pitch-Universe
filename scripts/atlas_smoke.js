@@ -256,15 +256,21 @@ const J = JSON.stringify;
 
   // ---- layout
   const hEnd = markup.indexOf("</header>");
-  ok(["hBoards", "hSim", "navBack", "navFwd", "startOver"].every(id => markup.indexOf(`id="${id}"`) < hEnd && markup.indexOf(`id="${id}"`) > 0), "header: ← Back, Leaderboards, Pitch simulation, Start over, Forward →");
+  ok(["navBack", "navFwd", "startOver", "seasonChips", "throwsSeg", "minIP"].every(id => markup.indexOf(`id="${id}"`) < hEnd && markup.indexOf(`id="${id}"`) > 0)
+    && ["hBoards", "hSim", "hClu"].every(id => markup.indexOf(`id="${id}"`) > hEnd), "header: ← Back, search, Season · Hand · Innings, Start over, Forward → (the actions live in the left column)");
+  const tc = markup.indexOf('id="typeCol"'), at = id => markup.indexOf(`id="${id}"`);
+  ok(tc > 0 && at("hBoards") > tc && at("hBoards") < at("hSim") && at("hSim") < at("hClu") && at("hClu") < at("lsColorBtn") && at("lsColorBtn") < at("slOpen"),
+    "left column opens with four drop-downs: Show leaderboard, Simulate pitch, Pitch Types/Clusters, Color clusters by measurement");
+  ok(at("pnClusters") > at("hClu") && at("universe") > at("pnClusters") && at("universe") < at("lsColorBtn") && at("colorBtn") > at("lsColorBtn") && at("ellOn") > at("lsColorBtn") && at("ellOn") < at("slOpen"),
+    "…the clusters switch and the pitch types sit in Pitch Types/Clusters; colouring and ellipses in the fourth");
   const hStart = markup.indexOf('<header class="head">'), hIds = [...markup.slice(hStart, hEnd).matchAll(/<button[^>]* id="(\w+)"/g)].map(m => m[1]);
   ok(hIds[0] === "navBack" && hIds[hIds.length - 1] === "navFwd" && !markup.includes('id="navHome"'), "like a browser: ← Back first in the header, Forward → last, no Home button (the title leads home): " + hIds.join(", "));
   const pa = markup.indexOf('id="plotArea"'), pl = markup.indexOf('<div id="plot"');
   ok(["mapTools", "dimSeg", "laySeg", "lqual"].every(id => { const k = markup.indexOf(`id="${id}"`); return k > pa && k < pl && k > hEnd; }), "2D/3D, Movement/t-SNE and the meter sit on the map, beside #plot (which Plotly empties)");
   ok(!markup.includes('id="clusterSeg"') && /id="pnClusters"[^>]*role="switch"/.test(markup), "the Clusters row is the one switch (no switch inside the panel)");
-  ok(markup.indexOf('id="panelNav"') > markup.indexOf('id="lvlSeg"') && markup.indexOf('id="panelNav"') < markup.indexOf('id="universe"'), "Clusters · Pitchers · Groups rows under MLB | Triple-A");
+  ok(markup.indexOf('id="panelNav"') > markup.indexOf('id="lvlSeg"'), "Pitchers · Groups rows under MLB | Triple-A");
   ok(!markup.includes('id="railPills"') && !markup.includes('id="mkX"'), "no pills or × on the map");
-  ok(markup.indexOf('class="measseg"') > markup.indexOf('id="typeCol"') && markup.indexOf('class="measseg"') < markup.indexOf('id="lvlSeg"'), "filter at the top of the left column, above MLB | Triple-A");
+  ok(markup.indexOf('class="measseg"') > markup.indexOf('id="typeCol"') && markup.indexOf('class="measseg"') < markup.indexOf('id="lvlSeg"'), "filter above MLB | Triple-A");
   ok(!markup.includes('id="mapTool"') && !markup.includes('id="ptype"') && !markup.includes("Find pitchers"), "toolbar row and finder menus removed");
   ok(/<title>Pitch-omics<\/title>/.test(html) && /<h1><a href="#" class="homelink" id="homeLink"[^>]*>Pitch-omics<\/a><\/h1>/.test(html), "named Pitch-omics; the header's title leads home");
   ok(run("!!D.pitch_clusters") === !getEl("#clWrap").hidden, "cluster switch visibility follows the data");
@@ -680,10 +686,15 @@ const J = JSON.stringify;
   getEl("#mtHide")._h.click[0]({}); await tick();
   ok(getEl("#mTable").hidden === true && !getEl("#app").classList.contains("with-table"), "× closes it");
   getEl("#hBoards")._h.click[0]({}); await tick();
-  ok(run("state.tblGroup") === "Whole pitcher" && getEl("#mTable").hidden === false && getEl("#hBoards").getAttribute("aria-pressed") === "true"
-    && run("state.seasons.size") === 1, "the header's Leaderboards reopens the last tab, on the latest season, and reads as on");
+  ok(getEl("#lsBoards").hidden === false && getEl("#hBoards").getAttribute("aria-expanded") === "true" && run("tableGroups()").every(g => getEl("#lbList").innerHTML.includes(`data-g="${g}"`)),
+    "Show leaderboard opens its list: one button per category");
+  run(`openBoard("Results")`); await tick();
+  ok(run("state.tblGroup") === "Results" && getEl("#mTable").hidden === false && run("state.seasons.size") === 1,
+    "…a category opens its leaderboard on the latest season");
+  run(`openBoard("Results")`); await tick();
+  ok(getEl("#mTable").hidden === true && !run("state.tblGroup"), "…and again closes it");
   getEl("#hBoards")._h.click[0]({}); await tick();
-  ok(getEl("#mTable").hidden === true && getEl("#hBoards").getAttribute("aria-pressed") === "false", "…and closes it again");
+  ok(getEl("#lsBoards").hidden === true && getEl("#hBoards").getAttribute("aria-expanded") === "false", "…and the section closes");
   ok(!markup.includes('id="tblOpen"'), "no second Show table in the left column");
   // the sliders and the map's colours rank against the same MLB pool
   run(`setView("FF", null); state.ranges = { "t:velo": [90, 100] }; render()`); await tick();
@@ -741,25 +752,22 @@ const J = JSON.stringify;
   getEl("#hSimFind")._h.submit[0]({ preventDefault() {} }); await tick(); await tick(); await tick();
   ok(run("state.simOpen") && run("T.pitcher[state.sel]") === run(`T.pitcher[${hr}]`) && getEl("#hSimPop").hidden === true, "…a name there opens his lab");
   run("closeSim(true)"); await tick();
-  getEl("#hSim")._h.click[0]({}); await tick();
-  ok(run("state.simOpen"), "…and with a pitcher on screen it opens his lab straight away");
+  run("syncLeftNow()");
+  ok(getEl("#hSimCur").hidden === false && getEl("#hSimCur").innerHTML.includes(run(`T.name[state.sel]`)), "…with a pitcher on screen, the section offers his pitch");
+  getEl("#hSimCur")._h.click[0]({}); await tick();
+  ok(run("state.simOpen"), "…which opens his lab");
   run("closeSim(true); select(null)"); await tick();
 
-  // ---- the header's Clusters menu (user, 2026-11-14): a pitch type's map with its clusters coloured and listed
-  ok(hIds.indexOf("hClu") === hIds.indexOf("hSim") + 1, "Clusters sits right after Pitch simulation in the header");
+  // ---- Pitch Types/Clusters (user, 2026-11-14): the types and the clusters switch, under one drop-down
   run(`clustersOff(); railClose(); select(null); setView("all", null)`); await tick();
   getEl("#hClu")._h.click[0]({}); await tick();
-  const nClTypes = run("TYPES.filter(t => D.pitch_clusters.types[t] && D.pitch_clusters.types[t].clusters.length).length");
-  let cm = getEl("#hCluMenu").innerHTML;
-  ok(getEl("#hCluMenu").hidden === false && (cm.match(/data-clv="/g) || []).length === 1 + nClTypes && /data-clv="all"/.test(cm) && !/data-clv="off"/.test(cm) && /\d+ clusters/.test(cm),
-    `Clusters opens a menu: All pitches and the ${nClTypes} pitch types, each with its cluster count`);
-  getEl("#hCluMenu")._h.click[0](ev("data-clv", "SL")); await tick(); await pump(1000); await tick(); await pump(1000); await tick();
-  ok(run("state.view") === "SL" && run("clustersOn()") && run("state.rail.open") && run("state.rail.tab") === "clusters" && getEl("#hCluMenu").hidden === true,
-    "…a pitch type opens its map with the clusters coloured and listed");
-  getEl("#hClu")._h.click[0]({}); await tick(); cm = getEl("#hCluMenu").innerHTML;
-  ok(/data-clv="SL" aria-current="true"/.test(cm) && /data-clv="off"/.test(cm), "…with clusters on, the menu marks this map and offers Clusters off");
-  getEl("#hCluMenu")._h.click[0](ev("data-clv", "off")); await tick();
-  ok(!run("clustersOn()") && !run("state.rail.open"), "…and Clusters off turns them off");
+  ok(getEl("#lsTypes").hidden === false && getEl("#hClu").getAttribute("aria-expanded") === "true", "Pitch Types/Clusters opens its list");
+  ok(getEl("#lsTypesNow").textContent === "All pitches", "closed or open, it says which map is on: " + getEl("#lsTypesNow").textContent);
+  getEl("#pnClusters")._h.click[0]({}); await tick();
+  ok(run("clustersOn()") && / · clusters on$/.test(getEl("#lsTypesNow").textContent), "its clusters switch turns clusters on, and the button says so");
+  run("clustersOff()"); await tick();
+  ok(!run("clustersOn()") && getEl("#lsTypesNow").textContent === "All pitches", "…and off");
+  getEl("#hClu")._h.click[0]({}); await tick();
   run(`setView("all", null)`); await tick();
 
   // ---- his other seasons of the pitch on the map (user, 2026-11-14): full strength whatever the season filter, a year
@@ -837,10 +845,9 @@ const J = JSON.stringify;
 
   // ---- one button rule: white = press it, ink = open or on; no green
   ok(/one button rule/.test(html) && /\.hact\[aria-expanded="true"\], \.hact\.is-on/.test(html), "header buttons: white until open or on, then ink");
-  run(`state.color.t = "cat:subcluster"; render()`); await tick();
-  const cluOn = getEl("#hClu").classList.contains("is-on");
-  run(`state.color.t = "cat:pitch_type"; render()`); await tick();
-  ok(cluOn && !getEl("#hClu").classList.contains("is-on"), "the header's Clusters is ink while clusters are on");
+  getEl("#lsColorBtn")._h.click[0]({}); await tick();
+  ok(getEl("#lsColor").hidden === false && getEl("#lsColorBtn").getAttribute("aria-expanded") === "true" && /\.lsbtn\[aria-expanded="true"\]/.test(html), "the colour section opens, and its button turns ink while open");
+  getEl("#lsColorBtn")._h.click[0]({}); await tick();
   run(`preview(${hr})`); await tick();
   ok(/^Lookalikes<span class="lk-sub">Pitchers whose four-seam looks like his<\/span>$/.test(getEl("#cbTitle").innerHTML) && /\.selcta \.cta-pitch, \.selcta \.cta-look \{ border-top: 2px solid var\(--ink\)/.test(html),
     "the map card has two headed sections, the pitch and its Lookalikes");

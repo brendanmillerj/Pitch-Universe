@@ -242,7 +242,7 @@ button, input, select { font: inherit; color: inherit; }
 .typecol .mbtn { border-color: var(--ink); background: var(--field); color: var(--ink); }
 .typecol .mbtn:hover { background: var(--wash); }
 .typecol .mbtn[aria-pressed="true"] { background: var(--ink); color: var(--field); border-color: var(--ink); }
-.typecol #seasonChips button[aria-pressed="false"] { color: var(--muted); }
+#seasonChips button[aria-pressed="false"] { color: var(--muted); }
 .ellrow { display: inline-flex; align-items: center; gap: 4px; }
 /* dark buttons on the map: outline, and the chosen one filled */
 .dimseg, .mseg, .ellp, .mk-scale { display: inline-flex; border: 1.5px solid var(--map-muted); border-radius: var(--r); overflow: hidden; background: var(--map-chrome); }
@@ -1825,6 +1825,36 @@ html.at-home .app { visibility: hidden; }
 .lk-chips button { border-color: var(--ink); color: var(--ink); }
 .lk-chips button[aria-pressed="true"] { background: var(--ink); color: var(--field); box-shadow: none; }
 .lk-cmp:hover { background: var(--wash); color: var(--ink); }
+/* ---- header: Season, Hand, Innings beside the search (user, 2026-11-14) */
+.hfilt { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px; }
+.hf { display: flex; flex-direction: column; gap: 4px; }
+.hf .mseg button { padding: 0 10px; }
+.hsel select { min-height: calc(var(--ctl) - 3px); padding: 0 28px 0 10px; }
+.hsel select:disabled { color: var(--muted); cursor: default; }
+.finders { flex-basis: 240px; }
+/* ---- the left column's drop-down sections: a full-width button (white closed, ink open) over its contents */
+.typecol .lsec { display: flex; flex-direction: column; gap: 6px; }
+.lsbtn { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 6px; width: 100%; min-height: var(--ctl); padding: 7px 10px;
+  border: 1.5px solid var(--ink); border-radius: var(--r); background: var(--field); color: var(--ink); text-align: left; cursor: pointer; }
+.lsbtn:hover { background: var(--wash); }
+.lsbtn[aria-expanded="true"], .lsbtn[aria-expanded="true"]:hover { background: var(--ink); color: var(--field); }
+.lsbtn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.lsl { grid-column: 1; font: 600 14px/1.25 var(--font-ui); }
+.lsnow { grid-column: 1; font: 400 12px/1.3 var(--font-ui); color: var(--ink2); }
+.lsnow:empty { display: none; }
+.lsbtn[aria-expanded="true"] .lsnow { color: var(--field); opacity: 0.85; }
+.lschev { grid-column: 2; grid-row: 1 / span 2; width: 8px; height: 8px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); margin: -4px 2px 0; }
+.lsbtn[aria-expanded="true"] .lschev { transform: rotate(-135deg); margin-top: 4px; }
+.lsbody { display: flex; flex-direction: column; gap: 6px; padding: 2px 0 8px 10px; border-left: 2px solid var(--ink); margin-left: 4px; }
+.lsbody[hidden] { display: none; }
+.lslist { display: flex; flex-direction: column; gap: 4px; }
+.typecol .lsbody .ubtn { min-height: 30px; }
+.lscur { justify-content: flex-start; white-space: normal; text-align: left; line-height: 1.25; padding: 6px 10px; }
+.typecol .lsbody .find-box { min-height: 34px; }
+.typecol .lsbody .find input[type=search] { font-size: 14px; }
+.typecol .lsdiv { margin: 4px 0; }
+.typecol .lsbody .mbtn { width: 100%; text-align: left; }
+@media (max-width: 719px) { .typecol > .lsec, .typecol > .measseg, .typecol > .lsdiv { flex: 1 1 100%; } .typecol .lsdiv { height: 1px; margin: 4px 0; } }
 /* ---- the map card in two sections (user, 2026-11-14: "I can't tell what goes with what"): the pitch, then its
    lookalikes. One ink rule and one heading style open each section; nothing inside a section draws a line. */
 .selcta .cta-pitch, .selcta .cta-look { border-top: 2px solid var(--ink); padding-top: 10px; margin-top: 4px; }
@@ -1980,27 +2010,19 @@ html.at-home .app { visibility: hidden; }
           <span class="help" id="searchMsg" role="status" aria-live="polite"></span>
         </form>
       </div>
-      <!-- the leaderboards (the measure table) and the Pitch Simulation Lab, as on the home page -->
-      <div class="hacts" role="group" aria-label="Leaderboards and pitch simulation">
-        <button type="button" class="hact" id="hBoards" aria-pressed="false" title="Every pitcher on this map in a table, ranked by any measure">Leaderboards</button>
-        <div class="hsimwrap">
-          <button type="button" class="hact" id="hSim" aria-expanded="false" aria-controls="hSimPop" title="Fly a pitcher’s pitches in the Pitch Simulation Lab">Pitch simulation</button>
-          <div class="hsimpop" id="hSimPop" hidden>
-            <form class="find" id="hSimFind" role="search">
-              <label class="find-lbl" for="hSimSearch">Search a pitcher to simulate</label>
-              <div class="find-box">
-                <svg class="find-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-                <input id="hSimSearch" type="search" placeholder="e.g. Paul Skenes" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="hSimSugg">
-                <ul class="sugg" id="hSimSugg" role="listbox" aria-label="Matching pitchers" hidden></ul>
-              </div>
-              <span class="help" id="hSimMsg" role="status" aria-live="polite"></span>
-            </form>
-          </div>
-        </div>
-        <div class="hclwrap">
-          <button type="button" class="hact" id="hClu" aria-haspopup="true" aria-expanded="false" aria-controls="hCluMenu" title="A pitch type’s map with its clusters coloured and listed">Clusters <span class="hcaret" aria-hidden="true">▾</span></button>
-          <div class="hclmenu" id="hCluMenu" role="menu" aria-label="Clusters on which map" hidden></div>
-        </div>
+      <!-- which pitches the map shows (user, 2026-11-14: up top, out of the left column) -->
+      <div class="hfilt" role="group" aria-label="Which pitches the map shows">
+        <div class="hf"><span class="find-lbl" id="seasonLbl">Season</span><div class="mseg" id="seasonChips" role="group" aria-labelledby="seasonLbl"></div></div>
+        <div class="hf"><span class="find-lbl" id="handLbl">Hand</span>
+          <div class="mseg" id="throwsSeg" role="group" aria-labelledby="handLbl">
+            <button type="button" id="thAll" data-v="all" title="Both hands">Both</button>
+            <button type="button" id="thR" data-v="R" title="Right-handed pitchers">RHP</button>
+            <button type="button" id="thL" data-v="L" title="Left-handed pitchers">LHP</button>
+          </div></div>
+        <div class="hf"><label class="find-lbl" for="minIP">Innings</label>
+          <span class="sel mselect hsel"><select id="minIP" aria-describedby="ipNote" title="Keep only pitchers who threw at least this many innings in the season each dot is from">
+            <option value="0">Any</option><option value="10">10+ IP</option><option value="20">20+ IP</option><option value="40">40+ IP</option><option value="60">60+ IP</option><option value="100">100+ IP</option><option value="150">150+ IP</option></select></span>
+          <span class="vh" id="ipNote" hidden>No innings counts for Triple-A, so this applies to MLB only.</span></div>
       </div>
       <div class="hnav">
       <button type="button" class="restart" id="startOver" title="The full map as it first opens: All pitches, MLB, no one selected, no filters, colored by pitch type. Your saved groups stay."><span aria-hidden="true">↺</span> Start over</button>
@@ -2026,6 +2048,68 @@ html.at-home .app { visibility: hidden; }
       <div class="mapbody">
       <!-- left of the map: the measure filter, level, the pitch types, coloring and map tools, then who is shown -->
       <div class="typecol" id="typeCol">
+        <!-- the left column (user, 2026-11-14): four drop-down sections first, each white until open (then ink) -->
+        <div class="lsec">
+          <button type="button" class="lsbtn" id="hBoards" data-ls aria-expanded="false" aria-controls="lsBoards"><span class="lsl">Show leaderboard</span><i class="lschev" aria-hidden="true"></i></button>
+          <div class="lsbody" id="lsBoards" hidden><div class="lslist" id="lbList" role="group" aria-label="Leaderboards"></div></div>
+        </div>
+        <div class="lsec">
+          <button type="button" class="lsbtn" id="hSim" aria-expanded="false" aria-controls="hSimPop"><span class="lsl">Simulate pitch</span><i class="lschev" aria-hidden="true"></i></button>
+          <div class="lsbody" id="hSimPop" hidden>
+            <button type="button" class="ubtn lscur" id="hSimCur" hidden></button>
+        <form class="find" id="hSimFind" role="search">
+          <label class="find-lbl" for="hSimSearch">Search a pitcher to simulate</label>
+          <div class="find-box">
+            <svg class="find-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+            <input id="hSimSearch" type="search" placeholder="e.g. Paul Skenes" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="hSimSugg">
+            <ul class="sugg" id="hSimSugg" role="listbox" aria-label="Matching pitchers" hidden></ul>
+          </div>
+          <span class="help" id="hSimMsg" role="status" aria-live="polite"></span>
+        </form>
+          </div>
+        </div>
+        <div class="lsec">
+          <button type="button" class="lsbtn" id="hClu" data-ls aria-expanded="false" aria-controls="lsTypes"><span class="lsl">Pitch Types/Clusters</span><span class="lsnow" id="lsTypesNow"></span><i class="lschev" aria-hidden="true"></i></button>
+          <div class="lsbody" id="lsTypes" hidden>
+            <div class="panelnav"><button type="button" class="ubtn" id="pnClusters" data-panel="clusters" role="switch" aria-checked="false">Clusters</button></div>
+            <nav class="universe" id="universe" aria-label="Choose a map: all pitches or one pitch type"></nav>
+          </div>
+        </div>
+        <div class="lsec">
+          <button type="button" class="lsbtn" id="lsColorBtn" data-ls aria-expanded="false" aria-controls="lsColor"><span class="lsl">Color clusters by measurement, with ellipses</span><span class="lsnow" id="lsColorNow"></span><i class="lschev" aria-hidden="true"></i></button>
+          <div class="lsbody" id="lsColor" hidden>
+          <div class="grp grp-color">
+            <label class="tcsub" id="colorLbl" for="colorBtn">Color pitchers by</label>
+          <span class="sel" id="colorAWrap">
+            <button type="button" class="colorbtn" id="colorBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="colorMenu"><span id="colorBtnTxt">Pitch type</span></button>
+            <div class="colormenu" id="colorMenu" hidden>
+              <input type="search" class="cm-search" id="cmSearch" placeholder="Search measures" aria-label="Search measures" autocomplete="off">
+              <div class="cm-list" id="cmList" role="listbox" aria-labelledby="colorLbl"></div>
+            </div>
+          </span>
+          <span class="combo" id="comboWrap" hidden>
+            <span class="sel" id="opWrap"><select id="op" aria-label="Combine with a second measure">
+              <option value="none">on its own</option>
+              <option value="div">÷ a second measure (ratio)</option>
+              <option value="sub">− a second measure (difference)</option>
+            </select></span>
+            <span class="sel" id="colorBWrap" hidden><select id="colorB" aria-label="Second measure"></select></span>
+          </span>
+            <button type="button" class="explbtn" id="explBtn" aria-expanded="false" aria-controls="explBox" hidden>Explain the meaning of this</button>
+            <button type="button" class="resetcolor" id="colorReset" title="Color by pitch type again"><span aria-hidden="true">↺</span> Reset to pitch type</button>
+          </div>
+          <button type="button" class="mbtn" id="teamOn" aria-pressed="false">Team colors</button>
+          <div class="ellrow">
+              <button type="button" class="mbtn" id="ellOn" aria-pressed="false">Show ellipses</button>
+              <div class="ellp" id="ellP" role="group" aria-label="Ellipse coverage" hidden>
+                <button type="button" data-v="50" title="Covers about half of each group">50%</button>
+                <button type="button" data-v="68" title="Covers about two-thirds (one SD)">68%</button>
+                <button type="button" data-v="95" title="Covers nearly all of each group">95%</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <span class="udiv lsdiv" aria-hidden="true"></span>
         <div class="measseg" role="group" aria-label="Filter by measures">
           <button type="button" class="measbtn" id="slOpen" aria-expanded="false" aria-controls="sliders"><span class="measarr" aria-hidden="true">‹</span><span id="slOpenTxt">Filter by measures</span></button>
           <button type="button" class="resetbtn" id="resetAll" disabled title="Reset filters: measures, the pitch cluster, free agents, the color-key range, season and hand">Reset</button>
@@ -2035,40 +2119,9 @@ html.at-home .app { visibility: hidden; }
         </div>
         <!-- the panels beside the map open from here; the open one is filled -->
         <div class="panelnav" id="panelNav" role="group" aria-label="Panels beside the map">
-          <button type="button" class="ubtn" id="pnClusters" data-panel="clusters" role="switch" aria-checked="false">Clusters</button>
           <button type="button" class="ubtn" id="pnPitchers" data-panel="pitchers" aria-pressed="false">Pitchers</button>
           <button type="button" class="ubtn" id="pnGroups" data-panel="groups" aria-pressed="false">Groups</button>
         </div>
-        <nav class="universe" id="universe" aria-label="Choose a map: all pitches or one pitch type"></nav>
-        <div class="grp grp-color">
-          <label class="tcsub" id="colorLbl" for="colorBtn">Color pitchers by</label>
-        <span class="sel" id="colorAWrap">
-          <button type="button" class="colorbtn" id="colorBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="colorMenu"><span id="colorBtnTxt">Pitch type</span></button>
-          <div class="colormenu" id="colorMenu" hidden>
-            <input type="search" class="cm-search" id="cmSearch" placeholder="Search measures" aria-label="Search measures" autocomplete="off">
-            <div class="cm-list" id="cmList" role="listbox" aria-labelledby="colorLbl"></div>
-          </div>
-        </span>
-        <span class="combo" id="comboWrap" hidden>
-          <span class="sel" id="opWrap"><select id="op" aria-label="Combine with a second measure">
-            <option value="none">on its own</option>
-            <option value="div">÷ a second measure (ratio)</option>
-            <option value="sub">− a second measure (difference)</option>
-          </select></span>
-          <span class="sel" id="colorBWrap" hidden><select id="colorB" aria-label="Second measure"></select></span>
-        </span>
-          <button type="button" class="explbtn" id="explBtn" aria-expanded="false" aria-controls="explBox" hidden>Explain the meaning of this</button>
-          <button type="button" class="resetcolor" id="colorReset" title="Color by pitch type again"><span aria-hidden="true">↺</span> Reset to pitch type</button>
-        </div>
-        <button type="button" class="mbtn" id="teamOn" aria-pressed="false">Team colors</button>
-        <div class="ellrow">
-            <button type="button" class="mbtn" id="ellOn" aria-pressed="false">Show ellipses</button>
-            <div class="ellp" id="ellP" role="group" aria-label="Ellipse coverage" hidden>
-              <button type="button" data-v="50" title="Covers about half of each group">50%</button>
-              <button type="button" data-v="68" title="Covers about two-thirds (one SD)">68%</button>
-              <button type="button" data-v="95" title="Covers nearly all of each group">95%</button>
-            </div>
-          </div>
         <button type="button" class="mbtn" id="lassoOn" aria-pressed="false" title="Drag a loop around dots on the 2D map to pick them for a new group">Draw a group</button>
         <div class="grp grp-fa">
           <div class="tchead"><label class="tcsub" for="fa">Free agents</label><span class="asof" id="faAsOf"></span></div>
@@ -2083,18 +2136,6 @@ html.at-home .app { visibility: hidden; }
           </select></span>
           <span class="count facount" id="faCount" aria-live="polite"></span>
         </div>
-        <span class="tcsub" id="seasonLbl">Season</span>
-        <div class="mseg" id="seasonChips" role="group" aria-labelledby="seasonLbl"></div>
-        <span class="tcsub" id="handLbl">Hand</span>
-        <div class="mseg" id="throwsSeg" role="group" aria-labelledby="handLbl">
-          <button type="button" id="thAll" data-v="all" title="Both hands">Both</button>
-          <button type="button" id="thR" data-v="R" title="Right-handed pitchers">RHP</button>
-          <button type="button" id="thL" data-v="L" title="Left-handed pitchers">LHP</button>
-        </div>
-        <label class="tcsub" for="minIP">Innings that season</label>
-        <span class="sel mselect tcsel"><select id="minIP" aria-describedby="ipNote" title="Keep only pitchers who threw at least this many innings in the season each dot is from">
-          <option value="0">Any</option><option value="10">10+ IP</option><option value="20">20+ IP</option><option value="40">40+ IP</option><option value="60">60+ IP</option><option value="100">100+ IP</option><option value="150">150+ IP</option></select></span>
-        <span class="tcnote" id="ipNote" hidden>No innings counts for Triple-A, so this applies to MLB only.</span>
       </div>
       <div class="plotarea" id="plotArea">
         <!-- the map's view, on the map (user, 2026-11-14): flat or 3D, movement chart or t-SNE, and how well each layout
@@ -2971,8 +3012,18 @@ function morphLayout() {
   };
   requestAnimationFrame(step);
 }
+// the left column's drop-down sections show what is on while closed: the map (and clusters), the colouring
+// (and ellipses), and in Simulate pitch a button for the pitcher on screen
+function syncLeftNow() {
+  const tn = $("#lsTypesNow"); if (tn) tn.textContent = (state.view === "all" ? "All pitches" : PTN[state.view]) + (clustersOn() ? " · clusters on" : "");
+  const cn = $("#lsColorNow"), ct = $("#colorBtnTxt");
+  if (cn) cn.textContent = (clustersOn() ? "Clusters" : ct ? ct.textContent : "") + (state.ellipses ? " · ellipses" : "");
+  const sc = $("#hSimCur"), r = state.sel;
+  if (sc) { const has = r !== null && r !== undefined && !!trajOf(r);
+    sc.hidden = !has; if (has) sc.innerHTML = `<span aria-hidden="true">▶</span> ${esc(T.name[r])}’s ${esc(PTN[T.pitch_type[r]].toLowerCase())}`; }
+}
 function render() {
-  { const hc = $("#hClu"); if (hc) hc.classList.toggle("is-on", clustersOn()); }   // the header's Clusters is ink while clusters are on
+  syncLeftNow();
   navQueue();
   const view = state.view, kind = varKind(view), pal = mapPalette();
   const cardOpen = state.sel !== null && state.sel !== undefined && !state.preview;
@@ -7294,9 +7345,27 @@ function closeTable() {
 }
 // × , Escape, a click outside: the table closes and focus goes back to what opens it
 function closeTableFocus() {
-  const look = state.lookTbl !== null && state.lookTbl !== undefined;
+  const look = state.lookTbl !== null && state.lookTbl !== undefined, g = state.tblGroup;
   state.tblGroup = null; state.lookTbl = null; syncTable(); relayout();
-  const b = look ? $("#cbTable") : $("#hBoards"); if (b && !b.hidden) b.focus({ preventScroll: true });
+  const lb = !look && g ? [...$("#lbList").querySelectorAll("[data-g]")].find(x => x.dataset.g === g) : null;
+  const b = look ? $("#cbTable") : lb && !$("#lsBoards").hidden ? lb : $("#hBoards"); if (b && !b.hidden) b.focus({ preventScroll: true });
+}
+// Show leaderboard (the left column): one button per category; the open one is ink
+function paintBoardList(on) {
+  const list = $("#lbList"); if (!list) return;
+  const gs = tableGroups(), sig = gs.join("|");
+  if (list.dataset.sig !== sig) {
+    list.dataset.sig = sig;
+    list.innerHTML = gs.map(g => `<button type="button" class="ubtn" data-g="${esc(g)}" aria-pressed="false">${esc(g)}</button>`).join("");
+  }
+  list.querySelectorAll("[data-g]").forEach(b => b.setAttribute("aria-pressed", String(!!on && b.dataset.g === state.tblGroup)));
+}
+// a leaderboard opens on the latest season, as the home page's do; the same category again closes it
+function openBoard(g) {
+  if (state.tblGroup === g && (state.lookTbl === null || state.lookTbl === undefined)) { closeTableFocus(); return; }
+  if (state.sel !== null && state.sel !== undefined && !state.preview) select(null);
+  state.lookTbl = null; state.seasons = new Set([Math.max(...D.seasons)]); syncSeasonChips(); render();
+  setTableGroup(g);
 }
 function syncSeasonChips() {
   $("#seasonChips").querySelectorAll("[data-s]").forEach(c => c.setAttribute("aria-pressed", String(state.seasons.has(+c.dataset.s))));
@@ -7326,7 +7395,7 @@ function syncTable() {
   $("#app").classList.toggle("with-table", on);
   syncUnder();
   if (on && !was) requestAnimationFrame(() => { const f = look ? $("#mtHide") : $("#mtSearch"); if (f) f.focus({ preventScroll: true }); });
-  $("#hBoards").setAttribute("aria-pressed", String(on && !look));
+  paintBoardList(on && !look);
   if (state.tblGroup) state.tblLast = state.tblGroup;   // the header's Leaderboards reopens the last tab
   $("#mtSearch").hidden = look; $("#mtScroll").hidden = look; $("#mtLook").hidden = !look;
   $("#mtTabs").hidden = look; $("#mtCtl").hidden = look;
@@ -7484,17 +7553,19 @@ function wireTable() {
     syncSeasonChips(); render();
   });
   $("#mtLvl").querySelectorAll("button").forEach(b => b.addEventListener("click", () => setLevel(b.dataset.v)));
-  // the header's Leaderboards: the measure table on its last tab, as a leaderboard opens (the latest season); again closes it
-  $("#hBoards").addEventListener("click", () => {
-    if (state.tblGroup && (state.lookTbl === null || state.lookTbl === undefined)) { state.tblGroup = null; syncTable(); relayout(); return; }
-    if (state.sel !== null && state.sel !== undefined && !state.preview) select(null);   // the table sits where the card is
-    state.lookTbl = null; state.seasons = new Set([Math.max(...D.seasons)]); syncSeasonChips(); render();
-    setTableGroup(state.tblLast && tableGroups().includes(state.tblLast) ? state.tblLast : tableGroups()[0]);
-  });
-  // the header's Pitch simulation: the lab for the pitcher on screen; with nobody chosen, a box to find one
+  // the left column's drop-down sections: a press opens (ink) or closes (white) the section under it
+  [["#hBoards", "#lsBoards"], ["#hClu", "#lsTypes"], ["#lsColorBtn", "#lsColor"]].forEach(([sel, body]) => { const b = $(sel);
+    $(body).hidden = true;
+    b.addEventListener("click", () => { const on = $(body).hidden; $(body).hidden = !on; b.setAttribute("aria-expanded", String(on)); }); });
+  paintBoardList(false);
+  $("#lbList").addEventListener("click", e => { const b = e.target.closest("[data-g]"); if (b) openBoard(b.dataset.g); });
+  $("#pnClusters").addEventListener("click", () => clustersRow());
+  // Simulate pitch: the lab for the pitcher on screen (a button), or a box to find one
   const hsBtn = $("#hSim"), hsPop = $("#hSimPop"), hsInp = $("#hSimSearch");
-  const hsOpen = on => { if (on) hcOpen(false);   // one header popover at a time
-    hsPop.hidden = !on; hsBtn.setAttribute("aria-expanded", String(on)); if (on) hsInp.focus(); else { hsBox.close(); $("#hSimMsg").textContent = ""; } };
+  const hsOpen = on => {
+    hsPop.hidden = !on; hsBtn.setAttribute("aria-expanded", String(on)); syncLeftNow();
+    if (on) hsInp.focus({ preventScroll: true }); else { hsBox.close(); $("#hSimMsg").textContent = ""; } };
+  $("#hSimCur").addEventListener("click", () => { if (state.sel === null || state.sel === undefined) return; closeTable(); toggleSim($("#hSimCur")); });
   const hsGo = async () => {
     const q = hsInp.value.trim(); if (!fold(q)) return;
     let cands = nameRows(q, "all");
@@ -7509,45 +7580,8 @@ function wireTable() {
   const hsBox = suggestBox(hsInp, $("#hSimSugg"), hsGo, $("#hSimMsg"));
   hsPop.hidden = true;   // starts closed
   $("#hSimFind").addEventListener("submit", e => { e.preventDefault(); hsBox.close(); hsGo(); });
-  hsBtn.addEventListener("click", () => {
-    if (state.sel !== null && state.sel !== undefined) { hsOpen(false); closeTable(); toggleSim(hsBtn); return; }
-    hsOpen(hsPop.hidden);
-  });
+  hsBtn.addEventListener("click", () => hsOpen(hsPop.hidden));
   hsInp.addEventListener("keydown", e => { if (e.key === "Escape" && $("#hSimSugg").hidden) { e.preventDefault(); hsOpen(false); hsBtn.focus(); } });
-  document.addEventListener("click", e => { if (!hsPop.hidden && !e.target.closest(".hsimwrap")) hsOpen(false); });
-  // the header's Clusters (user, 2026-11-14): a pitch type's map with its clusters coloured and listed, as the home page's
-  // strip opens it; while clusters are on, the menu marks the map on screen and offers Clusters off
-  const hcBtn = $("#hClu"), hcMenu = $("#hCluMenu");
-  hcBtn.hidden = !D.pitch_clusters; hcMenu.hidden = true;
-  const cluCount = v => (v === "all" ? TYPES : [v]).reduce((n, t) => n + (D.pitch_clusters && D.pitch_clusters.types[t] ? D.pitch_clusters.types[t].clusters.length : 0), 0);
-  const hcPaint = () => {
-    const on = clustersOn(), row = (v, label) => { const n = cluCount(v);
-      return `<button type="button" role="menuitem" data-clv="${v}"${on && state.view === v ? ' aria-current="true"' : ""}><span class="ul">`
-        + `${SAVANT_PITCH[v] ? `<i class="psw" style="background:${SAVANT_PITCH[v]}"></i>` : ""}${esc(label)}</span><span class="hcm-n">${n} cluster${n === 1 ? "" : "s"}</span></button>`; };
-    hcMenu.innerHTML = row("all", "All pitches") + TYPES.filter(t => cluCount(t)).map(t => row(t, PTN[t])).join("")
-      + (on ? `<button type="button" role="menuitem" class="hcm-off" data-clv="off">Clusters off</button>` : "");
-  };
-  const hcOpen = on => {
-    if (on) { hcPaint(); hsOpen(false); }
-    hcMenu.hidden = !on; hcBtn.setAttribute("aria-expanded", String(on));
-    if (on) { const f = hcMenu.querySelector("[aria-current]") || hcMenu.querySelector("button"); if (f) f.focus(); }
-  };
-  hcBtn.addEventListener("click", () => hcOpen(hcMenu.hidden));
-  hcMenu.addEventListener("click", e => {
-    const b = e.target.closest("[data-clv]"); if (!b) return;
-    const v = b.dataset.clv; hcOpen(false); hcBtn.focus();
-    closeTable();   // the clusters are on the map
-    if (v === "off") { clustersOff(); return; }
-    state.color.all = state.color.t = "cat:subcluster"; state.op = "none"; buildVarSelects();
-    state.rail.open = true; state.rail.tab = "clusters";
-    if (v !== state.view) goView(v); else render();   // another map: All pitches glides into it, as from home
-  });
-  hcMenu.addEventListener("keydown", e => {
-    const items = [...hcMenu.querySelectorAll("button")], k = items.indexOf(document.activeElement), n = items.length;
-    if (e.key === "Escape") { e.preventDefault(); hcOpen(false); hcBtn.focus(); }
-    else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && n) { e.preventDefault(); items[((k < 0 ? (e.key === "ArrowDown" ? -1 : 0) : k) + (e.key === "ArrowDown" ? 1 : -1) + n) % n].focus(); }
-  });
-  document.addEventListener("click", e => { if (!hcMenu.hidden && !e.target.closest(".hclwrap")) hcOpen(false); });
   $("#mtBody").addEventListener("keydown", e => {
     const tr = e.target.closest("tr[data-r]"); if (!tr) return;
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(tr); }
