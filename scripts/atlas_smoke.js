@@ -646,7 +646,15 @@ const J = JSON.stringify;
   ok(getEl("#mtTitle").textContent === run('VMAP.t["t:whiff"].label'), "title = the sorted measure: " + getEl("#mtTitle").textContent);
   ok(getEl("#mtSub").textContent === `Four-seam · ${S1} · 100+ pitches`, "one short line: " + getEl("#mtSub").textContent);
   const thKeys = [...getEl("#mtHeadRow").innerHTML.matchAll(/<th scope="col"( class="mt-sorted")?[^>]*><button type="button" data-k="([^"]+)"/g)].map(m => ({ s: !!m[1], k: m[2] }));
-  ok(thKeys[0].k === "name" && thKeys[1].k === "t:whiff" && thKeys[1].s && thKeys.filter(h => h.s).length === 1, "the sorted measure sits right after the name, shaded: " + thKeys.slice(0, 3).map(h => h.k).join(", "));
+  const catKeys = run(`tableColumns().map(v => v.key)`);
+  ok(thKeys[0].k === "name" && thKeys.slice(1).map(h => h.k).join() === catKeys.join() && thKeys.find(h => h.k === "t:whiff").s && thKeys.filter(h => h.s).length === 1,
+    "sorting keeps the columns in their order (user, 2026-11-14); the sorted one is shaded where it stands");
+  run(`state.tblSort = { key: "t:csw", dir: -1 }; renderTable()`); await tick();
+  const thK2 = [...getEl("#mtHeadRow").innerHTML.matchAll(/<th scope="col"( class="mt-sorted")?[^>]*><button type="button" data-k="([^"]+)"/g)].map(m => ({ s: !!m[1], k: m[2] }));
+  ok(thK2.slice(1).map(h => h.k).join() === catKeys.join() && thK2.find(h => h.k === "t:csw").s && getEl("#mtTitle").textContent === run('VMAP.t["t:csw"].label'), "…sorting by another column moves nothing; the title follows the sort");
+  run(`state.tblSort = { key: "t:whiff", dir: -1 }; renderTable()`); await tick();
+  ok(getEl("#mtKey").hidden === false && /Color = percentile/.test(getEl("#mtKey").innerHTML) && (getEl("#mtKey").innerHTML.match(/class="mt-pct"/g) || []).length === 3 && /flips/.test(getEl("#mtKey").innerHTML),
+    "a colour key up top: percentile among MLB pitches of the type, bottom / middle / top, and where it flips");
   ok(getEl("#mtHeadRow").innerHTML.includes('class="mt-rkh"') && /<span class="mt-rk">1<\/span>/.test(getEl("#mtBody").innerHTML), "a # rank column, 1 on top");
   const bodyRows = () => [...getEl("#mtBody").innerHTML.matchAll(/<tr data-r="(\d+)"/g)].map(m => +m[1]);
   let br = bodyRows();

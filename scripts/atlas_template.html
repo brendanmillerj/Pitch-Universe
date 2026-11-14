@@ -1283,6 +1283,11 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
 .mtable input.mt-search:focus-visible { outline: 2px solid var(--focus); outline-offset: 0; border-color: var(--focus); }
 @media (pointer: coarse) { .mtable input.mt-search { font-size: 16px; } }
 .mt-sub { margin: 4px 12px 8px; font: 400 13px var(--font-ui); color: var(--muted); }
+/* the leaderboard's color key: what a cell's color means (user, 2026-11-14) */
+.mt-key { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: -2px 12px 10px; font: 400 13px/1.35 var(--font-ui); color: var(--ink2); }
+.mt-key[hidden] { display: none; }
+.mt-key b { font-weight: 600; color: var(--ink); }
+.mt-kp { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); }
 .mt-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; border-top: 1px solid var(--line); scrollbar-gutter: stable; }
 .mt { width: 100%; border-collapse: collapse; font: 400 14px var(--font-ui); color: var(--ink); font-variant-numeric: tabular-nums lining-nums; }
 .mt th { position: sticky; top: 0; z-index: 1; background: var(--panel); border-bottom: 1px solid var(--line); padding: 0; vertical-align: bottom; }
@@ -2004,6 +2009,7 @@ html.at-home .app { visibility: hidden; }
       </div>
     </div>
     <p class="mt-sub" id="mtSub"></p>
+    <p class="mt-key" id="mtKey" hidden></p>
     <input id="mtSearch" class="mt-search" type="search" placeholder="Find a pitcher in this table" autocomplete="off" aria-label="Find a pitcher in this table">
     <div class="mt-scroll" id="mtScroll"><p class="vh" id="mtRowHelp">Enter on a row shows that pitcher on the map.</p><table class="mt" aria-labelledby="mtTitle" aria-describedby="mtRowHelp"><thead id="mtHeadRow"></thead><tbody id="mtBody"></tbody></table></div>
     <div class="mt-look" id="mtLook" hidden></div>
@@ -7431,37 +7437,41 @@ function renderTable() {
   let sk = state.tblSort.key;
   if (sk !== "name" && !catCols.some(v => v.key === sk)) sk = catCols[0].key;
   const dir = state.tblSort.dir;
-  // the sorted measure comes first, right after the name; the rest keep their catalogue order
-  const cols = sk === "name" ? catCols : [catCols.find(v => v.key === sk), ...catCols.filter(v => v.key !== sk)];
-  const ci = sk === "name" ? -1 : 0;
+  // the columns keep their catalogue order when sorted (user, 2026-11-14); the sorted one is shaded where it stands
+  const cols = catCols, ci = sk === "name" ? -1 : cols.findIndex(v => v.key === sk);
   // one getter per column: the raw value, and in percentile mode its percentile against the MLB pool for the colour
   const getters = cols.map(v => r => { const x = v.get(r); if (!isNum(x)) return null; if (!pct) return { x, p: null };
     const q = mlbPct(v, r, x); return { x, p: pctFlip(v, T.pitch_type[r]) ? 100 - q : q }; });
   const vals = new Map(lit.map(r => [r, getters.map(f => f(r))]));
   const sorted = lit.slice().sort((a, b) => {
     if (sk === "name") return dir * (T.name[a] < T.name[b] ? -1 : T.name[a] > T.name[b] ? 1 : T.season[b] - T.season[a]);
-    const x = vals.get(a)[0], y = vals.get(b)[0];
+    const x = vals.get(a)[ci], y = vals.get(b)[ci];
     if (x === null) return y === null ? 0 : 1; if (y === null) return -1;   // blanks always last
     return dir * (x.x - y.x);   // always by raw value: a wall of tied percentiles never sorts the top
   });
   // rank by the sorted measure as shown (rounded): equal values share a rank (1, 2, 2, 4); blanks get none
   const rank = new Map();
-  if (ci === 0) {
+  if (ci >= 0) {
     let prev = null, rk = 0;
-    sorted.forEach((r, k) => { const c = vals.get(r)[0]; if (c === null) return; const t = c.x.toFixed(cols[0].dec ?? 2); if (t !== prev) { rk = k + 1; prev = t; } rank.set(r, rk); });
+    sorted.forEach((r, k) => { const c = vals.get(r)[ci]; if (c === null) return; const t = c.x.toFixed(cols[ci].dec ?? 2); if (t !== prev) { rk = k + 1; prev = t; } rank.set(r, rk); });
   }
   // the title is what the board ranks; one short line says over which pitches
-  $("#mtTitle").textContent = ci === 0 ? cols[0].label : g;
+  $("#mtTitle").textContent = ci >= 0 ? cols[ci].label : g;
   const ss = D.seasons.filter(s => state.seasons.has(s));
   const seasonTxt = ss.length === D.seasons.length && ss.length > 1 ? seasonSpan() : ss.join(", ");
   const floorTxt = whole ? (state.level === "mlb" ? `${TBL_MIN_IP}+ innings` : `${TBL_MIN_N_AAA_P}+ pitches`) : `${TBL_MIN_N}+ pitches`;
   $("#mtSub").textContent = [view === "all" ? "All pitches" : PTN[view], seasonTxt, state.level === "mlb" ? "" : LVL_NAME[state.level] || state.level,
     floorTxt, match ? `${lit.length.toLocaleString()} matching your filters` : ""].filter(Boolean).join(" · ");
+  const keyPill = (q, w) => `<span class="mt-kp"><span class="mt-pct" style="background:${savantColor(q)};color:${savantInk(q)}">${q}</span>${w}</span>`;
+  $("#mtKey").hidden = !pct;
+  $("#mtKey").innerHTML = pct ? `<b>Color = percentile</b><span>among all MLB ${view === "all" ? "pitches of the same type" : PLURAL[view] || PTN[view].toLowerCase() + "s"}, ${seasonSpan()}</span>`
+    + keyPill(5, "Bottom") + keyPill(50, "Middle") + keyPill(95, "Top")
+    + `<span>Where lower is better (ERA, xwOBA, walks, scatter), the scale flips, so red is the better end.</span>` : "";
   const arrow = k => k === sk ? `<span class="ar" aria-hidden="true">${dir < 0 ? "▼" : "▲"}</span>` : `<span class="ar"></span>`;
   const ariaSort = k => k === sk ? ` aria-sort="${dir < 0 ? "descending" : "ascending"}"` : "";
   const unitTxt = v => v.unit && !shortLabel(v).endsWith(v.unit) ? ` <span class="tm">(${esc(v.unit)})</span>` : "";   // no "Whiff% (%)"
   const sc = k => k === sk ? ` class="mt-sorted"` : "";
-  $("#mtHeadRow").innerHTML = `<tr><th scope="col"${ariaSort("name")}><button type="button" data-k="name">${ci === 0 ? `<span class="mt-rkh" aria-hidden="true">#</span>` : ""}Pitcher${arrow("name")}</button></th>` +
+  $("#mtHeadRow").innerHTML = `<tr><th scope="col"${ariaSort("name")}><button type="button" data-k="name">${ci >= 0 ? `<span class="mt-rkh" aria-hidden="true">#</span>` : ""}Pitcher${arrow("name")}</button></th>` +
     cols.map(v => `<th scope="col"${sc(v.key)}${ariaSort(v.key)}><button type="button" data-k="${esc(v.key)}" title="${esc(tipFor(v))}"><span class="mt-h">${esc(shortLabel(v))}${unitTxt(v)}</span>${arrow(v.key)}</button></th>`).join("") + "</tr>";
   const cell = (v, c, first) => {
     const cls = first ? ` class="mt-sorted"` : "";
@@ -7474,7 +7484,7 @@ function renderTable() {
     const pt = T.pitch_type[r], vs = vals.get(r);
     const meta = `${T.season[r]} · ${esc(teamStr(r))}${view === "all" && !whole ? ` · <i class="psw" style="background:${SAVANT_PITCH[pt] || "#999"}"></i>${esc(PTN[pt])}` : ""}`;
     const who = `<div class="mt-name">${esc(T.name[r])}</div><div class="mt-meta">${meta}</div>`;
-    return `<tr data-r="${r}" tabindex="0"${r === state.sel ? ' class="on"' : ""}><td>${ci === 0 ? `<div class="mt-pl"><span class="mt-rk">${rank.get(r) ?? ""}</span><div>${who}</div></div>` : who}</td>`
+    return `<tr data-r="${r}" tabindex="0"${r === state.sel ? ' class="on"' : ""}><td>${ci >= 0 ? `<div class="mt-pl"><span class="mt-rk">${rank.get(r) ?? ""}</span><div>${who}</div></div>` : who}</td>`
       + `${cols.map((v, k) => cell(v, vs[k], k === ci)).join("")}</tr>`;
   };
   // the whole list, drawn TABLE_CAP rows at a time as you scroll; a re-render with the same list
@@ -7486,7 +7496,14 @@ function renderTable() {
   Object.assign(tbl, { sig, sorted: shownRows, rowHTML, shown: Math.min(shownRows.length, keep) });
   $("#mtBody").innerHTML = shownRows.slice(0, tbl.shown).map(rowHTML).join("") +
     (words.length && !shownRows.length ? `<tr><td class="mt-more" colspan="${cols.length + 1}">No pitcher named “${esc(state.tblQuery.trim())}” among these ${lit.length.toLocaleString()}.</td></tr>` : "");
-  if (sig !== tbl.drawnSig) { $("#mtScroll").scrollTop = 0; tbl.drawnSig = sig; }
+  if (sig !== tbl.drawnSig) {
+    const sc = $("#mtScroll"); sc.scrollTop = 0; tbl.drawnSig = sig;
+    const th = $("#mtHeadRow").querySelector("th.mt-sorted"), name = $("#mtHeadRow").querySelector("th");
+    if (th && isNum(th.offsetLeft) && isNum(sc.clientWidth) && sc.clientWidth > 0) {
+      const left = th.offsetLeft - (name && isNum(name.offsetWidth) ? name.offsetWidth : 0), right = th.offsetLeft + th.offsetWidth;
+      if (right > sc.scrollLeft + sc.clientWidth || left < sc.scrollLeft) sc.scrollLeft = Math.max(0, left - 8);
+    }
+  }
 }
 const tbl = { sig: "", drawnSig: "", sorted: [], rowHTML: null, shown: 0 };
 const fold = s => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
