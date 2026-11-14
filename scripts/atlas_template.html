@@ -497,6 +497,15 @@ button, input, select { font: inherit; color: inherit; }
 .ctabtn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .ctabtn.primary:hover { background: var(--accent-dk); border-color: var(--accent-dk); }
 .cta-acts { display: flex; gap: 8px; }
+/* the pitch at a glance: its run value and defining traits in the card's diverging bars, above his lookalikes */
+.cta-pitch { display: flex; flex-direction: column; padding-top: 8px; border-top: 1px solid var(--line); }
+.cta-pitch:empty { display: none; }
+.ctp-head { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; font: 600 15px var(--font-ui); color: var(--ink); }
+.ctp-head .psw { width: 13px; height: 13px; }
+.ctp-head span { font: 400 13px var(--font-ui); color: var(--ink2); }
+.ctp-sub { margin-top: 6px; font: 600 13px var(--font-ui); color: var(--ink2); }
+.cta-pitch .hrow { grid-template-columns: minmax(0, 1fr) minmax(84px, 0.9fr) auto; column-gap: 8px; }
+.cta-pitch .hlab, .cta-pitch .hv { font-size: 13px; }
 .cta-acts .ctabtn { flex: 1 1 0; min-width: 0; white-space: nowrap; }
 .cta-acts[hidden], .cta-look[hidden] { display: none; }
 /* a pitcher picked on the map: the card is his lookalike list, Show Profile / Show Simulation on top */
@@ -2034,6 +2043,8 @@ html.at-home, html.at-home body { overflow: hidden; }
           <button type="button" class="ctabtn primary" id="ctaOpen" title="His full player card: every pitch, measure and season">Show Profile</button>
           <button type="button" class="ctabtn" id="ctaFly" aria-pressed="false">Show Simulation</button>
         </div>
+        <!-- the pitch on screen at a glance: its run value and the measures that most define it (filled by syncCta) -->
+        <section class="cta-pitch" id="ctaPitch" aria-label="This pitch at a glance"></section>
         <section class="cta-look" id="compBox" aria-label="Lookalikes of the selected pitcher" hidden>
           <div class="lk-head"><b id="cbTitle"></b></div>
           <div class="lk-chips" id="cbChips" role="group" aria-label="Lookalikes for which of his pitches"></div>
@@ -6354,8 +6365,7 @@ function syncNavButtons() {
   bb.disabled = !b; fb.disabled = !f;
   bb.title = b ? navLabel(b, "Back to") : "Nothing to go back to yet"; fb.title = f ? navLabel(f, "Forward to") : "Nothing to go forward to";
   const cn = document.getElementById("cardNav");
-  if (cn) cn.innerHTML = `<button type="button" class="bigbtn" data-gohome title="The home page">Home</button>`
-    + (b ? `<button type="button" class="bigbtn backsel" data-nav="back">← ${esc(navLabel(b, "Back to"))}</button>` : "")
+  if (cn) cn.innerHTML = (b ? `<button type="button" class="bigbtn backsel" data-nav="back">← ${esc(navLabel(b, "Back to"))}</button>` : "")
     + (f ? `<button type="button" class="bigbtn fwdsel" data-nav="fwd">${esc(navLabel(f, "Forward to"))} →</button>` : "");
 }
 // a comp or a group member can sit at the other level: follow him there (selection kept)
@@ -6581,9 +6591,33 @@ function renderCompBox() {
       + `<span class="lk-fit lk-${fc}">${ft}</span></button>`
       + (canFly ? `<button type="button" class="lk-cmp" data-cmp="${c}"${trajOf(c) ? "" : " disabled"} title="${trajOf(c) ? `Open the Pitch Simulation Lab: ${esc(lastName(T.name[r]))}’s ${PTN[t].toLowerCase()} flying beside ${esc(T.name[c])}’s` : "No tracked flight for this pitch"}"><span aria-hidden="true">▶</span> Simulate</button>` : "") + `</li>`; }).join("");
 }
+// The map card's quick look at the pitch on screen (user, 2026-11-14), above his lookalikes: its run value and the
+// measures that most define it (picked as the player card's Defining Traits, at most CTA_TRAITS), each a percentile
+// among all MLB pitches of its type, in the card's diverging bars (blue below average, red above)
+const CTA_TRAITS = 4;
+function ctaPitchHTML(r) {
+  const pt = T.pitch_type[r], pool = typeRows[pt];
+  const poolNote = `all ${pool.length.toLocaleString()} ${LEVELS.length > 1 ? "MLB " : ""}${PTN[pt].toLowerCase()}s on the atlas, ${seasonSpan()}, both hands`;
+  const items = measureItems(VARS.t.filter(v => !v.cat && v.key.startsWith("t:")), r, "t" + pt, pool);
+  const ranked = items.filter(it => it.p >= 0 && ID_KEYS.has(it.v.key.slice(2))).sort((a, b) => Math.abs(b.p - 50) - Math.abs(a.p - 50));
+  let def = ranked.filter(it => it.p >= HERO_HI || it.p <= HERO_LO); if (def.length < 3) def = ranked.slice(0, 3);
+  const rv = items.find(it => it.v.key === "t:rv100"), sg = (x, d) => (x > 0 ? "+" : "") + x.toFixed(d);
+  let rvRow = "";
+  if (rv && rv.p >= 0) {
+    const w = Math.abs(rv.p - 50).toFixed(1), c = pctColor(rv.v, rv.p), fill = rv.p >= 50 ? `left:50%;width:${w}%` : `right:50%;width:${w}%`;
+    const tot = isNum(T.n[r]) ? rv.x * T.n[r] / 100 : null;
+    const tip = `${sg(rv.x, 2)} runs per 100 ${PLURAL[pt] || "pitches"}${isNum(tot) ? ` (${sg(tot, 1)} over his ${T.n[r].toLocaleString()} in ${T.season[r]})` : ""}: `
+      + `${ord(rv.p)} percentile among ${poolNote}. ${EXPLAIN.rv100 || ""}`;
+    rvRow = `<div class="hrow" title="${esc(tip)}"><span class="hlab">Run value / 100</span><span class="hbar"><span class="hmid"></span><i style="${fill};background:${c}"></i>`
+      + `<b style="left:${rv.p.toFixed(1)}%;background:${c};color:${pctInk(rv.v, rv.p)}">${Math.round(rv.p)}</b></span><span class="hv">${sg(rv.x, 2)}</span></div>`;
+  }
+  return `<div class="ctp-head"><i class="psw" style="background:${SAVANT_PITCH[pt]}"></i><b>${PTN[pt]}, ${T.season[r]}</b>${T.level[r] === "mlb" ? "" : "<span>Triple-A</span>"}</div>`
+    + rvRow + (def.length ? `<div class="ctp-sub">Defining traits</div>` + def.slice(0, CTA_TRAITS).map(it => heroRow(it, poolNote)).join("") : "");
+}
 function syncCta() {
   const r = state.sel, on = !!state.preview && r !== null && r !== undefined, box = $("#selCta");
   box.hidden = !on; if (!on) return;
+  $("#ctaPitch").innerHTML = ctaPitchHTML(r);
   const n = TYPES.filter(t => { const x = tRow(T.pitcher[r], T.season[r], t, T.level[r]); return x !== undefined && T.n[x] >= state.minN; }).length;
   $("#ctaName").textContent = T.name[r];
   $("#ctaCl").innerHTML = clusterTag(r);   // his pitch's cluster, as on his card (click: that cluster lit on its map)

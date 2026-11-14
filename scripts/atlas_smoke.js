@@ -693,12 +693,12 @@ const J = JSON.stringify;
   ok(!!mp && Math.abs(mp.got - mp.want) < 1e-9, "the map colours by the same MLB percentile: " + J(mp));
   run(`state.color.t = "cat:pitch_type"; state.seasons = new Set(D.seasons); syncSeasonChips(); setView("all", null)`); await tick();
 
-  // ---- Home from anywhere (user, 2026-11-14): the header, a player card, the lab; Back returns to where you were
+  // ---- Home (user, 2026-11-14): the header and the lab (not the player card); Back returns to where you were
   run(`showHome(false); state.sim = null; select(null); setView("FF", null)`); await tick();
   const hr = run(`visibleRows("FF").find(r => T.level[r] === "mlb" && T.n[r] >= 300 && !!trajOf(r))`);
   ok((getEl("#navHome")._h.click || []).length === 0 && /id="navHome" data-gohome/.test(markup), "the header has a Home button");
   run(`select(${hr})`); await tick();
-  ok(run("state.cardOpen") && /data-gohome/.test(getEl("#cardNav").innerHTML), "an open player card has a Home button");
+  ok(run("state.cardOpen") && !/data-gohome/.test(getEl("#cardNav").innerHTML), "the player card has no Home button of its own (user, 2026-11-14)");
   const nH = run("NAV.idx");
   run("goHome()"); await tick();
   ok(run("state.home") && !run("state.cardOpen") && run("NAV.idx") === nH + 1, "Home from a card: home, one step");
@@ -711,6 +711,15 @@ const J = JSON.stringify;
   run("navBack()"); await tick(); await tick();
   ok(!run("state.home") && run("state.simOpen"), "Back: the lab again");
   run("closeSim(true); select(null)"); await tick();
+
+  // ---- the map card's quick look at the pitch (user, 2026-11-14): its run value and defining traits, above his lookalikes
+  ok(markup.indexOf('id="ctaActs"') < markup.indexOf('id="ctaPitch"') && markup.indexOf('id="ctaPitch"') < markup.indexOf('id="compBox"'), "the quick look sits between the card's buttons and his lookalikes");
+  run(`preview(${hr})`); await tick();
+  const cp = getEl("#ctaPitch").innerHTML, rvP = run(`Math.round(mlbPct(VMAP.t["t:rv100"], ${hr}, T.rv100[${hr}]))`);
+  const nRows = (cp.match(/class="hrow"/g) || []).length;
+  ok(/Run value \/ 100/.test(cp) && cp.includes(`>${rvP}</b>`) && /Defining traits/.test(cp) && nRows >= 4 && nRows <= 5 && cp.includes(run(`PTN[T.pitch_type[${hr}]]`)),
+    `the map card shows the pitch's run value (${rvP}th percentile among MLB pitches of its type) and ${nRows - 1} defining traits`);
+  run("select(null)"); await tick();
 
   // ---- the header's Pitch simulation: his lab, or a box to find someone
   getEl("#hSim")._h.click[0]({}); await tick();
