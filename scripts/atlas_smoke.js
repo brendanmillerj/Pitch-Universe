@@ -256,21 +256,21 @@ const J = JSON.stringify;
 
   // ---- layout
   const hEnd = markup.indexOf("</header>");
-  ok(["navBack", "navFwd", "startOver", "seasonChips", "throwsSeg", "minIP"].every(id => markup.indexOf(`id="${id}"`) < hEnd && markup.indexOf(`id="${id}"`) > 0)
-    && ["hBoards", "hSim", "hClu"].every(id => markup.indexOf(`id="${id}"`) > hEnd), "header: ← Back, search, Season · Hand · Innings, Start over, Forward → (the actions live in the left column)");
-  const tc = markup.indexOf('id="typeCol"'), at = id => markup.indexOf(`id="${id}"`);
-  ok(tc > 0 && at("hBoards") > tc && at("hBoards") < at("hSim") && at("hSim") < at("hClu") && at("hClu") < at("slOpen"),
-    "left column opens with Show leaderboard, then the Simulate pitch and Pitch Types/Clusters drop-downs");
-  ok(at("pnClusters") > at("hClu") && at("universe") > at("pnClusters") && at("universe") < at("slOpen"), "…the clusters switch and the pitch types sit in Pitch Types/Clusters");
+  const at = id => markup.indexOf(`id="${id}"`), r2 = markup.indexOf('class="hdrow hdrow2');
+  ok(["navBack", "search", "hBoards", "hClu", "startOver", "navFwd"].every(id => at(id) > 0 && at(id) < r2) && ["lvlSeg", "seasonChips", "throwsSeg", "minIP", "fa"].every(id => at(id) > r2 && at(id) < hEnd),
+    "header row 1: Back, search, Show leaderboard, Pitch Types/Clusters, Start over, Forward; row 2: Level, Season, Hand, Innings, Free agents (user, 2026-11-14 experiment)");
+  ok(at("typeCol") < 0 && at("hSim") < 0, "no left column, no Simulate pitch");
+  ok(at("pnClusters") > at("hClu") && at("universe") > at("pnClusters") && at("universe") < r2, "…the clusters switch and the pitch types sit in the Pitch Types/Clusters pop-over");
   ok(["ellOn", "teamOn", "lassoOn", "lsColorBtn", "lbList"].every(id => at(id) < 0), "no ellipses, Team colors or Draw a group options, and no leaderboard drop-down (user, 2026-11-14)");
   const hStart = markup.indexOf('<header class="head">'), hIds = [...markup.slice(hStart, hEnd).matchAll(/<button[^>]* id="(\w+)"/g)].map(m => m[1]);
-  ok(hIds[0] === "navBack" && hIds[hIds.length - 1] === "navFwd" && !markup.includes('id="navHome"'), "like a browser: ← Back first in the header, Forward → last, no Home button (the title leads home): " + hIds.join(", "));
+  const r1Ids = [...markup.slice(hStart, r2).matchAll(/<button[^>]* id="(\w+)"/g)].map(m => m[1]);
+  ok(r1Ids[0] === "navBack" && r1Ids[r1Ids.length - 1] === "navFwd" && !markup.includes('id="navHome"'), "like a browser: ← Back first in the header's row, Forward → last, no Home button (the title leads home): " + r1Ids.join(", "));
   const pa = markup.indexOf('id="plotArea"'), pl = markup.indexOf('<div id="plot"');
   ok(["mapTools", "dimSeg", "laySeg", "lqual"].every(id => { const k = markup.indexOf(`id="${id}"`); return k > pa && k < pl && k > hEnd; }), "2D/3D, Movement/t-SNE and the meter sit on the map, beside #plot (which Plotly empties)");
   ok(!markup.includes('id="clusterSeg"') && /id="pnClusters"[^>]*role="switch"/.test(markup), "the Clusters row is the one switch (no switch inside the panel)");
-  ok(markup.indexOf('id="panelNav"') > markup.indexOf('id="lvlSeg"'), "Pitchers · Groups rows under MLB | Triple-A");
+  ok(at("panelNav") > at("plotArea") && /class="panelnav mappanels" id="panelNav"/.test(markup), "Pitchers · Groups at the bottom right of the map");
   ok(!markup.includes('id="railPills"') && !markup.includes('id="mkX"'), "no pills or × on the map");
-  ok(markup.indexOf('class="measseg"') > markup.indexOf('id="typeCol"') && markup.indexOf('class="measseg"') < markup.indexOf('id="lvlSeg"'), "filter above MLB | Triple-A");
+  ok(markup.indexOf('class="measseg"') > at("mapTools") && markup.indexOf('class="measseg"') < at("colorBtn"), "Filter by measures leads the map's top-right row, before Color by");
   ok(!markup.includes('id="mapTool"') && !markup.includes('id="ptype"') && !markup.includes("Find pitchers"), "toolbar row and finder menus removed");
   ok(/<title>Pitch-omics<\/title>/.test(html) && /<h1><a href="#" class="homelink" id="homeLink"[^>]*>Pitch-omics<\/a><\/h1>/.test(html), "named Pitch-omics; the header's title leads home");
   ok(run("!!D.pitch_clusters") === !getEl("#clWrap").hidden, "cluster switch visibility follows the data");
@@ -748,18 +748,6 @@ const J = JSON.stringify;
   ok(run("state.tblGroup") === "Results" && getEl("#mTable").hidden === false, "…and Back returns to the leaderboard");
   run("closeTable(); select(null)"); await tick();
 
-  // ---- the header's Pitch simulation: his lab, or a box to find someone
-  getEl("#hSim")._h.click[0]({}); await tick();
-  ok(getEl("#hSimPop").hidden === false && getEl("#hSim").getAttribute("aria-expanded") === "true" && !run("state.simOpen"), "Pitch simulation with nobody chosen: a box to find a pitcher");
-  getEl("#hSimSearch").value = run(`T.name[${hr}]`);
-  getEl("#hSimFind")._h.submit[0]({ preventDefault() {} }); await tick(); await tick(); await tick();
-  ok(run("state.simOpen") && run("T.pitcher[state.sel]") === run(`T.pitcher[${hr}]`) && getEl("#hSimPop").hidden === true, "…a name there opens his lab");
-  run("closeSim(true)"); await tick();
-  run("syncLeftNow()");
-  ok(getEl("#hSimCur").hidden === false && getEl("#hSimCur").innerHTML.includes(run(`T.name[state.sel]`)), "…with a pitcher on screen, the section offers his pitch");
-  getEl("#hSimCur")._h.click[0]({}); await tick();
-  ok(run("state.simOpen"), "…which opens his lab");
-  run("closeSim(true); select(null)"); await tick();
 
   // ---- Pitch Types/Clusters (user, 2026-11-14): the types and the clusters switch, under one drop-down
   run(`clustersOff(); railClose(); select(null); setView("all", null)`); await tick();
