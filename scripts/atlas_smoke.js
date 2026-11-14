@@ -851,7 +851,12 @@ const J = JSON.stringify;
   run(`preview(${hr})`); await tick();
   ok(/^Lookalikes<span class="lk-sub">Pitchers whose four-seam looks like his<\/span>$/.test(getEl("#cbTitle").innerHTML) && /\.selcta \.cta-pitch, \.selcta \.cta-look \{ border-top: 2px solid var\(--ink\)/.test(html),
     "the map card has two headed sections, the pitch and its Lookalikes");
-  run("select(null)"); await tick();
+  run(`select(null); setView("all", null)`); await tick();
+  const multiP = run(`visibleRows("all").find(r => T.level[r] === "mlb" && TYPES.filter(x => { const q = tRow(T.pitcher[r], T.season[r], x, "mlb"); return q !== undefined && T.n[q] >= state.minN; }).length >= 3)`);
+  run(`preview(${multiP})`); await tick();
+  ok(getEl("#ctaPt").hidden === false && /data-cb="/.test(getEl("#cbChips").innerHTML) && markup.indexOf('id="cbChips"') < markup.indexOf('id="ctaPitch"') && markup.indexOf('id="cbChips"') < markup.indexOf('id="compBox"'),
+    "the map card's pitch chips sit up top, above the pitch and its Lookalikes");
+  run(`select(null); setView("FF", null)`); await tick();
 
   // ---- color menu: fixed beside its button on a wide screen
   getEl("#colorMenu").hidden = true;

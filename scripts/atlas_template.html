@@ -1864,6 +1864,9 @@ html.at-home .app { visibility: hidden; }
 .selcta .hrow { border-bottom: 0; }
 .selcta .lk-list { display: flex; flex-direction: column; gap: 2px; }
 .selcta .lk-list li { border-top: 0; }
+.cta-pt { display: flex; flex-direction: column; gap: 6px; }
+.cta-pt[hidden] { display: none; }
+.selcta .cta-pt .ctp-sub { margin-top: 2px; }
 </style>
 
 <!-- Home: the front door (the user's mockup, 2026-11-14). Plain HTML, so it paints before the data arrives; the map
@@ -2168,11 +2171,13 @@ html.at-home .app { visibility: hidden; }
           <button type="button" class="ctabtn primary" id="ctaOpen" title="His full player card: every pitch, measure and season">Show Profile</button>
           <button type="button" class="ctabtn" id="ctaFly" aria-pressed="false">Show Simulation</button>
         </div>
+        <!-- which of his pitches the card shows (user, 2026-11-14: up top, not inside Lookalikes); All pitches map only -->
+        <div class="cta-pt" id="ctaPt" hidden><span class="ctp-sub" id="ctaPtLbl">Pitches</span>
+          <div class="lk-chips" id="cbChips" role="group" aria-labelledby="ctaPtLbl"></div></div>
         <!-- the pitch on screen at a glance: its run value and the measures that most define it (filled by syncCta) -->
         <section class="cta-pitch" id="ctaPitch" aria-label="This pitch at a glance"></section>
         <section class="cta-look" id="compBox" aria-label="Lookalikes of the selected pitcher" hidden>
           <div class="lk-head"><b id="cbTitle"></b></div>
-          <div class="lk-chips" id="cbChips" role="group" aria-label="Lookalikes for which of his pitches"></div>
           <div id="cbPool" class="poolseg" role="group" aria-label="Lookalikes among which pitchers" hidden></div>
           <div class="lk-acts"><button type="button" class="savebtn" id="cbTable" aria-pressed="false" title="A table of him and his lookalikes on every measure, in the map's place">Show table</button><button type="button" class="savebtn" id="cbSave" title="Keep him and his lookalikes as a named group">Save as group</button></div>
           <div class="lk-share" id="cbShare" aria-label="What he and his lookalikes have in common"></div>
@@ -6716,12 +6721,12 @@ function diffPhrase(r, c) {
 function renderCompBox() {
   const r = state.sel, on = compsOnMap();
   $("#compBox").hidden = !on; $("#selCta").classList.toggle("look", on);
-  if (!on) { $("#cbList").innerHTML = ""; return; }
+  if (!on) { $("#cbList").innerHTML = ""; $("#ctaPt").hidden = true; return; }
   const t = T.pitch_type[r], comps = compsOf(state.view, r);
   $("#cbTitle").innerHTML = `Lookalikes<span class="lk-sub">Pitchers whose ${esc(PTN[t].toLowerCase())} looks like his</span>`;
   const mine = state.view === "all"
     ? TYPES.map(x => tRow(T.pitcher[r], T.season[r], x, T.level[r])).filter(x => x !== undefined && (x === r || T.n[x] >= state.minN)) : [];
-  $("#cbChips").hidden = mine.length < 2;
+  $("#ctaPt").hidden = mine.length < 2;
   $("#cbChips").innerHTML = mine.length < 2 ? "" : mine.map(x => `<button type="button" data-cb="${x}" aria-pressed="${x === r}"><i class="psw" style="background:${SAVANT_PITCH[T.pitch_type[x]]}"></i>${PTN[T.pitch_type[x]]}</button>`).join("");
   const poolSeg = poolSegHTML(r);
   $("#cbPool").hidden = !poolSeg; $("#cbPool").innerHTML = poolSeg;
