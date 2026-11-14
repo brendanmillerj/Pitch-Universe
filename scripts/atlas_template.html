@@ -1867,6 +1867,16 @@ html.at-home .app { visibility: hidden; }
 .cta-pt { display: flex; flex-direction: column; gap: 6px; }
 .cta-pt[hidden] { display: none; }
 .selcta .cta-pt .ctp-sub { margin-top: 2px; }
+/* ---- Color by, on the map beside 2D | 3D (user, 2026-11-14) */
+.maptools .mt-sw { align-items: center; }
+.maptools .mt-color { flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.mtc-lbl { font: 600 13px var(--font-ui); color: var(--map-ink); }
+.maptools #colorAWrap { width: auto; max-width: 30ch; min-width: 14ch; }
+.maptools .explbtn, .maptools .resetcolor, .maptools .combo select { background: var(--field); color: var(--ink); border: 1.5px solid var(--ink); }
+.maptools .resetcolor:hover, .maptools .explbtn:hover { background: var(--wash); }
+.maptools .combo select { min-height: calc(var(--ctl) - 3px); border-radius: var(--r); padding: 0 8px; }
+.maptools .combo .sel select { width: auto; max-width: 24ch; }
+@media (max-width: 719px) { .maptools .mt-color { justify-content: flex-start; flex: 1 1 100%; } }
 </style>
 
 <!-- Home: the front door (the user's mockup, 2026-11-14). Plain HTML, so it paints before the data arrives; the map
@@ -2079,28 +2089,8 @@ html.at-home .app { visibility: hidden; }
           </div>
         </div>
         <div class="lsec">
-          <button type="button" class="lsbtn" id="lsColorBtn" data-ls aria-expanded="false" aria-controls="lsColor"><span class="lsl">Color clusters by measurement, with ellipses</span><span class="lsnow" id="lsColorNow"></span><i class="lschev" aria-hidden="true"></i></button>
+          <button type="button" class="lsbtn" id="lsColorBtn" data-ls aria-expanded="false" aria-controls="lsColor"><span class="lsl">Ellipses and team colors</span><span class="lsnow" id="lsColorNow"></span><i class="lschev" aria-hidden="true"></i></button>
           <div class="lsbody" id="lsColor" hidden>
-          <div class="grp grp-color">
-            <label class="tcsub" id="colorLbl" for="colorBtn">Color pitchers by</label>
-          <span class="sel" id="colorAWrap">
-            <button type="button" class="colorbtn" id="colorBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="colorMenu"><span id="colorBtnTxt">Pitch type</span></button>
-            <div class="colormenu" id="colorMenu" hidden>
-              <input type="search" class="cm-search" id="cmSearch" placeholder="Search measures" aria-label="Search measures" autocomplete="off">
-              <div class="cm-list" id="cmList" role="listbox" aria-labelledby="colorLbl"></div>
-            </div>
-          </span>
-          <span class="combo" id="comboWrap" hidden>
-            <span class="sel" id="opWrap"><select id="op" aria-label="Combine with a second measure">
-              <option value="none">on its own</option>
-              <option value="div">÷ a second measure (ratio)</option>
-              <option value="sub">− a second measure (difference)</option>
-            </select></span>
-            <span class="sel" id="colorBWrap" hidden><select id="colorB" aria-label="Second measure"></select></span>
-          </span>
-            <button type="button" class="explbtn" id="explBtn" aria-expanded="false" aria-controls="explBox" hidden>Explain the meaning of this</button>
-            <button type="button" class="resetcolor" id="colorReset" title="Color by pitch type again"><span aria-hidden="true">↺</span> Reset to pitch type</button>
-          </div>
           <button type="button" class="mbtn" id="teamOn" aria-pressed="false">Team colors</button>
           <div class="ellrow">
               <button type="button" class="mbtn" id="ellOn" aria-pressed="false">Show ellipses</button>
@@ -2145,6 +2135,26 @@ html.at-home .app { visibility: hidden; }
              keeps similar pitches together; a sibling of #plot, which Plotly and the 3D setup empty -->
         <div class="maptools" id="mapTools" role="group" aria-label="Map view">
           <div class="mt-sw">
+              <div class="grp grp-color mt-color">
+                <label class="mtc-lbl" id="colorLbl" for="colorBtn">Color by</label>
+              <span class="sel" id="colorAWrap">
+                <button type="button" class="colorbtn" id="colorBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="colorMenu"><span id="colorBtnTxt">Pitch type</span></button>
+                <div class="colormenu" id="colorMenu" hidden>
+                  <input type="search" class="cm-search" id="cmSearch" placeholder="Search measures" aria-label="Search measures" autocomplete="off">
+                  <div class="cm-list" id="cmList" role="listbox" aria-labelledby="colorLbl"></div>
+                </div>
+              </span>
+              <span class="combo" id="comboWrap" hidden>
+                <span class="sel" id="opWrap"><select id="op" aria-label="Combine with a second measure">
+                  <option value="none">on its own</option>
+                  <option value="div">÷ a second measure (ratio)</option>
+                  <option value="sub">− a second measure (difference)</option>
+                </select></span>
+                <span class="sel" id="colorBWrap" hidden><select id="colorB" aria-label="Second measure"></select></span>
+              </span>
+                <button type="button" class="explbtn" id="explBtn" aria-expanded="false" aria-controls="explBox" hidden>Explain</button>
+                <button type="button" class="resetcolor" id="colorReset" title="Color by pitch type again"><span aria-hidden="true">↺</span> Pitch type</button>
+              </div>
             <div class="dimseg" id="dimSeg" role="group" aria-label="Flat or 3D">
               <button type="button" id="dim2" data-v="2" title="Flat map">2D</button>
               <button type="button" id="dim3" data-v="3" title="Drag to rotate">3D</button>
@@ -3021,8 +3031,8 @@ function morphLayout() {
 // (and ellipses), and in Simulate pitch a button for the pitcher on screen
 function syncLeftNow() {
   const tn = $("#lsTypesNow"); if (tn) tn.textContent = (state.view === "all" ? "All pitches" : PTN[state.view]) + (clustersOn() ? " · clusters on" : "");
-  const cn = $("#lsColorNow"), ct = $("#colorBtnTxt");
-  if (cn) cn.textContent = (clustersOn() ? "Clusters" : ct ? ct.textContent : "") + (state.ellipses ? " · ellipses" : "");
+  const cn = $("#lsColorNow");
+  if (cn) cn.textContent = [state.ellipses ? "Ellipses on" : "", state.color[varKind(state.view)] === "cat:team" ? "Team colors" : ""].filter(Boolean).join(" · ");
   const sc = $("#hSimCur"), r = state.sel;
   if (sc) { const has = r !== null && r !== undefined && !!trajOf(r);
     sc.hidden = !has; if (has) sc.innerHTML = `<span aria-hidden="true">▶</span> ${esc(T.name[r])}’s ${esc(PTN[T.pitch_type[r]].toLowerCase())}`; }
@@ -7133,7 +7143,7 @@ function syncExplain() {   // the button shows while a measure is the color; the
   $("#explBtn").hidden = !can;
   const open = can && !!state.explainOpen;
   $("#explBtn").setAttribute("aria-expanded", String(open));
-  $("#explBtn").textContent = open ? "Hide the explanation" : "Explain the meaning of this";
+  $("#explBtn").textContent = open ? "Hide explanation" : "Explain";
   const box = $("#explBox"); box.hidden = !open;
   box.innerHTML = open ? explainHTML(kind) : "";
 }
@@ -8058,9 +8068,8 @@ function buildStatic() {
     const kind = varKind(state.view);
     state.color[kind] = state.color[kind] === "cat:team" ? "cat:pitch_type" : "cat:team"; buildVarSelects(); render();
   });
-  // the color menu: opens beside its button (over the map), search on top, arrows move, Enter picks, Escape or a click
-  // outside closes. The button sits in the left column, which scrolls and would clip a menu hung under it, so on a wide
-  // screen the menu is fixed to the window next to the button; on a phone it is the bottom sheet the CSS makes it.
+  // the color menu: hangs under its button on the map's top right (fixed to the window, so the map never clips it),
+  // search on top, arrows move, Enter picks, Escape or a click outside closes; on a phone it is the CSS's bottom sheet.
   const cm = $("#colorMenu"), cmBtn = $("#colorBtn"), cmS = $("#cmSearch"), cmL = $("#cmList");
   const setColor = k => { state.color[varKind(state.view)] = k; buildVarSelects(); render(); };
   const cmPlace = () => {
@@ -8068,8 +8077,8 @@ function buildStatic() {
     if (phone()) { cm.style.position = cm.style.left = cm.style.top = ""; return; }
     const b = $("#colorAWrap").getBoundingClientRect(), w = Math.min(560, innerWidth * 0.92), h = Math.min(innerHeight * 0.7, 640);
     cm.style.position = "fixed";
-    cm.style.left = Math.max(8, Math.min(b.right + 8, innerWidth - w - 8)) + "px";
-    cm.style.top = Math.max(8, Math.min(b.top, innerHeight - h - 8)) + "px";
+    cm.style.left = Math.max(8, Math.min(b.right - w, innerWidth - w - 8)) + "px";
+    cm.style.top = Math.max(8, Math.min(b.bottom + 6, innerHeight - h - 8)) + "px";
   };
   $("#typeCol").addEventListener("scroll", cmPlace, { passive: true });
   window.addEventListener("resize", cmPlace);

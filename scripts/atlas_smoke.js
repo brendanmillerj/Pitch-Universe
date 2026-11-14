@@ -260,9 +260,9 @@ const J = JSON.stringify;
     && ["hBoards", "hSim", "hClu"].every(id => markup.indexOf(`id="${id}"`) > hEnd), "header: ← Back, search, Season · Hand · Innings, Start over, Forward → (the actions live in the left column)");
   const tc = markup.indexOf('id="typeCol"'), at = id => markup.indexOf(`id="${id}"`);
   ok(tc > 0 && at("hBoards") > tc && at("hBoards") < at("hSim") && at("hSim") < at("hClu") && at("hClu") < at("lsColorBtn") && at("lsColorBtn") < at("slOpen"),
-    "left column opens with four drop-downs: Show leaderboard, Simulate pitch, Pitch Types/Clusters, Color clusters by measurement");
-  ok(at("pnClusters") > at("hClu") && at("universe") > at("pnClusters") && at("universe") < at("lsColorBtn") && at("colorBtn") > at("lsColorBtn") && at("ellOn") > at("lsColorBtn") && at("ellOn") < at("slOpen"),
-    "…the clusters switch and the pitch types sit in Pitch Types/Clusters; colouring and ellipses in the fourth");
+    "left column opens with four drop-downs: Show leaderboard, Simulate pitch, Pitch Types/Clusters, Ellipses and team colors");
+  ok(at("pnClusters") > at("hClu") && at("universe") > at("pnClusters") && at("universe") < at("lsColorBtn") && at("teamOn") > at("lsColorBtn") && at("ellOn") > at("lsColorBtn") && at("ellOn") < at("slOpen"),
+    "…the clusters switch and the pitch types sit in Pitch Types/Clusters; ellipses and team colors in the fourth");
   const hStart = markup.indexOf('<header class="head">'), hIds = [...markup.slice(hStart, hEnd).matchAll(/<button[^>]* id="(\w+)"/g)].map(m => m[1]);
   ok(hIds[0] === "navBack" && hIds[hIds.length - 1] === "navFwd" && !markup.includes('id="navHome"'), "like a browser: ← Back first in the header, Forward → last, no Home button (the title leads home): " + hIds.join(", "));
   const pa = markup.indexOf('id="plotArea"'), pl = markup.indexOf('<div id="plot"');
@@ -862,6 +862,7 @@ const J = JSON.stringify;
   getEl("#colorMenu").hidden = true;
   getEl("#colorBtn")._h.click[0]({}); await tick();
   const st = getEl("#colorMenu").style;
-  ok(getEl("#colorMenu").hidden === false && st.position === "fixed" && parseFloat(st.left) >= 216, `color menu opens fixed beside the button (left ${st.left})`);
+  ok(getEl("#colorMenu").hidden === false && st.position === "fixed", `color menu opens fixed to the window under its button (left ${st.left}, top ${st.top})`);
+  ok(markup.indexOf('id="colorBtn"') > markup.indexOf('id="mapTools"') && markup.indexOf('id="colorBtn"') < markup.indexOf('id="dimSeg"'), "Color by sits on the map, just before 2D | 3D (user, 2026-11-14)");
   report();
 })().catch(e => { ok(false, "threw: " + e.stack.split("\n").slice(0, 5).join(" | ")); report(); });
