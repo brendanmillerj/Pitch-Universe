@@ -861,6 +861,23 @@ const J = JSON.stringify;
     "the map card's pitch chips sit up top, above the pitch and its Lookalikes");
   run(`select(null); setView("FF", null)`); await tick();
 
+  // ---- under the map (user, 2026-11-14): no footer; Glossary at the left, Contact at the right; the Glossary pop-up
+  const capStart = markup.indexOf('<div class="caption">'), capEnd = markup.indexOf('<div class="tblscrim glscrim"');
+  const cap = markup.slice(capStart, capEnd);
+  ok(/id="glossBtn"[^>]*>Glossary</.test(cap) && /href="https:\/\/github.com\/brendanmillerj"[^>]*>Contact Brendan Miller</.test(cap) && cap.indexOf('id="glossBtn"') < cap.indexOf("Contact Brendan Miller")
+    && !/id="howto"|id="source"|id="keySel"|id="embLine"/.test(cap), "under the map: only Glossary (left) and Contact Brendan Miller (right)");
+  const dlg = markup.slice(markup.indexOf('id="glossDlg"'), markup.indexOf('id="cardScrim"'));
+  ok(["howto", "keySel", "source", "embLine", "glossIn"].every(id => dlg.includes(`id="${id}"`)) && dlg.indexOf("How to read the map") < dlg.indexOf("Terms and measures"),
+    "the Glossary holds How to read the map (the explainer, the key, the data line) and then the terms");
+  getEl("#glossBtn")._h.click[0]({}); await tick();
+  ok(getEl("#glossDlg").hidden === false && getEl("#glossScrim").hidden === false && getEl("main.map").inert === true && getEl("#glossBtn").getAttribute("aria-expanded") === "true", "Glossary opens as a pop-up, the page under it inert");
+  getEl("#glossX")._h.click[0]({}); await tick();
+  ok(getEl("#glossDlg").hidden === true && getEl("#glossScrim").hidden === true && !getEl("main.map").inert, "× closes it");
+  run(`openGloss(true, null, true)`); await tick();
+  ok(getEl("#glossDlg").hidden === false, "a card's Glossary link opens it too (at the terms)");
+  getEl("#glossScrim")._h.click[0]({}); await tick();
+  ok(getEl("#glossDlg").hidden === true, "…and a click outside closes it");
+
   // ---- color menu: fixed beside its button on a wide screen
   getEl("#colorMenu").hidden = true;
   getEl("#colorBtn")._h.click[0]({}); await tick();

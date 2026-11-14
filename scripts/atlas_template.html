@@ -1286,6 +1286,26 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
 /* the leaderboard's color key: what a cell's color means (user, 2026-11-14) */
 .mt-key { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: -2px 12px 10px; font: 400 13px/1.35 var(--font-ui); color: var(--ink2); }
 .mt-key[hidden] { display: none; }
+/* ---- under the map: Glossary at the left, Contact at the right (user, 2026-11-14) */
+.capbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding: 10px 0 14px; }
+.hfoot[aria-expanded="true"] { background: var(--ink); color: var(--field); }
+button.hfoot { font: 600 15px var(--font-ui); cursor: pointer; }
+/* the Glossary pop-up, over the card and the lab too */
+.glscrim { z-index: 78; }
+.glossdlg { position: fixed; z-index: 79; inset: 24px max(24px, calc((100vw - 1100px) / 2)); display: flex; flex-direction: column; min-height: 0;
+  background: var(--field); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35); }
+.glossdlg[hidden] { display: none; }
+.gd-head { flex: none; display: flex; align-items: center; gap: 12px; padding: 14px 20px 10px; border-bottom: 1px solid var(--line); }
+.gd-title { margin: 0; font: 600 26px/1.1 var(--font-serif); }
+.gd-title:focus { outline: none; }
+.gd-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 20px 24px; }
+.gd-sec h3 { margin: 18px 0 10px; padding-top: 10px; border-top: 2px solid var(--ink); font: 700 16px var(--font-ui); }
+.gd-sec:first-child h3 { margin-top: 10px; }
+.glossdlg .howto { margin: 0 0 12px; border: 0; padding: 0; background: none; }
+.glossdlg .legendkey { margin: 0 0 12px; font-size: 14px; color: var(--ink); gap: 8px 20px; }
+.glossdlg .source { font-size: 13px; color: var(--ink2); }
+.glossdlg .gloss-in { border-top: 0; padding-top: 0; }
+@media (max-width: 719px) { .glossdlg { inset: 4vh 0 0 0; border-radius: var(--r-lg) var(--r-lg) 0 0; } .glossdlg .howto { flex-direction: column; align-items: flex-start; } .glossdlg .gloss-in dl { columns: 1; } }
 .mt-key b { font-weight: 600; color: var(--ink); }
 .mt-kp { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); }
 .mt-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; border-top: 1px solid var(--line); scrollbar-gutter: stable; }
@@ -2225,34 +2245,45 @@ html.at-home .app { visibility: hidden; }
     </div>
   </main>
 
+  <!-- under the map (user, 2026-11-14): the Glossary (how to read the map, the key, the data, the terms) and Contact -->
   <div class="caption">
-    <details class="gloss" id="gloss">
-      <summary>Glossary: what the terms mean</summary>
-      <div class="gloss-in" id="glossIn"></div>
-    </details>
-    <p class="legendkey" id="keySel">
-      <span><i class="k-ring"></i>Selected</span>
-      <span><i class="badge">1</i>Closest comps</span>
-      <span id="legMates"><i class="k-dia"></i>His other pitches</span>
-      <span id="legSeasons"><i class="k-path"></i>His other seasons</span>
-      <label class="check" for="nameOn"><input type="checkbox" id="nameOn" checked>Name on map</label>
-      <button type="button" class="link" id="clearSel">Clear selection</button>
-    </p>
-    <section class="howto" id="howto" aria-label="How to read the map">
-      <svg class="howfig" viewBox="0 0 170 64" role="img" aria-label="A tight group of similar pitches and one different pitch far away">
+    <div class="capbar">
+      <button type="button" class="hfoot" id="glossBtn" aria-haspopup="dialog" aria-expanded="false" aria-controls="glossDlg">Glossary</button>
+      <a class="hfoot" href="https://github.com/brendanmillerj" target="_blank" rel="noopener">Contact Brendan Miller</a>
+    </div>
+  </div>
+  <div class="tblscrim glscrim" id="glossScrim" hidden></div>
+  <section class="glossdlg" id="glossDlg" role="dialog" aria-modal="true" aria-labelledby="glossTitle" hidden>
+    <div class="gd-head"><h2 class="gd-title" id="glossTitle" tabindex="-1">Glossary</h2><button type="button" class="mtx" id="glossX" aria-label="Close the glossary" title="Close (Esc)">×</button></div>
+    <div class="gd-body">
+      <section class="gd-sec" aria-labelledby="gdHow">
+        <h3 id="gdHow">How to read the map</h3>
+        <div class="howto" id="howto">
+  <svg class="howfig" viewBox="0 0 170 64" role="img" aria-label="A tight group of similar pitches and one different pitch far away">
         <rect width="170" height="64" rx="7" />
         <g class="hf-near"><circle cx="30" cy="26" r="4.5"/><circle cx="40" cy="20" r="4.5"/><circle cx="38" cy="32" r="4.5"/><circle cx="48" cy="26" r="4.5"/><circle cx="28" cy="37" r="4.5"/></g>
         <line x1="58" y1="27" x2="128" y2="27" />
         <circle class="hf-far" cx="138" cy="27" r="4.5"/>
         <text x="38" y="55">alike</text><text x="138" y="55">different</text>
       </svg>
-      <p><b>How to read it.</b> Each dot is one pitcher’s pitch type over one season. Pitches that are alike in what they are (speed, spin, movement, angles, release and delivery) sit next to each other: nearby means alike. The gaps between islands and the axes have no meaning. Where a pitch is thrown, how repeatable it is and how often it is thrown do not place it; color the map by them instead.</p>
-      <button type="button" class="howhide" id="howHide" aria-controls="howto">Hide</button>
-    </section>
-    <button type="button" class="link howshow" id="howShow" aria-controls="howto" hidden>How to read the map</button>
-    <p class="source" id="source"></p>
-    <p class="source dlline" id="embLine" hidden><button type="button" class="link" id="embDl" title="Every dot’s place on the maps: the all-pitches map and its pitch type’s own map, flat and 3D, with its cluster. openTSNE (perplexity 30) on the 15 measures of what a pitch is; the axes have no units, only nearness means anything. Triple-A rows are placed on the MLB maps, not refit.">Download the t-SNE coordinates (CSV)</button><span class="dlmsg" id="embMsg" role="status" aria-live="polite"></span></p>
-  </div>
+          <p>Each dot is one pitcher’s pitch type over one season. Pitches that are alike in what they are (speed, spin, movement, angles, release and delivery) sit next to each other: nearby means alike. The gaps between islands and the axes have no meaning. Where a pitch is thrown, how repeatable it is and how often it is thrown do not place it; color the map by them instead.</p>
+        </div>
+        <p class="legendkey" id="keySel">
+          <span><i class="k-ring"></i>Selected pitcher</span>
+          <span><i class="badge">1</i>His closest lookalikes, numbered</span>
+          <span id="legMates"><i class="k-dia"></i>His other pitches (All pitches map)</span>
+          <span id="legSeasons"><i class="k-path"></i>His other seasons, in order</span>
+          <label class="check" for="nameOn"><input type="checkbox" id="nameOn" checked>Show his name on the map</label>
+        </p>
+        <p class="source" id="source"></p>
+  <p class="source dlline" id="embLine" hidden><button type="button" class="link" id="embDl" title="Every dot’s place on the maps: the all-pitches map and its pitch type’s own map, flat and 3D, with its cluster. openTSNE (perplexity 30) on the 15 measures of what a pitch is; the axes have no units, only nearness means anything. Triple-A rows are placed on the MLB maps, not refit.">Download the t-SNE coordinates (CSV)</button><span class="dlmsg" id="embMsg" role="status" aria-live="polite"></span></p>
+      </section>
+      <section class="gd-sec" aria-labelledby="gdTerms">
+        <h3 id="gdTerms">Terms and measures</h3>
+        <div class="gloss-in" id="glossIn"></div>
+      </section>
+    </div>
+  </section>
 
   <div class="cardscrim" id="cardScrim" hidden></div>
   <div class="cardwrap" id="cardWrap" role="dialog" aria-modal="true" aria-label="Pitcher profile">
@@ -3456,10 +3487,6 @@ function render() {
   syncCta(); renderCompBox();
 
   // Caption under the map
-  $("#keySel").hidden = !hasSel;
-  $("#legMates").hidden = view !== "all";
-  $("#legSeasons").hidden = !(hasSel && nSame > 1);
-  $("#clearSel").disabled = !hasSel;
   // one hint, once, that goes away on the first interaction with the map
   if (!state.hinted && !state.home) { state.hinted = true; toast(onPhone ? "Tap a dot to open the pitcher" : (is3D() ? "Drag to rotate · Scroll to zoom · " : `Drag to move · ${ZOOM_KEY} + scroll to zoom · `) + "Double-click to reset · Click a dot to open the pitcher", 9000); }
   syncRail(); writeHash(view);
@@ -4665,6 +4692,21 @@ function pctSub(poolName, rows, v, r, lowGood) {
 
 const focusCard = () => { const t = $("#dHead").querySelector(".cname") || $("#detail").querySelector(".cname, .empty"); if (t) t.focus({ preventScroll: true }); };
 
+// the Glossary: a pop-up over everything (the card included); toTerms scrolls to the terms. Focus goes back to its opener.
+let glossFrom = null;
+function openGloss(on, from, toTerms) {
+  const dlg = $("#glossDlg"); if (!dlg) return;
+  dlg.hidden = !on; $("#glossScrim").hidden = !on; $("#glossBtn").setAttribute("aria-expanded", String(on));
+  [...CARD_UNDER, "#cardWrap", "#simBox"].forEach(s => { const e = $(s); if (e) e.inert = on; });
+  if (on) {
+    glossFrom = from || null;
+    requestAnimationFrame(() => { $("#glossTitle").focus({ preventScroll: true });
+      const t = toTerms ? $("#gdTerms") : null, b = dlg.querySelector(".gd-body"); if (b) b.scrollTop = t && isNum(t.offsetTop) ? t.offsetTop - 12 : 0; });
+  } else {
+    syncUnder(); const c = $("#cardWrap"), sb = $("#simBox"); if (c) c.inert = false; if (sb) sb.inert = false;
+    if (glossFrom && glossFrom.focus) glossFrom.focus({ preventScroll: true }); glossFrom = null;
+  }
+}
 // the card and the leaderboards are modal pop-ups: the page under their scrim leaves the tab order and the screen
 // reader (as home does); the leaderboards themselves go inert under a card
 const CARD_UNDER = ["header.head", "#controls", "main.map", ".caption", "#mTable", "#sliders"];
@@ -7096,7 +7138,7 @@ const TERMS = () => [
 ];
 function glossaryHTML() {
   const dl = rows => `<dl>${rows.map(([t, d]) => `<div><dt>${esc(t)}</dt><dd>${esc(d || "")}</dd></div>`).join("")}</dl>`;
-  let html = `<h4>Terms</h4>${dl(TERMS())}`;
+  let html = `<h4>General</h4>${dl(TERMS())}`;
   const vars = VARS.t.filter(v => !v.cat), groups = [...new Set(vars.map(v => v.group))];
   groups.forEach(g => { html += `<h4>${esc(g)}</h4>` + dl(vars.filter(v => v.group === g).map(v => [v.label, EXPLAIN[v.key] || EXPLAIN[baseKey(v.key)]])); });
   return html;
@@ -7970,16 +8012,6 @@ function buildStatic() {
   $("#cardScrim").addEventListener("click", () => closeCard());
   $("#cardClose").addEventListener("click", () => closeCard());
 
-  // "How to read it" box: Hide / show, remembered for this viewer (storage may be blocked)
-  const setHow = (hidden, focus) => {
-    $("#howto").hidden = hidden; $("#howShow").hidden = !hidden;
-    try { localStorage.setItem("atlas.howHidden", hidden ? "1" : "0"); } catch (e) {}
-    if (focus) (hidden ? $("#howShow") : $("#howHide")).focus({ preventScroll: true });
-  };
-  let howHidden = false; try { howHidden = localStorage.getItem("atlas.howHidden") === "1"; } catch (e) {}
-  if (howHidden) { $("#howto").hidden = true; $("#howShow").hidden = false; }
-  $("#howHide").addEventListener("click", () => setHow(true, true));
-  $("#howShow").addEventListener("click", () => setHow(false, true));
 
   // download: shown once this view can save files (framed in claude.ai), or always on a standalone copy
   $("#dlBtn").addEventListener("click", downloadCSV);
@@ -8012,7 +8044,6 @@ function buildStatic() {
     const nb = $("#mapKey").querySelector(`[data-scale="${state.scale}"]`); if (nb) nb.focus({ preventScroll: true });
   });
   // the key strip (and this button) hides once nothing is selected, so hand focus to the card
-  $("#clearSel").addEventListener("click", e => { select(null); if (e.detail === 0) focusCard(); });
   $("#nameOn").addEventListener("change", e => { state.showName = e.target.checked; render(); });
   // drag, scroll-zoom, modebar and margins differ on phones
   matchMedia("(max-width: 719px)").addEventListener("change", () => render());
@@ -8178,13 +8209,13 @@ function buildStatic() {
     Plotly.relayout(plotEl, { "xaxis.range": [x0 + (xl - x0) * f, x0 + (xh - x0) * f], "yaxis.range": [y0 + (yl - y0) * f, y0 + (yh - y0) * f] });
   }, { passive: false });
 
-  // Glossary under the how-to box; "Glossary" on a card opens it
+  // the Glossary pop-up (the button under the map, or "Glossary" on a card): how to read the map, then the terms
   $("#glossIn").innerHTML = glossaryHTML();
-  document.addEventListener("click", e => {
-    if (!e.target.closest(".to-gloss")) return;
-    const g = $("#gloss"); g.open = true;
-    if (g.scrollIntoView) g.scrollIntoView({ block: "start", behavior: reduced() ? "auto" : "smooth" });
-  });
+  $("#glossBtn").addEventListener("click", () => openGloss(true, $("#glossBtn")));
+  $("#glossX").addEventListener("click", () => openGloss(false));
+  $("#glossScrim").addEventListener("click", () => openGloss(false));
+  $("#glossDlg").addEventListener("keydown", e => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); openGloss(false); } });
+  document.addEventListener("click", e => { const t = e.target.closest && e.target.closest(".to-gloss"); if (t) openGloss(true, t, true); });
 
   window.addEventListener("hashchange", () => {   // an address typed or pasted by hand; our own steps come through popstate
     if (history.state && Number.isInteger(history.state.nav)) return;
