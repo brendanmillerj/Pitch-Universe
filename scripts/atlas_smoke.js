@@ -259,10 +259,10 @@ const J = JSON.stringify;
   ok(["navBack", "navFwd", "startOver", "seasonChips", "throwsSeg", "minIP"].every(id => markup.indexOf(`id="${id}"`) < hEnd && markup.indexOf(`id="${id}"`) > 0)
     && ["hBoards", "hSim", "hClu"].every(id => markup.indexOf(`id="${id}"`) > hEnd), "header: ← Back, search, Season · Hand · Innings, Start over, Forward → (the actions live in the left column)");
   const tc = markup.indexOf('id="typeCol"'), at = id => markup.indexOf(`id="${id}"`);
-  ok(tc > 0 && at("hBoards") > tc && at("hBoards") < at("hSim") && at("hSim") < at("hClu") && at("hClu") < at("lsColorBtn") && at("lsColorBtn") < at("slOpen"),
-    "left column opens with four drop-downs: Show leaderboard, Simulate pitch, Pitch Types/Clusters, Ellipses and team colors");
-  ok(at("pnClusters") > at("hClu") && at("universe") > at("pnClusters") && at("universe") < at("lsColorBtn") && at("teamOn") > at("lsColorBtn") && at("ellOn") > at("lsColorBtn") && at("ellOn") < at("slOpen"),
-    "…the clusters switch and the pitch types sit in Pitch Types/Clusters; ellipses and team colors in the fourth");
+  ok(tc > 0 && at("hBoards") > tc && at("hBoards") < at("hSim") && at("hSim") < at("hClu") && at("hClu") < at("slOpen"),
+    "left column opens with Show leaderboard, then the Simulate pitch and Pitch Types/Clusters drop-downs");
+  ok(at("pnClusters") > at("hClu") && at("universe") > at("pnClusters") && at("universe") < at("slOpen"), "…the clusters switch and the pitch types sit in Pitch Types/Clusters");
+  ok(["ellOn", "teamOn", "lassoOn", "lsColorBtn", "lbList"].every(id => at(id) < 0), "no ellipses, Team colors or Draw a group options, and no leaderboard drop-down (user, 2026-11-14)");
   const hStart = markup.indexOf('<header class="head">'), hIds = [...markup.slice(hStart, hEnd).matchAll(/<button[^>]* id="(\w+)"/g)].map(m => m[1]);
   ok(hIds[0] === "navBack" && hIds[hIds.length - 1] === "navFwd" && !markup.includes('id="navHome"'), "like a browser: ← Back first in the header, Forward → last, no Home button (the title leads home): " + hIds.join(", "));
   const pa = markup.indexOf('id="plotArea"'), pl = markup.indexOf('<div id="plot"');
@@ -686,15 +686,10 @@ const J = JSON.stringify;
   getEl("#mtHide")._h.click[0]({}); await tick();
   ok(getEl("#mTable").hidden === true && !getEl("#app").classList.contains("with-table"), "× closes it");
   getEl("#hBoards")._h.click[0]({}); await tick();
-  ok(getEl("#lsBoards").hidden === false && getEl("#hBoards").getAttribute("aria-expanded") === "true" && run("tableGroups()").every(g => getEl("#lbList").innerHTML.includes(`data-g="${g}"`)),
-    "Show leaderboard opens its list: one button per category");
-  run(`openBoard("Results")`); await tick();
-  ok(run("state.tblGroup") === "Results" && getEl("#mTable").hidden === false && run("state.seasons.size") === 1,
-    "…a category opens its leaderboard on the latest season");
-  run(`openBoard("Results")`); await tick();
-  ok(getEl("#mTable").hidden === true && !run("state.tblGroup"), "…and again closes it");
+  ok(run("state.tblGroup") === "Whole pitcher" && getEl("#mTable").hidden === false && getEl("#hBoards").getAttribute("aria-pressed") === "true" && run("state.seasons.size") === 1,
+    "Show leaderboard opens the leaderboard straight away (its last tab, the latest season) and reads as on");
   getEl("#hBoards")._h.click[0]({}); await tick();
-  ok(getEl("#lsBoards").hidden === true && getEl("#hBoards").getAttribute("aria-expanded") === "false", "…and the section closes");
+  ok(getEl("#mTable").hidden === true && getEl("#hBoards").getAttribute("aria-pressed") === "false", "…and pressed again closes it");
   ok(!markup.includes('id="tblOpen"'), "no second Show table in the left column");
   // the sliders and the map's colours rank against the same MLB pool
   run(`setView("FF", null); state.ranges = { "t:velo": [90, 100] }; render()`); await tick();
@@ -845,9 +840,9 @@ const J = JSON.stringify;
 
   // ---- one button rule: white = press it, ink = open or on; no green
   ok(/one button rule/.test(html) && /\.hact\[aria-expanded="true"\], \.hact\.is-on/.test(html), "header buttons: white until open or on, then ink");
-  getEl("#lsColorBtn")._h.click[0]({}); await tick();
-  ok(getEl("#lsColor").hidden === false && getEl("#lsColorBtn").getAttribute("aria-expanded") === "true" && /\.lsbtn\[aria-expanded="true"\]/.test(html), "the colour section opens, and its button turns ink while open");
-  getEl("#lsColorBtn")._h.click[0]({}); await tick();
+  getEl("#hClu")._h.click[0]({}); await tick();
+  ok(getEl("#lsTypes").hidden === false && getEl("#hClu").getAttribute("aria-expanded") === "true" && /\.lsbtn\[aria-expanded="true"\]/.test(html), "a drop-down's button turns ink while open");
+  getEl("#hClu")._h.click[0]({}); await tick();
   run(`preview(${hr})`); await tick();
   ok(/^Lookalikes<span class="lk-sub">Pitchers whose four-seam looks like his<\/span>$/.test(getEl("#cbTitle").innerHTML) && /\.selcta \.cta-pitch, \.selcta \.cta-look \{ border-top: 2px solid var\(--ink\)/.test(html),
     "the map card has two headed sections, the pitch and its Lookalikes");
