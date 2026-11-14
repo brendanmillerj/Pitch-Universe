@@ -83,8 +83,8 @@ button, input, select { font: inherit; color: inherit; }
 .cardx:hover { background: var(--wash); }
 .app:not(.has-sel) .cardx { display: none; }
 
-/* masthead, one row: the title, the search, the map view (2D/3D, Movement/t-SNE, how well similar pitches stay
-   together) and the Pitch clusters switch, bottoms level with the search box. Everything else sits left of the map.
+/* masthead, one row: the title, the search, Leaderboards and Pitch simulation, then Home / Back / Forward / Start over,
+   bottoms level with the search box. The map's view switches sit on the map (.maptools); everything else left of it.
    A gray band edge to edge: bleed through the page gutters, then pad back in. */
 .head { grid-area: head; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 10px 0 8px;
   background: var(--panel); border-bottom: 1px solid var(--line);
@@ -100,8 +100,35 @@ button, input, select { font: inherit; color: inherit; }
 .cardnav { display: contents; }
 .brand { display: flex; flex-direction: column; gap: 2px; }
 .brand h1 { white-space: nowrap; }   /* "Pitch-omics" never breaks at its hyphen */
-.hview { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
-.hview .lqual { margin-left: 4px; }
+/* Leaderboards and Pitch simulation: green, the colour of buttons that open something; Leaderboards is ink while its table is open */
+.hacts { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; }
+.hact { min-height: var(--ctl); padding: 0 14px; border-radius: var(--r); border: 1.5px solid var(--accent); background: var(--accent); color: #fff;
+  font: 600 14px var(--font-ui); cursor: pointer; white-space: nowrap; }
+.hact:hover { background: var(--accent-dk); border-color: var(--accent-dk); }
+.hact[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); }
+.hact:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.hsimwrap { position: relative; }
+.hsimpop { position: absolute; z-index: 70; top: calc(100% + 6px); left: 0; width: min(360px, calc(100vw - 32px)); padding: 10px 12px 12px;
+  background: var(--field); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--sh2); }
+.hsimpop[hidden] { display: none; }
+/* the map's view switches and "Similar pitches kept together", on the map's top right (dark like every panel on the map) */
+.maptools { position: absolute; top: var(--mi); right: var(--mi); z-index: 7; display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+  pointer-events: none; }
+.maptools > * { pointer-events: auto; }
+.mt-sw { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.maptools .lqual { padding: 6px 10px; background: var(--map-chrome); border: 1px solid var(--map-line); border-radius: var(--r); color: var(--map-muted); }
+.maptools .lqual[hidden] { display: none; }
+.maptools .lq-h { color: var(--map-ink2); text-decoration-color: var(--map-muted); }
+.maptools .lq-bar { background: rgba(255, 255, 255, 0.14); }
+.maptools .lq-bar i { background: var(--map-muted); }
+.maptools .lqual .lq-on { color: var(--map-ink); }
+.maptools .lq-bar.lq-on i { background: var(--map-ink); }
+/* with the view switches in the top right, the map's passing hint moves to the bottom right (the colour key is bottom left);
+   40px clears the Movement chart's axis labels. Phones: the switches sit above the map, so the hint goes to its bottom. */
+@media (min-width: 720px) {
+  .plotarea .maptoast { top: auto; bottom: calc(var(--mi) + 40px); left: auto; right: var(--mi); transform: none; max-width: min(460px, calc(100% - 2 * var(--mi))); }
+}
+@media (max-width: 719px) { .plotarea .maptoast { top: auto; bottom: 8px; } }
 .hcl { display: flex; flex-direction: column; gap: 4px; }
 .hcl[hidden] { display: none; }
 .head h1 { font: 600 40px/1.02 var(--font-serif); font-optical-sizing: auto; letter-spacing: -0.01em; margin: 0; color: var(--ink); white-space: nowrap; }
@@ -994,6 +1021,17 @@ button, input, select { font: inherit; color: inherit; }
 @media (max-width: 719px) { .hs-tiles { grid-template-columns: repeat(3, auto); row-gap: 8px; } .hs-tiles dd { font-size: 20px; } }
 .dhead .sv-barr { margin-left: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
 .sv-hero { background: var(--field); border: 1px solid var(--line); border-radius: var(--r); padding: 6px 12px 4px; }
+/* What changed since last season: under Defining Traits, in the same kind of box; the tag says how big */
+.sv-chg { margin-top: 8px; background: var(--field); border: 1px solid var(--line); border-radius: var(--r); padding: 6px 12px 8px; }
+.chg-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding-bottom: 4px; border-bottom: 1.5px solid var(--rule); }
+.chg-head h3 { margin: 0; font: 700 17px var(--font-ui); color: var(--ink); }
+.chg-tag { display: inline-flex; align-items: center; min-height: 22px; padding: 0 9px; border: 1.5px solid var(--ink); border-radius: 999px; font: 600 13px var(--font-ui); }
+.chg-tag.chg-big { background: var(--ink); color: var(--field); }
+.chg-tag.chg-some { background: var(--field); color: var(--ink); }
+.chg-tag.chg-same { background: var(--field); color: var(--ink2); border-color: var(--rule); }
+.chg-list { margin: 6px 0 2px; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; font: 500 15px/1.35 var(--font-ui); color: var(--ink); }
+.chg-list li { cursor: help; }
+.chg-line { margin: 6px 0 2px; font: 400 14px/1.4 var(--font-ui); color: var(--ink2); }
 .herohead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; padding-bottom: 4px; border-bottom: 1.5px solid var(--rule); }
 .herohead h3 { margin: 0; font: 700 17px var(--font-ui); color: var(--ink); }
 .herotags { display: flex; flex-direction: column; gap: 5px; padding: 8px 0 8px; border-bottom: 1px solid var(--line); }
@@ -1698,6 +1736,9 @@ html.at-home, html.at-home body { overflow: hidden; }
   .hstrip-lbl br { display: none; }
 }
 @media (max-width: 719px) {
+  /* phones: Plotly's own toolbar takes the map's top right, so the view switches sit just above the map */
+  .maptools { position: static; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-start; margin: 0 0 6px; }
+  .mt-sw { justify-content: flex-start; }
   .home-title { font-size: 46px; }
   .home-panel { margin: 14px 12px 0; padding: 22px 14px 24px; }
   .hcard h2 { font-size: 26px; }
@@ -1848,19 +1889,26 @@ html.at-home, html.at-home body { overflow: hidden; }
           <span class="help" id="searchMsg" role="status" aria-live="polite"></span>
         </form>
       </div>
-      <!-- the map's view: flat or 3D, movement chart or t-SNE, and how well each layout keeps similar pitches together -->
-      <div class="hview" role="group" aria-label="Map view">
-        <div class="dimseg" id="dimSeg" role="group" aria-label="Map view">
-          <button type="button" id="dim2" data-v="2" title="Flat map">2D</button>
-          <button type="button" id="dim3" data-v="3" title="Drag to rotate">3D</button>
+      <!-- the leaderboards (the measure table) and the Pitch Simulation Lab, as on the home page -->
+      <div class="hacts" role="group" aria-label="Leaderboards and pitch simulation">
+        <button type="button" class="hact" id="hBoards" aria-pressed="false" title="Every pitcher on this map in a table, ranked by any measure">Leaderboards</button>
+        <div class="hsimwrap">
+          <button type="button" class="hact" id="hSim" aria-expanded="false" aria-controls="hSimPop" title="Fly a pitcher’s pitches in the Pitch Simulation Lab">Pitch simulation</button>
+          <div class="hsimpop" id="hSimPop" hidden>
+            <form class="find" id="hSimFind" role="search">
+              <label class="find-lbl" for="hSimSearch">Search a pitcher to simulate</label>
+              <div class="find-box">
+                <svg class="find-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+                <input id="hSimSearch" type="search" placeholder="e.g. Paul Skenes" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="hSimSugg">
+                <ul class="sugg" id="hSimSugg" role="listbox" aria-label="Matching pitchers" hidden></ul>
+              </div>
+              <span class="help" id="hSimMsg" role="status" aria-live="polite"></span>
+            </form>
+          </div>
         </div>
-        <div class="dimseg layseg" id="laySeg" role="group" aria-label="Map layout">
-          <button type="button" data-lay="move" title="The plain movement chart: horizontal break across, induced vertical break up">Movement</button>
-          <button type="button" data-lay="tsne" title="The universe: pitches placed by everything that defines them (t-SNE)">t-SNE</button>
-        </div>
-        <div class="lqual" id="lqual" hidden></div>
       </div>
       <div class="hnav">
+      <button type="button" class="restart" id="navHome" data-gohome title="The home page: search, leaderboards, simulate a pitch, every map">Home</button>
       <button type="button" class="restart" id="navBack" data-nav="back" disabled>← Back</button>
       <button type="button" class="restart" id="navFwd" data-nav="fwd" disabled>Forward →</button>
       <button type="button" class="restart" id="startOver" title="Back to how the page opens: All pitches, MLB, no one selected, no filters, colored by pitch type. Your saved groups stay.">↺ Start over</button>
@@ -1889,7 +1937,6 @@ html.at-home, html.at-home body { overflow: hidden; }
           <button type="button" class="measbtn" id="slOpen" aria-expanded="false" aria-controls="sliders"><span class="measarr" aria-hidden="true">‹</span><span id="slOpenTxt">Filter by measures &amp; show tables</span></button>
           <button type="button" class="resetbtn" id="resetAll" disabled title="Reset filters: measures, the pitch cluster, free agents, the color-key range, season and hand">Reset</button>
         </div>
-        <button type="button" class="ubtn" id="tblOpen" title="Every pitcher on this map in a table, ranked by any measure">Show table</button>
         <div class="lvlseg" id="lvlSeg" role="group" aria-label="Level shown" hidden>
           <button type="button" data-v="mlb" aria-pressed="true" title="Major-league pitchers">MLB</button><button type="button" data-v="aaa" aria-pressed="false" title="Triple-A pitchers on the same maps, every number measured against big-league norms">Triple-A</button>
         </div>
@@ -1957,6 +2004,21 @@ html.at-home, html.at-home body { overflow: hidden; }
         <span class="tcnote" id="ipNote" hidden>No innings counts for Triple-A, so this applies to MLB only.</span>
       </div>
       <div class="plotarea" id="plotArea">
+        <!-- the map's view, on the map (user, 2026-11-14): flat or 3D, movement chart or t-SNE, and how well each layout
+             keeps similar pitches together; a sibling of #plot, which Plotly and the 3D setup empty -->
+        <div class="maptools" id="mapTools" role="group" aria-label="Map view">
+          <div class="mt-sw">
+            <div class="dimseg" id="dimSeg" role="group" aria-label="Flat or 3D">
+              <button type="button" id="dim2" data-v="2" title="Flat map">2D</button>
+              <button type="button" id="dim3" data-v="3" title="Drag to rotate">3D</button>
+            </div>
+            <div class="dimseg layseg" id="laySeg" role="group" aria-label="Map layout">
+              <button type="button" data-lay="move" title="The plain movement chart: horizontal break across, induced vertical break up">Movement</button>
+              <button type="button" data-lay="tsne" title="The universe: pitches placed by everything that defines them (t-SNE)">t-SNE</button>
+            </div>
+          </div>
+          <div class="lqual" id="lqual" hidden></div>
+        </div>
         <div id="plot"></div>
       <div class="mapkey" id="mapKey" hidden></div>
       <p class="maptoast" id="mapnote" role="status" aria-live="polite" hidden></p>
@@ -2202,7 +2264,7 @@ function indexData() {
   // caches that depend on which rows exist (the MLB pools, and anything keyed on them, never change)
   VAL = null; UNI = null; archCache.clear(); rawBoundsCache.clear(); svRowCache.clear(); regionCache.clear(); viewSortedCache.clear();
   for (const k of Object.keys(fullSpan)) delete fullSpan[k];
-  MV = null; TJ = null; GK = null; SUG = null;
+  MV = null; TJ = null; GK = null; SUG = null; Y2Y = null;
 }
 
 // ------------------------------------------------------ a level that loads later
@@ -3042,14 +3104,40 @@ function render() {
       ? [sel, ...TYPES.map(t => tRow(T.pitcher[sel], T.season[sel], t, T.level[sel])).filter(r => r !== undefined && r !== sel)]
       : [sel];
     const same = viewRows(view).filter(r => T.pitcher[r] === T.pitcher[sel]
-      && T.pitch_type[r] === T.pitch_type[sel]).sort((a, b) => T.season[a] - T.season[b]);
+      && T.pitch_type[r] === T.pitch_type[sel]).sort((a, b) => T.season[a] - T.season[b] || (T.level[a] === "mlb") - (T.level[b] === "mlb"));
     nSame = same.length;
+    // His other seasons of this pitch (user, 2026-11-14: they should "pop up with the 2026 version"): full strength
+    // whatever the season filter, in the pitch's own colour with a year tag (a Triple-A season says so), joined in season
+    // order by arrows into the next. In 3D, one line through them with the tags riding on it.
+    const seasonTag = r => `${T.season[r]}${T.level[r] === "mlb" ? "" : " " + (LVL_NAME[T.level[r]] || T.level[r])}`;
+    const seasonAnns = [];
     if (same.length > 1) {
-      const c = pt(same);
-      traces.push({ type: "scatter", mode: "lines+markers+text", ...c, text: same.map(r => r === sel ? "" : shortSeason(T.season[r])),
-        textposition: "bottom center", textfont: { size: 13, color: pal.ink2, family: UI_FONT },
-        customdata: same, hoverinfo: "text", hovertext: same.map(r => hoverHTML(r) + "<br>same pitcher, other season"),
-        line: { color: pal.ink2, width: 1.5, dash: "dot" }, marker: { size: 12, color: pal.surface, line: { width: 2, color: pal.ink2 } }, showlegend: false });
+      const pcol = SAVANT_PITCH[T.pitch_type[sel]] || pal.ink, c = pt(same);
+      const tips = same.map(r => hoverHTML(r) + (r === sel ? "" : `<br>his ${seasonTag(r)} ${PTN[T.pitch_type[r]].toLowerCase()}`));
+      const sdot = { size: Math.max(13, size * 1.5), color: pcol, opacity: 1, line: { width: 2, color: "#ffffff" } };
+      if (is3D()) traces.push({ meta: "seasons", type: "scatter", mode: "lines+markers+text", ...c, customdata: same, hoverinfo: "text", hovertext: tips,
+        text: same.map(r => r === sel ? "" : seasonTag(r)), textposition: "bottom center", textfont: { size: 13, color: pal.ink, family: UI_FONT },
+        line: { color: pal.ink, width: 2 }, marker: sdot, showlegend: false });
+      else {
+        // (him too, under his own dot: a season filtered off the map still has a dot to ring)
+        traces.push({ meta: "seasons", type: "scatter", mode: "markers", ...c, customdata: same, hoverinfo: "text", hovertext: tips, marker: sdot, showlegend: false });
+        // a call-up's MLB and Triple-A versions of one season can sit on top of each other (Triple-A pitches are placed
+        // beside their nearest big-league pitch, often his own): they share one tag, and no arrow joins them
+        const span = viewSpan(view) || 1, near = (a, b) => { const [x0, y0] = xy(view, a), [x1, y1] = xy(view, b); return Math.hypot(x1 - x0, y1 - y0) < 0.015 * span; };
+        const twin = r => same.find(q => q !== r && T.season[q] === T.season[r] && T.level[q] !== T.level[r] && near(q, r));
+        for (let k = 1; k < same.length; k++) {
+          if (near(same[k - 1], same[k])) continue;
+          const [x0, y0] = xy(view, same[k - 1]), [x1, y1] = xy(view, same[k]);
+          seasonAnns.push({ x: x1, y: y1, ax: x0, ay: y0, xref: "x", yref: "y", axref: "x", ayref: "y", text: "", showarrow: true,
+            arrowhead: 2, arrowsize: 1.2, arrowwidth: 2, arrowcolor: pal.ink, standoff: 12, startstandoff: 10 });
+        }
+        same.forEach(r => {
+          const tw = twin(r); if (tw !== undefined && T.level[r] !== "mlb") return;   // the MLB one carries the shared tag
+          const [x, y] = xy(view, r), txt = tw !== undefined ? `${T.season[r]}, MLB and ${LVL_NAME[T.level[tw]] || T.level[tw]}` : seasonTag(r);
+          seasonAnns.push({ x, y, xref: "x", yref: "y", text: r === sel || tw === sel ? `<b>${txt}</b>` : txt, showarrow: false,
+            xanchor: "left", xshift: 14, font: { family: UI_FONT, size: 13, color: pal.ink }, bgcolor: tint(pal.bg, 0.85), borderpad: 2 });
+        });
+      }
     }
     const comps = state.showComps || compsOnMap() ? compsOf(view, sel) : [];
     if (comps.length && compsOnMap()) {   // a spoke from him to each lookalike
@@ -3070,7 +3158,7 @@ function render() {
     const srcOf = r => traces.find(t => Array.isArray(t.customdata) && t.marker && t.customdata.includes(r));
     const srcs = arsenal.map(srcOf);
     // (with his lookalikes shown, everything but him, the spokes and the numbered lookalikes fades further)
-    const dimTo = compsOnMap() ? LOOK_DIM : SEL_DIM, keepLit = compsOnMap() ? new Set(["glow", "typelabels", "clusterlabels", "saved", "comps", "spokes"]) : new Set(["glow", "typelabels", "clusterlabels", "saved"]);
+    const dimTo = compsOnMap() ? LOOK_DIM : SEL_DIM, keepLit = compsOnMap() ? new Set(["glow", "typelabels", "clusterlabels", "saved", "comps", "spokes", "seasons"]) : new Set(["glow", "typelabels", "clusterlabels", "saved", "seasons"]);
     traces.forEach(t => { if (!keepLit.has(t.meta) && t.fill !== "toself") { t.opacity = dimTo; t.dimK = dimTo; } });
     // ...and his pitch(es) are redrawn on top at full strength in their own colors; in All pitches each
     // carries its pitch code (the selected one below the dot, clear of the name label above it)
@@ -3094,6 +3182,7 @@ function render() {
     if (state.showName) annotations = [{ x: sx, y: sy, xref: "x", yref: "y", text: "<b>" + esc(rowName(view, sel)) + "</b>",
       showarrow: true, arrowhead: 0, arrowwidth: 1, arrowcolor: pal.ink, ax: 0, ay: -36, standoff: 13,
       font: { family: UI_FONT, size: 13, color: pal.ink }, bgcolor: tint(pal.bg, 0.85), borderpad: 2 }];
+    annotations = annotations.concat(seasonAnns);   // his seasons' arrows and year tags (2D)
   }
 
   const layout = {
@@ -3204,6 +3293,7 @@ function render() {
       plotEl.on("plotly_selected", e => lassoDone(e));
       plotReady = true;
     }
+    keepInView();
   });
   }
 
@@ -4456,6 +4546,7 @@ function renderDetail() {
   const bar = el.querySelector(".sv-bar"), hero = el.querySelector(".sv-hero"), dh = $("#dHead");
   if (bar) dh.appendChild(bar);
   if (hero) $("#dTraits").appendChild(hero);
+  const chg = el.querySelector(".sv-chg"); if (chg) $("#dTraits").appendChild(chg);   // What changed, under Defining Traits
   renderMovement(r);
   renderFlight(r);
   // the grid may still be reflowing (card just opened): let the chart re-measure its column
@@ -5623,7 +5714,7 @@ function renderSim(opt = {}) {
   const box = $("#simBox"), j = state.sel; if (j === null || j === undefined) { box.hidden = true; return; }
   if (flightData().none) {
     box.hidden = false; box.setAttribute("aria-label", "Pitch Simulation Lab");
-    box.innerHTML = `<div class="sim-head"><h2 class="sim-name" id="simTitle" tabindex="-1">${esc(T.name[j])}</h2><div class="simhr"><button type="button" class="sim-replay simprof" id="simProfile" title="His full player card: every pitch, measure and season">Show Profile</button><button type="button" class="sim-x" id="simClose" aria-label="Close the Pitch Simulation Lab">×</button></div></div><p class="simsub">No tracked flight paths for this pitch.</p>`;
+    box.innerHTML = `<div class="sim-head"><h2 class="sim-name" id="simTitle" tabindex="-1">${esc(T.name[j])}</h2><div class="simhr"><button type="button" class="sim-replay simprof" id="simProfile" title="His full player card: every pitch, measure and season">Show Profile</button><button type="button" class="sim-replay" data-gohome title="The home page">Home</button><button type="button" class="sim-x" id="simClose" aria-label="Close the Pitch Simulation Lab">×</button></div></div><p class="simsub">No tracked flight paths for this pitch.</p>`;
     $("#simClose").onclick = () => closeSimFocus(); $("#simProfile").onclick = () => simToProfile(); return;
   }
   const S = simState(j), cmp = S.mode === "compare" && S.vs !== null && S.vs !== undefined, me = lastName(T.name[j]), cam = state.flightCam || "catcher";
@@ -5650,12 +5741,12 @@ function renderSim(opt = {}) {
       <div class="simside">${sw(SAVANT_PITCH[vt], "dash")}<h2 class="sim-name">${esc(T.name[S.vs])} <span class="simyr">${yy(T.season[S.vs])}</span></h2>
         <p class="simsub">${esc(teamStr(S.vs))}${T.level[S.vs] === "mlb" ? "" : " · Triple-A"} · ${PTN[vt].toLowerCase()} ${fmt(T.velo[S.vs], 1)} mph · dashed${q !== undefined ? ` · ${fitOf(q)[1]}` : ""} ${simProfBtn(S.vs)}</p></div></div>
       <div class="simhr">${comps.length > 1 ? `<div class="simsw" role="group" aria-label="Which lookalike"><button type="button" class="sim-replay" id="simPrev"${ci <= 0 ? " disabled" : ""} aria-label="Previous lookalike" title="Previous lookalike (←)">‹</button>${vsSel("simVs", "Lookalike to compare with")}<button type="button" class="sim-replay" id="simNext"${ci < 0 || ci >= comps.length - 1 ? " disabled" : ""} aria-label="Next lookalike" title="Next lookalike (→)">›</button></div>` : ""}<span class="simhint">Pitch Simulation Lab</span>
-      <button type="button" class="sim-x" id="simClose" aria-label="Close the Pitch Simulation Lab" title="Close (Esc)">×</button></div></div>`;
+      <button type="button" class="sim-replay" data-gohome title="The home page">Home</button><button type="button" class="sim-x" id="simClose" aria-label="Close the Pitch Simulation Lab" title="Close (Esc)">×</button></div></div>`;
     box.setAttribute("aria-label", `Pitch Simulation Lab: ${T.name[j]} vs ${T.name[S.vs]}`);
   } else {
     header = `<div class="sim-head"><div><h2 class="sim-name" id="simTitle" tabindex="-1">${esc(T.name[j])} · Pitch Simulation Lab</h2>
       <p class="simsub">${T.season[j]}${T.level[j] === "mlb" ? "" : " · Triple-A"} · ${esc(teamStr(j))} ${simProfBtn(j)}</p></div>
-      <div class="simhr">${comps.length ? vsSel("simVs", "Compare with a lookalike") : ""}<button type="button" class="sim-x" id="simClose" aria-label="Close the Pitch Simulation Lab" title="Close (Esc)">×</button></div></div>`;
+      <div class="simhr">${comps.length ? vsSel("simVs", "Compare with a lookalike") : ""}<button type="button" class="sim-replay" data-gohome title="The home page">Home</button><button type="button" class="sim-x" id="simClose" aria-label="Close the Pitch Simulation Lab" title="Close (Esc)">×</button></div></div>`;
     box.setAttribute("aria-label", `Pitch Simulation Lab: ${T.name[j]}`);
   }
   // ---- the pitches in the air: his row, the lookalike's row (aligned by pitch type), any added pitches
@@ -6095,6 +6186,7 @@ function typeCard(view, j) {
   h += `<section class="sv-hero"><div class="herohead"><h3>Defining Traits</h3>
     <span class="heropool">Percentiles among ${poolNote} · <button type="button" class="to-gloss">Glossary</button></span></div>${standoutTags(j)}
     <div class="herogrid">${hero.slice(0, HERO_MAX).map(it => heroRow(it, poolNote)).join("")}</div></section>`;
+  h += whatChangedHTML(j);   // moved under Defining Traits by renderDetail
   // ---------------- left: profile, value percentiles, seasons, pitch usage ----------------
   h += `<section class="svp sv-prof"><h3>Profile</h3>${faLine(j)}${typesLine(j)}
 `;
@@ -6262,7 +6354,8 @@ function syncNavButtons() {
   bb.disabled = !b; fb.disabled = !f;
   bb.title = b ? navLabel(b, "Back to") : "Nothing to go back to yet"; fb.title = f ? navLabel(f, "Forward to") : "Nothing to go forward to";
   const cn = document.getElementById("cardNav");
-  if (cn) cn.innerHTML = (b ? `<button type="button" class="bigbtn backsel" data-nav="back">← ${esc(navLabel(b, "Back to"))}</button>` : "")
+  if (cn) cn.innerHTML = `<button type="button" class="bigbtn" data-gohome title="The home page">Home</button>`
+    + (b ? `<button type="button" class="bigbtn backsel" data-nav="back">← ${esc(navLabel(b, "Back to"))}</button>` : "")
     + (f ? `<button type="button" class="bigbtn fwdsel" data-nav="fwd">${esc(navLabel(f, "Forward to"))} →</button>` : "");
 }
 // a comp or a group member can sit at the other level: follow him there (selection kept)
@@ -6570,6 +6663,33 @@ function mapSelection(from, to, r) {
 // Zoom-aware dot size: k = sqrt(full x-span / visible x-span), clamped to 1..3.5. Only re-render
 // when it changes noticeably, so panning and the re-render's own relayout don't loop.
 const fullSpan = {};
+// A pitcher picked on the 2D map must not sit under the card on the map's left (#selCta: with his lookalikes it runs
+// the whole left edge), or his other seasons are hidden too. Once per pick, pan the map sideways just enough that he
+// and his seasons of the pitch clear it, never pushing the rightmost of them off the other edge. Phones show the card
+// below the map, so nothing moves there.
+let panFor = null;
+function keepInView() {
+  const sel = state.sel;
+  if (sel === null || sel === undefined || is3D() || state.morphing) { panFor = null; return; }
+  const cta = $("#selCta"), fl = plotEl._fullLayout, xa = fl && fl.xaxis;
+  if (panFor === sel || !cta || cta.hidden || !xa || typeof xa.d2p !== "function" || !xa.range || !xa._length) return;
+  if (getComputedStyle(cta).position !== "absolute") return;
+  const pr = plotEl.getBoundingClientRect(), cr = cta.getBoundingClientRect(); if (!cr.width) return;
+  panFor = sel;
+  // him (with room for his name, centred above his dot), his other seasons of the pitch, and his numbered lookalikes
+  const rows = viewRows(state.view).filter(r => T.pitcher[r] === T.pitcher[sel] && T.pitch_type[r] === T.pitch_type[sel])
+    .concat(compsOnMap() ? compsOf(state.view, sel).map(x => x[0]) : [], [sel]);
+  const cover = cr.right - pr.left, edge = xa._offset + xa._length;
+  let need = 0, hi = -Infinity;
+  for (const r of rows) {
+    const p = xa._offset + xa.d2p(xy(state.view, r)[0]); if (!Number.isFinite(p)) continue;
+    need = Math.max(need, cover + (r === sel ? 80 : 26) - p); hi = Math.max(hi, p);
+  }
+  const shift = Math.min(need, edge - 26 - hi);
+  if (shift <= 0) return;
+  const d = shift * (xa.range[1] - xa.range[0]) / xa._length;
+  Plotly.relayout(plotEl, { "xaxis.range": [xa.range[0] - d, xa.range[1] - d] });
+}
 function viewSpan(view) {
   const key = view + "|" + layKey();   // each layout has its own extent
   if (!(key in fullSpan)) {
@@ -7072,7 +7192,8 @@ function syncTable() {
   const on = look || (!!state.tblGroup && sliderVars().some(v => v.group === state.tblGroup));
   $("#mTable").hidden = !on;
   $("#app").classList.toggle("with-table", on);
-  if (state.tblGroup) state.tblLast = state.tblGroup;   // the left column's Show table reopens the last tab
+  $("#hBoards").setAttribute("aria-pressed", String(on && !look));
+  if (state.tblGroup) state.tblLast = state.tblGroup;   // the header's Leaderboards reopens the last tab
   $("#mtSearch").hidden = look; $("#mtScroll").hidden = look; $("#mtLook").hidden = !look;
   $("#mtTabs").hidden = look; $("#mtCtl").hidden = look;
   $("#mtDl").hidden = !look || !canSave(); if (!look) $("#mtMsg").textContent = "";
@@ -7233,10 +7354,36 @@ function wireTable() {
     syncSeasonChips(); render();
   });
   $("#mtLvl").querySelectorAll("button").forEach(b => b.addEventListener("click", () => setLevel(b.dataset.v)));
-  $("#tblOpen").addEventListener("click", () => {
+  // the header's Leaderboards: the measure table on its last tab, as a leaderboard opens (the latest season); again closes it
+  $("#hBoards").addEventListener("click", () => {
+    if (state.tblGroup && (state.lookTbl === null || state.lookTbl === undefined)) { state.tblGroup = null; syncTable(); relayout(); return; }
     if (state.sel !== null && state.sel !== undefined && !state.preview) select(null);   // the table sits where the card is
+    state.lookTbl = null; state.seasons = new Set([Math.max(...D.seasons)]); syncSeasonChips(); render();
     setTableGroup(state.tblLast && tableGroups().includes(state.tblLast) ? state.tblLast : tableGroups()[0]);
   });
+  // the header's Pitch simulation: the lab for the pitcher on screen; with nobody chosen, a box to find one
+  const hsBtn = $("#hSim"), hsPop = $("#hSimPop"), hsInp = $("#hSimSearch");
+  const hsOpen = on => { hsPop.hidden = !on; hsBtn.setAttribute("aria-expanded", String(on)); if (on) hsInp.focus(); else { hsBox.close(); $("#hSimMsg").textContent = ""; } };
+  const hsGo = async () => {
+    const q = hsInp.value.trim(); if (!fold(q)) return;
+    let cands = nameRows(q, "all");
+    if (!cands.length) { const lv = lazyLevelOf(q); if (lv && await ensureLevel(lv)) cands = nameRows(q, "all"); }
+    let r = searchRow(cands, state.level, "all");
+    if (r === null) { $("#hSimMsg").textContent = `No pitcher named “${q}”.`; return; }
+    const here = state.view !== "all" ? tRow(T.pitcher[r], T.season[r], state.view, T.level[r]) : undefined;
+    if (here !== undefined) r = here; else if (state.view !== "all") setView("all", null);   // a pitch type he throws, else All pitches
+    hsInp.value = ""; hsOpen(false);
+    preview(r); toggleSim(hsBtn);
+  };
+  const hsBox = suggestBox(hsInp, $("#hSimSugg"), hsGo, $("#hSimMsg"));
+  hsPop.hidden = true;   // starts closed
+  $("#hSimFind").addEventListener("submit", e => { e.preventDefault(); hsBox.close(); hsGo(); });
+  hsBtn.addEventListener("click", () => {
+    if (state.sel !== null && state.sel !== undefined) { hsOpen(false); toggleSim(hsBtn); return; }
+    hsOpen(hsPop.hidden);
+  });
+  hsInp.addEventListener("keydown", e => { if (e.key === "Escape" && $("#hSimSugg").hidden) { e.preventDefault(); hsOpen(false); hsBtn.focus(); } });
+  document.addEventListener("click", e => { if (!hsPop.hidden && !e.target.closest(".hsimwrap")) hsOpen(false); });
   $("#mtBody").addEventListener("keydown", e => {
     const tr = e.target.closest("tr[data-r]"); if (!tr) return;
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(tr); }
@@ -7250,7 +7397,7 @@ function wireTable() {
   });
   $("#mtHide").addEventListener("click", () => {
     const g = state.tblGroup; state.tblGroup = null; state.lookTbl = null; syncTable(); relayout();
-    const b = [...$("#slList").querySelectorAll(".sltbl")].find(x => x.dataset.g === g && x.offsetParent) || $("#tblOpen"); if (b) b.focus();
+    const b = [...$("#slList").querySelectorAll(".sltbl")].find(x => x.dataset.g === g && x.offsetParent) || $("#hBoards"); if (b) b.focus();
   });
 }
 
@@ -7473,6 +7620,101 @@ function homeSimRun() {
     HS.raf = frame < F.total - 1 ? requestAnimationFrame(step) : 0;
   };
   HS.raf = requestAnimationFrame(step);
+}
+
+// ------------------------------------------------- what changed since last season
+// The card's "What changed" (user, 2026-11-14), on the same yardstick as the home page's biggest changes
+// (atlas_build.biggest_changes): a measure's change counts against how much it usually moves for the same MLB pitch
+// from one season to the next (a robust SD of those changes, per pitch type), so 2 mph is big for a four-seamer and
+// a 5-degree arm-angle change is big for anyone.
+const CHG_KEYS = [   // key, unit, decimals, words (up, down); ride/drop and run/sweep are worded by chgWord
+  ["velo", "mph", 1, ["harder", "softer"]], ["ivb", "in", 1, null], ["hb", "in", 1, null], ["spin", "rpm", 0, ["more spin", "less spin"]],
+  ["spin_axis", "°", 0, ["new spin direction", "new spin direction"]], ["arm_angle", "°", 1, ["higher arm angle", "lower arm angle"]],
+  ["rel_height", "ft", 2, ["higher release", "lower release"]], ["rel_side", "ft", 2, ["wider release", "narrower release"]],
+  ["extension", "ft", 2, ["more extension", "less extension"]], ["vaa", "°", 2, ["flatter approach", "steeper approach"]],
+  ["usage", "%", 0, ["thrown more often", "thrown less often"]],
+];
+const CHG_BIG = 2, CHG_SOME = 1.5;   // times the usual season-to-season move
+const chgDelta = (k, a, b) => k === "spin_axis" ? ((b - a + 540) % 360) - 180 : b - a;   // spin axis: the short way round
+function chgWord(k, a, b, words) {   // worded as atlas_build._change_word (tip form): a pitch's "ride" is drop when it sinks
+  const up = b > a;
+  if (words) return up ? words[0] : words[1];
+  if (k === "ivb") return a >= 0 && b >= 0 ? (up ? "more ride" : "less ride") : a <= 0 && b <= 0 ? (up ? "less drop" : "more drop") : (up ? "more ride" : "more drop");
+  return a >= 0 && b >= 0 ? (up ? "more arm-side run" : "less arm-side run") : a <= 0 && b <= 0 ? (up ? "less glove-side break" : "more glove-side break")
+    : (up ? "more arm-side break" : "more glove-side break");
+}
+let Y2Y = null;   // { key: { pitch type: usual season-to-season move } }, built on first use (MLB pitches with 100+ in both seasons)
+function y2yScale() {
+  if (Y2Y) return Y2Y;
+  const d = Object.fromEntries(CHG_KEYS.map(([k]) => [k, Object.fromEntries(TYPES.map(t => [t, []]))]));
+  for (const j of ALL_ROWS) {
+    if (T.level[j] !== "mlb" || !(T.n[j] >= 100)) continue;
+    const i = tRow(T.pitcher[j], T.season[j] - 1, T.pitch_type[j], "mlb");
+    if (i === undefined || !(T.n[i] >= 100)) continue;
+    for (const [k] of CHG_KEYS) { const a = T[k][i], b = T[k][j]; if (isNum(a) && isNum(b)) d[k][T.pitch_type[j]].push(chgDelta(k, a, b)); }
+  }
+  const rsd = a => { if (a.length < 20) return null; const s = a.slice().sort((x, y) => x - y), m = quantile(s, 0.5);
+    return 1.4826 * quantile(s.map(x => Math.abs(x - m)).sort((x, y) => x - y), 0.5) || null; };
+  Y2Y = Object.fromEntries(CHG_KEYS.map(([k]) => [k, Object.fromEntries(TYPES.map(t => [t, rsd(d[k][t])]))]));
+  return Y2Y;
+}
+// What changed for the pitch in row r since his last earlier season at the same level: every measure's change and its
+// size against the usual move (biggest first), and the pitches he added to or dropped from his arsenal (5%+ one season,
+// under 2% the other, as atlas_build counts a new pitch)
+function whatChanged(r) {
+  const pid = T.pitcher[r], s = T.season[r], lv = T.level[r], pt = T.pitch_type[r];
+  const prevS = D.seasons.filter(x => x < s && pRow(pid, x, lv) !== undefined).pop();
+  if (prevS === undefined) return { prevS: null, s };
+  const q = tRow(pid, prevS, pt, lv), Y = y2yScale(), items = [];
+  if (q !== undefined) for (const [k, unit, dec, words] of CHG_KEYS) {
+    const a = T[k][q], b = T[k][r], sc = Y[k][pt];
+    if (!isNum(a) || !isNum(b) || !sc) continue;
+    const dl = chgDelta(k, a, b);
+    items.push({ k, a, b, dl, z: Math.abs(dl) / sc, sc, unit, dec, word: chgWord(k, a, b, words) });
+  }
+  items.sort((x, y) => y.z - x.z);
+  const i0 = pRow(pid, prevS, lv), i1 = pRow(pid, s, lv), use = (i, t) => (i === undefined || !P["use_" + t] ? 0 : P["use_" + t][i]) || 0;
+  return { prevS, s, q, items, big: items.filter(x => x.z >= CHG_BIG), some: items.filter(x => x.z >= CHG_SOME && x.z < CHG_BIG),
+    added: TYPES.filter(t => use(i1, t) >= 5 && use(i0, t) < 2), dropped: TYPES.filter(t => use(i0, t) >= 5 && use(i1, t) < 2), use: t => [use(i0, t), use(i1, t)] };
+}
+const chgAmt = x => `${Math.abs(x.dl).toFixed(x.dec)}${x.unit === "°" ? "°" : x.unit === "%" ? " pts" : " " + x.unit}`;
+const chgText = (x, prevS) => x.k === "usage" ? `${x.word}: ${fmt(x.b, 0)}% of his pitches (${fmt(x.a, 0)}% in ${prevS})`
+  : x.k === "spin_axis" ? `spin direction moved ${chgAmt(x)}` : `${chgAmt(x)} ${x.word}`;
+// The card's "What changed since <season>", under Defining Traits: a tag (Big change / Some change / About the same /
+// New pitch), the changes that count in words with their amounts (the tooltip has before and after, and how many usual
+// moves it is), or a plain sentence when nothing moved more than usual; then pitches added to or dropped from his arsenal
+function whatChangedHTML(r) {
+  const w = whatChanged(r), pt = T.pitch_type[r], one = SING[pt] || PTN[pt].toLowerCase(), many = PLURAL[pt] || one + "s";
+  const box = (prev, tag, cls, body) => `<section class="sv-chg" aria-label="What changed"><div class="chg-head"><h3>What changed${prev ? ` since ${prev}` : ""}</h3>`
+    + (tag ? `<span class="chg-tag ${cls}">${tag}</span>` : "") + `</div>${body}</section>`;
+  if (w.prevS === null) {
+    const else0 = D.seasons.some(x => x < w.s && pRow(T.pitcher[r], x, T.level[r] === "mlb" ? "aaa" : "mlb") !== undefined);
+    return box(0, "", "", `<p class="chg-line">No earlier season ${T.level[r] === "mlb" ? "in the majors" : "in Triple-A"} on the map to compare with${else0 ? `; his earlier seasons here are ${T.level[r] === "mlb" ? "in Triple-A" : "in the majors"}` : ""}.</p>`);
+  }
+  const ars = [...w.added.filter(t => t !== pt).map(t => `added a ${SING[t]} (${fmt(w.use(t)[1], 0)}% of his pitches)`), ...w.dropped.map(t => `dropped his ${SING[t]}`)];
+  const arsLine = ars.length ? `<p class="chg-line">His arsenal: ${ars.join("; ")}.</p>` : "";
+  if (w.q === undefined) {   // no row for this pitch in the earlier season: new, or too few to compare (under 40)
+    const [u0, u1] = w.use(pt), isNew = u0 < 2;
+    return box(w.prevS, isNew ? "New pitch" : "", "chg-big", `<p class="chg-line">${isNew ? `He threw ${u0 >= 0.5 ? `only ${fmt(u0, 0)}% ${many}` : `no ${many}`} in ${w.prevS}; ${fmt(u1, 0)}% of his pitches in ${w.s}.`
+      : `He threw too few ${many} in ${w.prevS} to compare.`}</p>${arsLine}`);
+  }
+  const shown = w.big.concat(w.some).slice(0, 4);
+  const [tag, cls] = w.big.length ? ["Big change", "chg-big"] : w.some.length ? ["Some change", "chg-some"] : ["About the same", "chg-same"];
+  const u = x => x.unit === "%" ? "%" : x.unit === "°" ? "°" : " " + x.unit;
+  const tip = x => `${w.prevS}: ${fmt(x.a, x.dec)}${u(x)}, ${w.s}: ${fmt(x.b, x.dec)}${u(x)}. About ${x.z.toFixed(1)} times the usual change from one season to the next for a ${one} (${fmt(x.sc, x.dec)}${u(x)}).`;
+  const body = shown.length
+    ? `<ul class="chg-list">${shown.map(x => `<li title="${esc(tip(x))}">${esc(chgText(x, w.prevS))}</li>`).join("")}</ul>`
+    : `<p class="chg-line">Nothing about his ${one} moved more than it usually does from one season to the next${w.items[0] ? `; the biggest move was ${esc(chgText(w.items[0], w.prevS))}` : ""}.</p>`;
+  return box(w.prevS, tag, cls, body + arsLine);
+}
+
+// Home from anywhere: an open lab or player card closes with it (one Back/Forward step, so Back returns to them as they were)
+function goHome() {
+  if (state.home) return;
+  if (state.simOpen) closeSim(true);
+  if (state.cardOpen) closeCard();
+  showHome(true);
+  $("#home").focus({ preventScroll: true });
 }
 
 function buildStatic() {
@@ -7763,6 +8005,7 @@ function buildStatic() {
   });
   window.addEventListener("popstate", e => { const i = e.state && Number.isInteger(e.state.nav) ? e.state.nav : null; if (i !== null) navTo(i); });
   document.addEventListener("click", e => { const b = e.target.closest("[data-nav]"); if (!b || b.disabled) return; if (b.dataset.nav === "back") navBack(); else navForward(); });
+  document.addEventListener("click", e => { if (e.target.closest("[data-gohome]")) goHome(); });   // Home: the header, the player card, the lab
 }
 // the search index: every pitcher once, with his newest season (MLB first when a call-up has both); rebuilt after a level loads
 let SUG = null;

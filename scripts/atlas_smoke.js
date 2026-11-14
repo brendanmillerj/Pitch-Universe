@@ -256,7 +256,9 @@ const J = JSON.stringify;
 
   // ---- layout
   const hEnd = markup.indexOf("</header>");
-  ok(markup.indexOf('id="dimSeg"') < hEnd && markup.indexOf('id="lqual"') < hEnd && markup.indexOf('id="navBack"') < hEnd && markup.indexOf('id="navFwd"') < hEnd, "header: view switches, meter, ← Back, Forward →");
+  ok(["hBoards", "hSim", "navHome", "navBack", "navFwd", "startOver"].every(id => markup.indexOf(`id="${id}"`) < hEnd && markup.indexOf(`id="${id}"`) > 0), "header: Leaderboards, Pitch simulation, Home, ← Back, Forward →, Start over");
+  const pa = markup.indexOf('id="plotArea"'), pl = markup.indexOf('<div id="plot">');
+  ok(["mapTools", "dimSeg", "laySeg", "lqual"].every(id => { const k = markup.indexOf(`id="${id}"`); return k > pa && k < pl && k > hEnd; }), "2D/3D, Movement/t-SNE and the meter sit on the map, beside #plot (which Plotly empties)");
   ok(!markup.includes('id="clusterSeg"') && /id="pnClusters"[^>]*role="switch"/.test(markup), "the Clusters row is the one switch (no switch inside the panel)");
   ok(markup.indexOf('id="panelNav"') > markup.indexOf('id="lvlSeg"') && markup.indexOf('id="panelNav"') < markup.indexOf('id="universe"'), "Clusters · Pitchers · Groups rows under MLB | Triple-A");
   ok(!markup.includes('id="railPills"') && !markup.includes('id="mkX"'), "no pills or × on the map");
@@ -675,9 +677,12 @@ const J = JSON.stringify;
   ok(run("state.tblGroup") === "Whole pitcher" && run("state.tblSort.key") === "P:xera" && getEl("#mTable").hidden === false, "Back returns to the table as it was");
   getEl("#mtHide")._h.click[0]({}); await tick();
   ok(getEl("#mTable").hidden === true && !getEl("#app").classList.contains("with-table"), "← Back to map closes it");
-  getEl("#tblOpen")._h.click[0]({}); await tick();
-  ok(run("state.tblGroup") === "Whole pitcher" && getEl("#mTable").hidden === false, "the left column's Show table reopens the last tab");
-  getEl("#mtHide")._h.click[0]({}); await tick();
+  getEl("#hBoards")._h.click[0]({}); await tick();
+  ok(run("state.tblGroup") === "Whole pitcher" && getEl("#mTable").hidden === false && getEl("#hBoards").getAttribute("aria-pressed") === "true"
+    && run("state.seasons.size") === 1, "the header's Leaderboards reopens the last tab, on the latest season, and reads as on");
+  getEl("#hBoards")._h.click[0]({}); await tick();
+  ok(getEl("#mTable").hidden === true && getEl("#hBoards").getAttribute("aria-pressed") === "false", "…and closes it again");
+  ok(!markup.includes('id="tblOpen"'), "no second Show table in the left column");
   // the sliders and the map's colours rank against the same MLB pool
   run(`setView("FF", null); state.ranges = { "t:velo": [90, 100] }; render()`); await tick();
   ok(run(`(() => { const rs = visibleRows("FF"), m = ruleMatcher("t", rs), hit = rs.filter(m); return hit.length > 0 && hit.every(r => mlbPct(VMAP.t["t:velo"], r, T.velo[r]) >= 90); })()`),
@@ -687,6 +692,69 @@ const J = JSON.stringify;
   const mp = ctr ? { got: ctr.marker.color[0], want: run(`mlbPct(VMAP.t["t:velo"], ${ctr.customdata[0]}, T.velo[${ctr.customdata[0]}])`) } : null;
   ok(!!mp && Math.abs(mp.got - mp.want) < 1e-9, "the map colours by the same MLB percentile: " + J(mp));
   run(`state.color.t = "cat:pitch_type"; state.seasons = new Set(D.seasons); syncSeasonChips(); setView("all", null)`); await tick();
+
+  // ---- Home from anywhere (user, 2026-11-14): the header, a player card, the lab; Back returns to where you were
+  run(`showHome(false); state.sim = null; select(null); setView("FF", null)`); await tick();
+  const hr = run(`visibleRows("FF").find(r => T.level[r] === "mlb" && T.n[r] >= 300 && !!trajOf(r))`);
+  ok((getEl("#navHome")._h.click || []).length === 0 && /id="navHome" data-gohome/.test(markup), "the header has a Home button");
+  run(`select(${hr})`); await tick();
+  ok(run("state.cardOpen") && /data-gohome/.test(getEl("#cardNav").innerHTML), "an open player card has a Home button");
+  const nH = run("NAV.idx");
+  run("goHome()"); await tick();
+  ok(run("state.home") && !run("state.cardOpen") && run("NAV.idx") === nH + 1, "Home from a card: home, one step");
+  run("navBack()"); await tick(); await tick();
+  ok(!run("state.home") && run("state.cardOpen") && run("state.sel") === hr, "Back: the card as it was");
+  run(`select(null); preview(${hr}); toggleSim(null)`); await tick();
+  ok(run("state.simOpen") && /data-gohome/.test(getEl("#simBox").innerHTML), "the lab has a Home button");
+  run("goHome()"); await tick();
+  ok(run("state.home") && !run("state.simOpen"), "Home from the lab: home");
+  run("navBack()"); await tick(); await tick();
+  ok(!run("state.home") && run("state.simOpen"), "Back: the lab again");
+  run("closeSim(true); select(null)"); await tick();
+
+  // ---- the header's Pitch simulation: his lab, or a box to find someone
+  getEl("#hSim")._h.click[0]({}); await tick();
+  ok(getEl("#hSimPop").hidden === false && getEl("#hSim").getAttribute("aria-expanded") === "true" && !run("state.simOpen"), "Pitch simulation with nobody chosen: a box to find a pitcher");
+  getEl("#hSimSearch").value = run(`T.name[${hr}]`);
+  getEl("#hSimFind")._h.submit[0]({ preventDefault() {} }); await tick(); await tick(); await tick();
+  ok(run("state.simOpen") && run("T.pitcher[state.sel]") === run(`T.pitcher[${hr}]`) && getEl("#hSimPop").hidden === true, "…a name there opens his lab");
+  run("closeSim(true)"); await tick();
+  getEl("#hSim")._h.click[0]({}); await tick();
+  ok(run("state.simOpen"), "…and with a pitcher on screen it opens his lab straight away");
+  run("closeSim(true); select(null)"); await tick();
+
+  // ---- his other seasons of the pitch on the map (user, 2026-11-14): full strength whatever the season filter, a year
+  // tag on each, arrows in season order
+  const multi = run(`(() => { const S = Math.max(...D.seasons); return ALL_ROWS.find(r => T.level[r] === "mlb" && T.season[r] === S && T.pitch_type[r] === "FF" && T.n[r] >= 300
+    && [S - 1, S - 2].every(s => tRow(T.pitcher[r], s, "FF", "mlb") !== undefined) && !ALL_ROWS.some(q => T.pitcher[q] === T.pitcher[r] && T.level[q] !== "mlb")); })()`);
+  run(`state.seasons = new Set([Math.max(...D.seasons)]); syncSeasonChips(); setView("FF", null); preview(${multi})`); await tick();
+  const nSeasons = run(`viewRows("FF").filter(r => T.pitcher[r] === T.pitcher[${multi}] && T.pitch_type[r] === "FF").length`);
+  const sTr = (getEl("#plot").data || []).find(t => t.meta === "seasons"), lay = getEl("#plot").layout || {}, anns = lay.annotations || [];
+  ok(!!sTr && sTr.customdata.length === nSeasons && nSeasons >= 3 && !sTr.dimK, `his ${nSeasons} seasons of the pitch on the map at full strength, with the map showing one season`);
+  const expArrows = run(`(() => { const same = viewRows("FF").filter(r => T.pitcher[r] === T.pitcher[${multi}] && T.pitch_type[r] === "FF").sort((a, b) => T.season[a] - T.season[b]);
+    const span = viewSpan("FF") || 1; let n = 0;
+    for (let k = 1; k < same.length; k++) { const [x0, y0] = xy("FF", same[k - 1]), [x1, y1] = xy("FF", same[k]); if (Math.hypot(x1 - x0, y1 - y0) >= 0.015 * span) n++; }
+    return n; })()`);
+  ok(anns.filter(a => a.axref === "x" && a.showarrow).length === expArrows && anns.filter(a => /^(<b>)?20\d\d/.test(String(a.text || ""))).length === nSeasons
+    && anns.some(a => /^<b>20\d\d/.test(String(a.text || ""))), `…a year tag on each (the one on screen in bold), arrows in season order between the ${expArrows} pairs that are apart`);
+  run(`state.dim = 3; state.zoomK = 1; render()`); await tick(); await pump(16);
+  const G3s = run("G3");
+  ok(!!G3s && G3s.objs.some(o => o.isLine) && G3s.objs.some(o => o.isPoints && Array.isArray(o.userData.rows) && o.userData.rows.length === nSeasons), "in 3D: one line through his seasons, with their dots and tags");
+  run(`state.dim = 2; dispose3D(); select(null); state.seasons = new Set(D.seasons); syncSeasonChips(); setView("all", null)`); await tick();
+
+  // ---- What changed since last season (the card), on the home list's yardstick
+  ok(run("(() => { const v = y2yScale().velo.FF; return v > 0.2 && v < 3; })()"), `a four-seamer's velocity usually moves ${run("y2yScale().velo.FF.toFixed(2)")} mph from one season to the next`);
+  const wcRow = big => run(`(() => { for (const r of ALL_ROWS) { if (T.level[r] !== "mlb" || T.n[r] < 300) continue; const w = whatChanged(r);
+    if (w.q !== undefined && w.items.length > 5 && (${big} ? w.big.length > 0 : !w.big.length && !w.some.length)) return r; } return null; })()`);
+  const plain = h => String(h).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const wBig = wcRow(true), wSame = wcRow(false);
+  ok(Number.isInteger(wBig) && /Big change/.test(run(`whatChangedHTML(${wBig})`)) && /class="chg-list"/.test(run(`whatChangedHTML(${wBig})`)), "a big change is tagged and listed: " + plain(run(`whatChangedHTML(${wBig})`)).slice(0, 110));
+  ok(Number.isInteger(wSame) && /About the same/.test(run(`whatChangedHTML(${wSame})`)) && /Nothing about his/.test(run(`whatChangedHTML(${wSame})`)), "no big change says so: " + plain(run(`whatChangedHTML(${wSame})`)).slice(0, 110));
+  const firstRow = run(`ALL_ROWS.find(r => T.level[r] === "mlb" && T.season[r] === Math.min(...D.seasons))`);
+  ok(/No earlier season/.test(run(`whatChangedHTML(${firstRow})`)), "a first season says there is nothing to compare");
+  ok(run(`typeCard("FF", ${hr}).includes('class="sv-chg"')`), "the player card carries it (under Defining Traits)");
+  const hancock = run(`tRow(676106, Math.max(...D.seasons), "FF", "mlb")`);
+  if (Number.isInteger(hancock)) ok(run(`whatChanged(${hancock}).big.some(x => x.k === "arm_angle" && x.dl < 0)`), "Emerson Hancock's four-seamer: a big drop in arm angle, as on the home list");
 
   // ---- color menu: fixed beside its button on a wide screen
   getEl("#colorMenu").hidden = true;
