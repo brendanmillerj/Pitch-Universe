@@ -535,6 +535,68 @@ const J = JSON.stringify;
   ok(!!line && line.split(",").includes(String(eRow.gx)) && line.split(",").includes(String(eRow.ty)), "a known pitch's coordinates match the map: " + (line || "").slice(0, 90));
   ok(eL.some(l => l.includes(",Triple-A,")) && /^pitchomics_tsne_coordinates_\d{4}-\d{4}\.csv$/.test(emb.name), "Triple-A rows included; file " + emb.name);
 
+  // ---- the measure table = the leaderboards (user, 2026-11-14): opens without the drawer, a tab per category, its own
+  // pitch-type / season / level row, the sorted measure first and shaded, a rank, 100+ pitches (Whole pitcher: one row
+  // per pitcher, 30+ innings), percentiles against the MLB pool like the card
+  const S1 = run("Math.max(...D.seasons)");
+  run(`select(null); clustersOff(); railClose(); if (state.slidersOpen) setSlidersOpen(false, true); state.ranges = {}; state.rangeMode = "pct";
+    state.seasons = new Set([${S1}]); syncSeasonChips(); setView("FF", null); setTableGroup("Results", "t:whiff")`); await tick();
+  ok(getEl("#mTable").hidden === false && getEl("#app").classList.contains("with-table") && !run("state.slidersOpen"), "the table opens without the measure drawer");
+  ok(getEl("#mtTitle").textContent === run('VMAP.t["t:whiff"].label'), "title = the sorted measure: " + getEl("#mtTitle").textContent);
+  ok(getEl("#mtSub").textContent === `Four-seam · ${S1} · 100+ pitches`, "one short line: " + getEl("#mtSub").textContent);
+  const thKeys = [...getEl("#mtHeadRow").innerHTML.matchAll(/<th scope="col"( class="mt-sorted")?[^>]*><button type="button" data-k="([^"]+)"/g)].map(m => ({ s: !!m[1], k: m[2] }));
+  ok(thKeys[0].k === "name" && thKeys[1].k === "t:whiff" && thKeys[1].s && thKeys.filter(h => h.s).length === 1, "the sorted measure sits right after the name, shaded: " + thKeys.slice(0, 3).map(h => h.k).join(", "));
+  ok(getEl("#mtHeadRow").innerHTML.includes('class="mt-rkh"') && /<span class="mt-rk">1<\/span>/.test(getEl("#mtBody").innerHTML), "a # rank column, 1 on top");
+  const bodyRows = () => [...getEl("#mtBody").innerHTML.matchAll(/<tr data-r="(\d+)"/g)].map(m => +m[1]);
+  let br = bodyRows();
+  const chk = run(`(() => { const rs = ${J(br)}; return { n: rs.every(r => T.n[r] >= 100), t: rs.every(r => T.pitch_type[r] === "FF" && T.season[r] === ${S1} && T.level[r] === "mlb"),
+    desc: rs.every((r, k) => k === 0 || !isNum(T.whiff[r]) || T.whiff[rs[k - 1]] >= T.whiff[r]) }; })()`);
+  ok(br.length > 50 && chk.n && chk.t && chk.desc, `rows: ${br.length} four-seamers of ${S1}, each 100+ pitches, highest whiff first`);
+  ok(run(`visibleRows("FF").filter(r => T.n[r] < 100).length`) > 0, "(the map does show pitches thrown fewer than 100 times)");
+  // percentiles: the card's pool, not the rows on screen
+  const tr0 = br[0], pillT = () => (getEl("#mtBody").innerHTML.match(new RegExp(`<tr data-r="${tr0}"[^>]*>[\\s\\S]*?class="mt-sorted"><span class="mt-pct"[^>]*title="([^"]+)"`)) || [])[1];
+  const want = run(`ord(pctOf(poolSorted("tFF", typeRows.FF, VMAP.t["t:whiff"]), T.whiff[${tr0}]))`) + " percentile";
+  ok(pillT() === want, `the top row's percentile is the card's: ${pillT()} (card: ${want})`);
+  run(`state.seasons = new Set(D.seasons); syncSeasonChips(); render()`); await tick();
+  ok(pillT() === want, "…and stays put when every season is shown");
+  // the table's own season and pitch-type buttons, and its tabs
+  getEl("#mtSeasons")._h.click[0](ev("data-tseason", String(S1))); await tick();
+  ok(run("state.seasons.size") === 1 && run(`state.seasons.has(${S1})`), "the table's season button shows that one season");
+  getEl("#mtSeasons")._h.click[0](ev("data-tseason", "all")); await tick();
+  ok(run("state.seasons.size") === run("D.seasons.length") && getEl("#mtSub").textContent.includes(run("seasonSpan()")), "…and All shows every season: " + getEl("#mtSub").textContent);
+  getEl("#mtSeasons")._h.click[0](ev("data-tseason", String(S1))); await tick();
+  getEl("#mtTypes")._h.click[0](ev("data-tview", "SL")); await tick();
+  ok(run("state.view") === "SL" && getEl("#mTable").hidden === false && getEl("#mtSub").textContent.startsWith("Slider"), "the table's pitch-type buttons switch the pitch; the table stays");
+  getEl("#mtTabs")._h.click[0](ev("data-g", "Consistency")); await tick();
+  ok(run("state.tblGroup") === "Consistency" && run("state.tblSort.key") === "t:release_sd" && run("state.tblSort.dir") === 1, "a tab sorts by its first measure, best end first (release-point scatter, lowest first)");
+  run(`setView("all", null); setTableGroup("Whole pitcher", "P:xera")`); await tick();
+  br = bodyRows();
+  const wp = run(`(() => { const rs = ${J(br)}, ps = rs.map(r => pOfT[r]); return { uniq: new Set(ps).size === ps.length, ip: rs.every(r => tIP[r] >= 30),
+    asc: rs.every((r, k) => k === 0 || !isNum(P.xera[pOfT[r]]) || P.xera[pOfT[rs[k - 1]]] <= P.xera[pOfT[r]]) }; })()`);
+  ok(br.length > 50 && wp.uniq && wp.ip && wp.asc && getEl("#mtSub").textContent.endsWith("30+ innings"), `Whole pitcher: ${br.length} pitchers, each once, 30+ innings, best xERA first`);
+  // the drawer closing leaves the table; a row shows him on the map; Back returns to the table as it was
+  run("setSlidersOpen(true); setSlidersOpen(false)"); await tick();
+  ok(getEl("#mTable").hidden === false && run("state.tblGroup") === "Whole pitcher", "closing the measure drawer leaves the table open");
+  const nT = run("NAV.idx"), rr = br[0];
+  getEl("#mtBody")._h.click[0]({ target: { closest: s => (s === "tr[data-r]" ? { dataset: { r: String(rr) } } : null) } }); await tick();
+  ok(getEl("#mTable").hidden === true && run("state.preview") && run("state.sel") === rr && run("NAV.idx") === nT + 1, "a row shows that pitcher on the map, as one step");
+  run("navBack()"); await tick(); await tick();
+  ok(run("state.tblGroup") === "Whole pitcher" && run("state.tblSort.key") === "P:xera" && getEl("#mTable").hidden === false, "Back returns to the table as it was");
+  getEl("#mtHide")._h.click[0]({}); await tick();
+  ok(getEl("#mTable").hidden === true && !getEl("#app").classList.contains("with-table"), "← Back to map closes it");
+  getEl("#tblOpen")._h.click[0]({}); await tick();
+  ok(run("state.tblGroup") === "Whole pitcher" && getEl("#mTable").hidden === false, "the left column's Show table reopens the last tab");
+  getEl("#mtHide")._h.click[0]({}); await tick();
+  // the sliders and the map's colours rank against the same MLB pool
+  run(`setView("FF", null); state.ranges = { "t:velo": [90, 100] }; render()`); await tick();
+  ok(run(`(() => { const rs = visibleRows("FF"), m = ruleMatcher("t", rs), hit = rs.filter(m); return hit.length > 0 && hit.every(r => mlbPct(VMAP.t["t:velo"], r, T.velo[r]) >= 90); })()`),
+    "a percentile slider keeps the pitches at that MLB percentile");
+  run(`state.ranges = {}; state.color.t = "t:velo"; state.scale = "pct"; render()`); await tick();
+  const ctr = (getEl("#plot").data || []).find(x => x.marker && Array.isArray(x.marker.color) && x.marker.colorscale);
+  const mp = ctr ? { got: ctr.marker.color[0], want: run(`mlbPct(VMAP.t["t:velo"], ${ctr.customdata[0]}, T.velo[${ctr.customdata[0]}])`) } : null;
+  ok(!!mp && Math.abs(mp.got - mp.want) < 1e-9, "the map colours by the same MLB percentile: " + J(mp));
+  run(`state.color.t = "cat:pitch_type"; state.seasons = new Set(D.seasons); syncSeasonChips(); setView("all", null)`); await tick();
+
   // ---- color menu: fixed beside its button on a wide screen
   getEl("#colorMenu").hidden = true;
   getEl("#colorBtn")._h.click[0]({}); await tick();

@@ -1235,6 +1235,24 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
 .mt-meta { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
 .mt-meta .psw { width: 10px; height: 10px; border-radius: 2px; flex: none; }
 .mt-pct { display: inline-block; min-width: 3.5em; padding: 2px 8px; border-radius: 999px; text-align: right; font-weight: 600; font-size: 13px; }
+/* the leaderboard's own controls: a tab per measure category, then pitch type, season and level on one wrapping row */
+.mt-tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px 0; }
+.mt-tabs[hidden], .mt-ctl[hidden] { display: none; }
+.mt-tabs .ubtn, .mt-types .ubtn { min-height: 32px; padding: 0 10px; }
+.mt-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px 12px 0; }
+.mt-types { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.mt-types .udiv { height: 22px; margin: 0 2px; }
+.mt-ctl .lvlseg button { min-height: 29px; }
+/* rank: a narrow number inside the sticky name cell, so the name column is still the one that sticks */
+.mt-pl { display: flex; align-items: baseline; gap: 8px; }
+.mt-rk { flex: none; width: 2.4em; text-align: right; font-weight: 600; color: var(--ink2); font-variant-numeric: tabular-nums lining-nums; }
+.mt-rkh { display: inline-block; width: 2.4em; margin-right: 8px; text-align: right; }
+.mt tbody tr.on .mt-rk { color: var(--field); }
+/* the measure the table is sorted by sits right after the name, shaded */
+.mt th.mt-sorted { background: var(--wash); }
+.mt th.mt-sorted button { color: var(--ink); }
+.mt td.mt-sorted { background: var(--wash); font-weight: 600; }
+.mt tbody tr.on td.mt-sorted { background: transparent; }
 .mt-look { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 12px 12px; }
 .mt-look .hmwrap { overflow: visible; border: 0; }
 .mt-more { padding: 8px 12px; font: 400 13px var(--font-ui); color: var(--muted); }
@@ -1622,6 +1640,15 @@ tr.self td { font-weight: 600; background: none; }
       <span class="mt-title" id="mtTitle"></span>
       <button type="button" class="bigbtn" id="mtDl" hidden>Download CSV</button><span class="mt-msg" id="mtMsg" aria-live="polite"></span>
     </div>
+    <!-- the leaderboard's own controls: which measures (one tab per category), which pitches, which seasons, which level -->
+    <div class="mt-tabs" id="mtTabs" role="group" aria-label="Measures in the table"></div>
+    <div class="mt-ctl" id="mtCtl">
+      <div class="mt-types" id="mtTypes" role="group" aria-label="Pitch type"></div>
+      <div class="lvlseg" id="mtSeasons" role="group" aria-label="Season"></div>
+      <div class="lvlseg" id="mtLvl" role="group" aria-label="Level" hidden>
+        <button type="button" data-v="mlb" aria-pressed="true">MLB</button><button type="button" data-v="aaa" aria-pressed="false">Triple-A</button>
+      </div>
+    </div>
     <p class="mt-sub" id="mtSub"></p>
     <input id="mtSearch" class="mt-search" type="search" placeholder="Find a pitcher in this table" autocomplete="off" aria-label="Find a pitcher in this table">
     <div class="mt-scroll" id="mtScroll"><table class="mt"><thead id="mtHeadRow"></thead><tbody id="mtBody"></tbody></table></div>
@@ -1682,6 +1709,7 @@ tr.self td { font-weight: 600; background: none; }
           <button type="button" class="measbtn" id="slOpen" aria-expanded="false" aria-controls="sliders"><span class="measarr" aria-hidden="true">‹</span><span id="slOpenTxt">Filter by measures &amp; show tables</span></button>
           <button type="button" class="resetbtn" id="resetAll" disabled title="Reset filters: measures, the pitch cluster, free agents, the color-key range, season and hand">Reset</button>
         </div>
+        <button type="button" class="ubtn" id="tblOpen" title="Every pitcher on this map in a table, ranked by any measure">Show table</button>
         <div class="lvlseg" id="lvlSeg" role="group" aria-label="Level shown" hidden>
           <button type="button" data-v="mlb" aria-pressed="true" title="Major-league pitchers">MLB</button><button type="button" data-v="aaa" aria-pressed="false" title="Triple-A pitchers on the same maps, every number measured against big-league norms">Triple-A</button>
         </div>
@@ -1884,6 +1912,7 @@ const PLURAL = { FF: "four-seam fastballs", SI: "sinkers", FC: "cutters", SL: "s
 const SING = { FF: "four-seam fastball", SI: "sinker", FC: "cutter", SL: "slider", ST: "sweeper", CU: "curveball", CH: "changeup", FS: "splitter" };
 const MIN_IP = [0, 20, 50, 100, 150];
 let tIP = [];   // innings per type row (its pitcher-season); filled by indexData
+let pPitches = new Float64Array(0);   // pitches per pitcher-season (sum of his type rows); filled by indexData
 let pOfT = new Int32Array(0);   // pitcher-season row of each type row (-1 = none); filled by indexData
 const NOT_IN_LIST = new Set(["cat:pitch_type", "cat:team", "cat:fa", "cat:cluster", "cat:subcluster"]);   // pitch type leads the list; team is its own button; clusters are the Clusters panel's Off | On
 
@@ -1975,6 +2004,8 @@ function indexData() {
   pOfT = new Int32Array(NT);
   for (let j = 0; j < NT; j++) { const i = pRow(T.pitcher[j], T.season[j], T.level[j]); pOfT[j] = i === undefined ? -1 : i; }
   tIP = Array.from(pOfT, i => i < 0 || !isNum(P.ip[i]) ? 0 : P.ip[i]);
+  pPitches = new Float64Array(NP);
+  for (let j = 0; j < NT; j++) if (pOfT[j] >= 0 && isNum(T.n[j])) pPitches[pOfT[j]] += T.n[j];
   P.look_xera = lookalike("xera");
   P.look_era = lookalike("era");
   P.look_gap = P.look_xera.map((v, i) => isNum(v) && isNum(P.xera[i]) ? P.xera[i] - v : null);
@@ -2267,6 +2298,15 @@ function poolSorted(poolName, rows, v) {
   if (!poolCache.has(k)) poolCache.set(k, sortedVals(rows, v.get));
   return poolCache.get(k);
 }
+// The yardstick every percentile on the page ranks against, as the player card does (user, 2026-11-14): a pitch
+// against all MLB pitches of its type (every season), a whole-pitcher measure against all MLB pitcher-seasons.
+// Seasons, hand and filters change which dots are shown, never the yardstick. mlbPct is the raw percentile;
+// callers flip it with pctFlip where lower is better.
+function mlbPool(v, pt) {
+  if (v.key.startsWith("P:")) { const k = v.key.slice(2); return poolSorted("P", ALL_P, { key: k, get: i => P[k][i] }); }
+  return poolSorted("t" + pt, typeRows[pt], v);
+}
+const mlbPct = (v, r, x) => isNum(x) ? pctRank(mlbPool(v, T.pitch_type[r]), x) : null;
 
 // ----------------------------------------------------------------- filters
 function visibleRows(view) {
@@ -2313,18 +2353,17 @@ function groupedSorted(rows, get, grouped) {
   return r => sorted[T.pitch_type[r]] || [];
 }
 
-// Sliders: a dot stays in color only if every moved slider includes it. Percentile sliders rank
-// within pitch type in "All pitches" and are flipped where lower is better (same as the card).
+// Sliders: a dot stays in color only if every moved slider includes it. Percentile sliders rank against
+// the MLB pool of the pitch's own type (mlbPct) and are flipped where lower is better (same as the card).
 function ruleMatcher(kind, rows) {
   const act = Object.entries(state.ranges).filter(([k]) => VMAP[kind][k]);
   if (!act.length) return null;
   const tests = act.map(([key, [lo, hi]]) => {
     const v = VMAP[kind][key];
     if (state.rangeMode === "raw") return r => { const x = v.get(r); return isNum(x) && x >= lo && x <= hi; };
-    const arrFor = groupedSorted(rows, v.get, byType(state.view, key));
     return r => {
       const x = v.get(r); if (!isNum(x)) return false;
-      const q = pctRank(arrFor(r), x), pp = pctFlip(v, T.pitch_type[r]) ? 100 - q : q;
+      const q = mlbPct(v, r, x), pp = pctFlip(v, T.pitch_type[r]) ? 100 - q : q;
       return pp >= lo && pp <= hi;
     };
   });
@@ -2733,12 +2772,16 @@ function render() {
     const sorted = vals.slice().sort((a, b) => a - b);
     let colorVals = vals, cmin, cmax, cs, sub = "";
     if (state.scale === "pct") {
-      const grouped = byType(view, cg.v ? cg.v.key : "");
-      const arrFor = groupedSorted(withV, cg.get, grouped);
-      const flip = !cg.combo && lowGoodVar(cg.v);
-      colorVals = withV.map((r, k) => { const q = pctRank(arrFor(r), vals[k]); return !cg.combo && pctFlip(cg.v, T.pitch_type[r]) ? 100 - q : q; });
+      // a measure ranks against the MLB pool (mlbPct), like the card; a ratio/difference of two measures is
+      // already built from MLB percentiles, so its own spread is ranked among the dots shown
+      const arrFor = cg.combo ? groupedSorted(withV, cg.get, byType(view, "")) : null;
+      const flip = !cg.combo && lowGoodVar(cg.v), whole = !cg.combo && cg.v && cg.v.key.startsWith("P:");
+      colorVals = withV.map((r, k) => { if (cg.combo) return pctRank(arrFor(r), vals[k]);
+        const q = mlbPct(cg.v, r, vals[k]); return pctFlip(cg.v, T.pitch_type[r]) ? 100 - q : q; });
       cmin = 0; cmax = 100; cs = SAVANT_SCALE;
-      sub = (grouped ? "Percentile within pitch type" : `Percentile among ${PLURAL[view] || "pitches"}`) + (flip ? " · red = better (lower)" : " · red = higher")
+      sub = (cg.combo ? (view === "all" ? "Percentile within pitch type" : `Percentile among ${PLURAL[view] || "pitches"}`)
+        : whole ? "Percentile among MLB pitchers" : view === "all" ? "Percentile among MLB pitches of its type" : `Percentile among MLB ${PLURAL[view] || "pitches"}`)
+        + (flip ? " · red = better (lower)" : " · red = higher")
         + (!cg.combo && cg.v && HORIZ_KEYS.has(baseKey(cg.v.key)) ? " · glove-side pitches ranked by glove-side break" : "");
     } else if (cg.div) {
       const absq = sorted.map(Math.abs).sort((a, b) => a - b), m = quantile(absq, 0.98) || 1;
@@ -5971,7 +6014,7 @@ function navSnap() {
   return { level: state.level, view: state.view, sel: state.sel ?? null, preview: !!state.preview, showComps: !!state.showComps,
     noLook: !!state.noLook, lookFrom: state.lookFrom ?? null, archetype: state.archetype || "", color: { ...state.color }, op: state.op,
     colorB: { ...state.colorB }, simOpen: !!state.simOpen, sim: state.simOpen ? navCopy(state.sim) : null,
-    lookTbl: state.lookTbl ?? null, tblGroup: state.tblGroup ?? null, slidersOpen: !!state.slidersOpen,
+    lookTbl: state.lookTbl ?? null, tblGroup: state.tblGroup ?? null, tblSort: { ...state.tblSort }, slidersOpen: !!state.slidersOpen,
     rail: { open: !!state.rail.open, tab: state.rail.tab }, cardFrom: navCopy(state.cardFrom) };
 }
 // what makes two screens different (in the lab only which lab it is: slider edits are not steps, the snapshot keeps them)
@@ -6001,6 +6044,7 @@ function navTo(i) {
     Object.assign(state, { zoomK: s.view !== state.view ? 1 : state.zoomK, view: s.view, sel: s.sel, preview: s.preview, showComps: s.showComps,
       noLook: s.noLook, lookFrom: s.lookFrom, archetype: s.archetype, color: { ...s.color }, op: s.op, colorB: { ...s.colorB },
       lookTbl: s.lookTbl, tblGroup: s.tblGroup, cardFrom: navCopy(s.cardFrom), slPrev: false });
+    if (s.tblSort) state.tblSort = { ...s.tblSort };   // a re-sort is a setting, not a step: the step keeps the latest one
     state.rail.open = s.rail.open; state.rail.tab = s.rail.tab;
     if (s.simOpen) state.sim = navCopy(s.sim); else closeSim(true);
     if (!!state.slidersOpen !== s.slidersOpen) setSlidersOpen(s.slidersOpen, true);
@@ -6025,7 +6069,7 @@ function navLabel(s, verb) {
   }
   if (has && !s.preview) return `${verb} ${nm(s.sel)}’s card`;
   if (s.lookTbl !== null && s.lookTbl !== undefined) return `${verb} the lookalikes table`;
-  if (s.slidersOpen && s.tblGroup) return `${verb} the ${s.tblGroup.toLowerCase()} table`;
+  if (s.tblGroup) return `${verb} the ${s.tblGroup.toLowerCase()} table`;
   return `${verb} ${has ? `${nm(s.sel)} on ` : ""}${where}${lit}`;
 }
 // the header's ← Back / Forward → and the same pair in an open card's header (the card covers the page header)
@@ -6388,11 +6432,11 @@ function syncLevel(loading) {
   syncIPSel();
   const seg = $("#lvlSeg"); if (!seg) return;
   seg.hidden = LEVELS.length < 2;
-  seg.querySelectorAll("button").forEach(b => {
+  [seg, $("#mtLvl")].forEach(s => s.querySelectorAll("button").forEach(b => {   // the left column's and the table's
     b.setAttribute("aria-pressed", String(b.dataset.v === state.level));
     b.disabled = b.dataset.v === loading;
     b.textContent = b.dataset.v === loading ? "Loading…" : LVL_NAME[b.dataset.v] || b.dataset.v;
-  });
+  }));
 }
 // The address: "#FF", "#aaa/FF", and with a card open "#FF/tarik-skubal-2026", which reopens that card when shared
 const slugOf = r => fold(T.name[r]).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + "-" + T.season[r];
@@ -6670,9 +6714,11 @@ function histHTML(v) {   // raw mode only: in percentile mode every bar would be
   const m = Math.max(...c) || 1;
   return `<span class="hist" aria-hidden="true">${c.map(n => `<i style="height:${(100 * n / m).toFixed(0)}%"></i>`).join("")}</span>`;
 }
-// what a percentile range means in raw units on a one-type map (in All pitches the percentiles are within each type)
+// what a percentile range means in raw units on a one-type map (in All pitches the percentiles are within each type),
+// read off the same MLB pool the percentiles rank against
 function rawSpan(v, [lo, hi]) {
-  const a = viewSorted(state.view, v); if (!a.length || state.view === "all") return "";
+  if (state.view === "all") return "";
+  const a = mlbPool(v, state.view); if (!a.length) return "";
   const flip = pctFlip(v, state.view), q = p => quantile(a, flip ? 1 - p / 100 : p / 100);
   let x = q(lo), y = q(hi); if (x > y) [x, y] = [y, x];
   return `≈ ${fmt(x, v.dec)} to ${fmt(y, v.dec, v.unit)}`;
@@ -6720,10 +6766,10 @@ function buildSliders() {
     filterSliderList();
   }));
   list.querySelectorAll(".sltbl").forEach(b => b.addEventListener("click", () => {
-    state.tblGroup = state.tblGroup === b.dataset.g ? null : b.dataset.g;
+    if (state.tblGroup === b.dataset.g) { state.tblGroup = null; syncTable(); relayout(); return; }
     // the table sits where the card is: opening it closes an open card (which also brings the drawer back)
-    if (state.tblGroup && state.sel !== null && state.sel !== undefined && !state.preview) select(null);
-    syncTable(); relayout();
+    if (state.sel !== null && state.sel !== undefined && !state.preview) select(null);
+    setTableGroup(b.dataset.g);
   }));
   const vars = sliderVars();
   list.querySelectorAll(".slrow").forEach(row => {
@@ -6797,19 +6843,52 @@ function setSlidersOpen(open, quiet) {   // quiet: no focus move (used when a ca
   relayout();   // the map's width changed: let Plotly re-measure
 }
 
-// ------------------------------------------------ measure table (open with the measure filters)
-// Opened from a category's "Show table" button: one column per measure in that category.
-// Rows = every dot still lit on the map. Percentile mode shows percentiles (same pools and flips as the
-// sliders), Raw shows values.
+// ------------------------------------------------ measure table = the leaderboards
+// Opens on its own (the left column's Show table, a category's Show table in the measure drawer, the home page's
+// leaderboards): one tab per measure category, one column per measure in it, the sorted measure first and shaded,
+// a rank. Rows = every dot still lit on the map with enough pitches to rank (TBL_MIN_N; the Whole pitcher tab: one
+// row per pitcher, TBL_MIN_IP innings). Percentile mode colours each value against the MLB pool (mlbPct, as the card).
 const TABLE_CAP = 300;   // rows drawn per scroll step
+const TBL_MIN_N = 100, TBL_MIN_IP = 30, TBL_MIN_N_AAA_P = 300;   // leaderboard floors (user, 2026-11-14); Triple-A has no innings
+const WHOLE_P = "Whole pitcher";
 const relayout = () => requestAnimationFrame(() => { try { Plotly.Plots.resize(plotEl); } catch (e) {} });
+const tableGroups = () => [...new Set(sliderVars().map(v => v.group))];
+// open (or switch) the table on a category, sorted by `key` (default: the category's first measure), best end first
+function setTableGroup(g, key) {
+  const cols = sliderVars().filter(v => v.group === g); if (!cols.length) return;
+  state.tblGroup = g;
+  const keep = !key && cols.find(v => v.key === state.tblSort.key), v = cols.find(c => c.key === key) || keep || cols[0];
+  if (!keep) state.tblSort = { key: v.key, dir: lowGoodVar(v) ? 1 : -1 };
+  syncTable(); relayout();
+}
+function syncSeasonChips() {
+  $("#seasonChips").querySelectorAll("[data-s]").forEach(c => c.setAttribute("aria-pressed", String(state.seasons.has(+c.dataset.s))));
+}
+// the table's own controls are built once; renderTable only presses the current ones
+function buildTableControls() {
+  $("#mtTabs").innerHTML = tableGroups().map(g => `<button type="button" class="ubtn" data-g="${esc(g)}" aria-pressed="false">${esc(g)}</button>`).join("");
+  const tb = (k, l) => `<button type="button" class="ubtn" data-tview="${k}" aria-pressed="false"><span class="ul">${SAVANT_PITCH[k] ? `<i class="psw" style="background:${SAVANT_PITCH[k]}"></i>` : ""}${esc(l)}</span></button>`;
+  $("#mtTypes").innerHTML = tb("all", "All pitches") + `<span class="udiv" aria-hidden="true"></span>` + TYPES.map(t => tb(t, PTN[t])).join("");
+  $("#mtSeasons").innerHTML = D.seasons.map(s => `<button type="button" data-tseason="${s}" aria-pressed="false">${s}</button>`).join("")
+    + (D.seasons.length > 1 ? `<button type="button" data-tseason="all" aria-pressed="false" title="Every season, ${seasonSpan()}">All</button>` : "");
+  $("#mtLvl").hidden = LEVELS.length < 2;
+}
+function paintTableControls() {
+  const press = (sel, f) => $(sel).querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(f(b))));
+  press("#mtTabs", b => b.dataset.g === state.tblGroup);
+  press("#mtTypes", b => b.dataset.tview === state.view);
+  const one = state.seasons.size === 1 ? [...state.seasons][0] : null;
+  press("#mtSeasons", b => b.dataset.tseason === "all" ? state.seasons.size === D.seasons.length : +b.dataset.tseason === one);
+}
 function syncTable() {
   navQueue();
   const look = state.lookTbl !== null && state.lookTbl !== undefined;
-  const on = look || (state.slidersOpen && !!state.tblGroup && sliderVars().some(v => v.group === state.tblGroup));
+  const on = look || (!!state.tblGroup && sliderVars().some(v => v.group === state.tblGroup));
   $("#mTable").hidden = !on;
   $("#app").classList.toggle("with-table", on);
+  if (state.tblGroup) state.tblLast = state.tblGroup;   // the left column's Show table reopens the last tab
   $("#mtSearch").hidden = look; $("#mtScroll").hidden = look; $("#mtLook").hidden = !look;
+  $("#mtTabs").hidden = look; $("#mtCtl").hidden = look;
   $("#mtDl").hidden = !look || !canSave(); if (!look) $("#mtMsg").textContent = "";
   const cb = $("#cbTable"); if (cb) { cb.setAttribute("aria-pressed", String(look)); cb.textContent = look ? "Hide table" : "Show table"; }
   if (look) { renderLookTable(); return; }
@@ -6848,51 +6927,76 @@ function wireHeatRows(el) {   // rows open the pitcher, by click or Enter / Spac
   });
 }
 function renderTable() {
-  if (!state.slidersOpen || !state.tblGroup || !state.tblData) return;
-  const { view, rows, match } = state.tblData, pct = state.rangeMode === "pct";
-  const lit = match ? rows.filter(match) : rows, cols = tableColumns();
-  if (!cols.length) return;
-  // one getter per column: the raw value, and in percentile mode its percentile (ranked like the sliders) for the colour
-  const getters = cols.map(v => {
-    const arrFor = pct ? groupedSorted(rows, v.get, byType(view, v.key)) : null;
-    return r => { const x = v.get(r); if (!isNum(x)) return null; if (!pct) return { x, p: null }; const q = pctRank(arrFor(r), x); return { x, p: pctFlip(v, T.pitch_type[r]) ? 100 - q : q }; };
-  });
+  if (!state.tblGroup || !state.tblData) return;
+  const { view, rows, match } = state.tblData, pct = state.rangeMode === "pct", g = state.tblGroup, whole = g === WHOLE_P;
+  const catCols = tableColumns();
+  if (!catCols.length) return;
+  paintTableControls();
+  // enough pitches to rank: TBL_MIN_N of the type; the Whole pitcher tab ranks pitchers, one row each (his most-used
+  // pitch stands in), with TBL_MIN_IP innings (Triple-A has no innings counts: TBL_MIN_N_AAA_P pitches instead)
+  const enough = whole
+    ? r => pOfT[r] >= 0 && (T.level[r] === "mlb" ? tIP[r] >= TBL_MIN_IP : pPitches[pOfT[r]] >= TBL_MIN_N_AAA_P)
+    : r => T.n[r] >= TBL_MIN_N;
+  let lit = (match ? rows.filter(match) : rows).filter(enough);
+  if (whole) {
+    const best = new Map();
+    lit.forEach(r => { const i = pOfT[r], b = best.get(i); if (b === undefined || (T.usage[r] || 0) > (T.usage[b] || 0)) best.set(i, r); });
+    lit = [...best.values()];
+  }
   let sk = state.tblSort.key;
-  if (sk !== "name" && !cols.some(v => v.key === sk)) sk = cols.length ? cols[0].key : "name";
-  const dir = state.tblSort.dir, ci = cols.findIndex(v => v.key === sk);
-  const vals = new Map(lit.map(r => [r, getters.map(g => g(r))]));
+  if (sk !== "name" && !catCols.some(v => v.key === sk)) sk = catCols[0].key;
+  const dir = state.tblSort.dir;
+  // the sorted measure comes first, right after the name; the rest keep their catalogue order
+  const cols = sk === "name" ? catCols : [catCols.find(v => v.key === sk), ...catCols.filter(v => v.key !== sk)];
+  const ci = sk === "name" ? -1 : 0;
+  // one getter per column: the raw value, and in percentile mode its percentile against the MLB pool for the colour
+  const getters = cols.map(v => r => { const x = v.get(r); if (!isNum(x)) return null; if (!pct) return { x, p: null };
+    const q = mlbPct(v, r, x); return { x, p: pctFlip(v, T.pitch_type[r]) ? 100 - q : q }; });
+  const vals = new Map(lit.map(r => [r, getters.map(f => f(r))]));
   const sorted = lit.slice().sort((a, b) => {
     if (sk === "name") return dir * (T.name[a] < T.name[b] ? -1 : T.name[a] > T.name[b] ? 1 : T.season[b] - T.season[a]);
-    const x = vals.get(a)[ci], y = vals.get(b)[ci];
+    const x = vals.get(a)[0], y = vals.get(b)[0];
     if (x === null) return y === null ? 0 : 1; if (y === null) return -1;   // blanks always last
     return dir * (x.x - y.x);   // always by raw value: a wall of tied percentiles never sorts the top
   });
-  const unit = view === "all" ? "pitches" : "pitchers";
-  $("#mtTitle").textContent = state.tblGroup;
-  const sortName = sk === "name" ? "name" : cols[ci].label;
-  $("#mtSub").textContent = `${lit.length.toLocaleString()} ${unit} ${match ? "matching your filters" : "on the map"}${view === "all" ? ", one row per pitch type" : " (" + PTN[view] + ")"}. ` +
-    `${pct ? "Colored by percentile. " : ""}Sorted by ${sortName}, raw values; click a column to re-sort, a row to find him on the map.`;
+  // rank by the sorted measure as shown (rounded): equal values share a rank (1, 2, 2, 4); blanks get none
+  const rank = new Map();
+  if (ci === 0) {
+    let prev = null, rk = 0;
+    sorted.forEach((r, k) => { const c = vals.get(r)[0]; if (c === null) return; const t = c.x.toFixed(cols[0].dec ?? 2); if (t !== prev) { rk = k + 1; prev = t; } rank.set(r, rk); });
+  }
+  // the title is what the board ranks; one short line says over which pitches
+  $("#mtTitle").textContent = ci === 0 ? cols[0].label : g;
+  const ss = D.seasons.filter(s => state.seasons.has(s));
+  const seasonTxt = ss.length === D.seasons.length && ss.length > 1 ? seasonSpan() : ss.join(", ");
+  const floorTxt = whole ? (state.level === "mlb" ? `${TBL_MIN_IP}+ innings` : `${TBL_MIN_N_AAA_P}+ pitches`) : `${TBL_MIN_N}+ pitches`;
+  $("#mtSub").textContent = [view === "all" ? "All pitches" : PTN[view], seasonTxt, state.level === "mlb" ? "" : LVL_NAME[state.level] || state.level,
+    floorTxt, match ? `${lit.length.toLocaleString()} matching your filters` : ""].filter(Boolean).join(" · ");
   const arrow = k => k === sk ? `<span class="ar" aria-hidden="true">${dir < 0 ? "▼" : "▲"}</span>` : `<span class="ar"></span>`;
   const ariaSort = k => k === sk ? ` aria-sort="${dir < 0 ? "descending" : "ascending"}"` : "";
   const unitTxt = v => v.unit ? ` <span class="tm">(${esc(v.unit)})</span>` : "";
-  $("#mtHeadRow").innerHTML = `<tr><th scope="col"${ariaSort("name")}><button type="button" data-k="name">Pitcher${arrow("name")}</button></th>` +
-    cols.map(v => `<th scope="col"${ariaSort(v.key)}><button type="button" data-k="${esc(v.key)}" title="${esc(tipFor(v))}"><span class="mt-h">${esc(shortLabel(v))}${unitTxt(v)}</span>${arrow(v.key)}</button></th>`).join("") + "</tr>";
-  const cell = (v, c) => {
-    if (c === null) return `<td>—</td>`;
+  const sc = k => k === sk ? ` class="mt-sorted"` : "";
+  $("#mtHeadRow").innerHTML = `<tr><th scope="col"${ariaSort("name")}><button type="button" data-k="name">${ci === 0 ? `<span class="mt-rkh" aria-hidden="true">#</span>` : ""}Pitcher${arrow("name")}</button></th>` +
+    cols.map(v => `<th scope="col"${sc(v.key)}${ariaSort(v.key)}><button type="button" data-k="${esc(v.key)}" title="${esc(tipFor(v))}"><span class="mt-h">${esc(shortLabel(v))}${unitTxt(v)}</span>${arrow(v.key)}</button></th>`).join("") + "</tr>";
+  const cell = (v, c, first) => {
+    const cls = first ? ` class="mt-sorted"` : "";
+    if (c === null) return `<td${cls}>—</td>`;
     const txt = c.x.toFixed(v.dec ?? 2);
-    if (!pct) return `<td>${txt}</td>`;
-    return `<td><span class="mt-pct" style="background:${pctColor(v, c.p)};color:${pctInk(v, c.p)}" title="${ord(c.p)} percentile">${txt}</span></td>`;
+    if (!pct) return `<td${cls}>${txt}</td>`;
+    return `<td${cls}><span class="mt-pct" style="background:${pctColor(v, c.p)};color:${pctInk(v, c.p)}" title="${ord(c.p)} percentile">${txt}</span></td>`;
   };
   const rowHTML = r => {
     const pt = T.pitch_type[r], vs = vals.get(r);
-    const meta = `${T.season[r]} · ${esc(teamStr(r))}${view === "all" ? ` · <i class="psw" style="background:${SAVANT_PITCH[pt] || "#999"}"></i>${esc(PTN[pt])}` : ""}`;
-    return `<tr data-r="${r}" tabindex="0"${r === state.sel ? ' class="on"' : ""}><td><div class="mt-name">${esc(T.name[r])}</div><div class="mt-meta">${meta}</div></td>${cols.map((v, k) => cell(v, vs[k])).join("")}</tr>`;
+    const meta = `${T.season[r]} · ${esc(teamStr(r))}${view === "all" && !whole ? ` · <i class="psw" style="background:${SAVANT_PITCH[pt] || "#999"}"></i>${esc(PTN[pt])}` : ""}`;
+    const who = `<div class="mt-name">${esc(T.name[r])}</div><div class="mt-meta">${meta}</div>`;
+    return `<tr data-r="${r}" tabindex="0"${r === state.sel ? ' class="on"' : ""}><td>${ci === 0 ? `<div class="mt-pl"><span class="mt-rk">${rank.get(r) ?? ""}</span><div>${who}</div></div>` : who}</td>`
+      + `${cols.map((v, k) => cell(v, vs[k], k === ci)).join("")}</tr>`;
   };
   // the whole list, drawn TABLE_CAP rows at a time as you scroll; a re-render with the same list
   // (e.g. clicking a row) keeps as many rows as were already drawn so the scroll position holds
   const words = fold(state.tblQuery).split(/\s+/).filter(Boolean);
   const shownRows = words.length ? sorted.filter(r => { const n = fold(T.name[r]); return words.every(w => n.includes(w)); }) : sorted;
-  const sig = [state.tblGroup, sk, dir, state.rangeMode, view, lit.length, words.join(" ")].join("|");
+  const sig = [g, sk, dir, state.rangeMode, view, lit.length, words.join(" "), ss.join(","), state.level].join("|");
   const keep = sig === tbl.sig ? tbl.shown : TABLE_CAP;
   Object.assign(tbl, { sig, sorted: shownRows, rowHTML, shown: Math.min(shownRows.length, keep) });
   $("#mtBody").innerHTML = shownRows.slice(0, tbl.shown).map(rowHTML).join("") +
@@ -6931,8 +7035,22 @@ function wireTable() {
     state.tblSort = { key: k, dir: cur.key === k ? -cur.dir : (k === "name" ? 1 : lowGoodVar(v) ? 1 : -1) };   // best end first
     renderTable();
   });
-  const pick = tr => { const r = +tr.dataset.r; if (Number.isInteger(r)) preview(r); };
+  // a row shows that pitcher on the map, the way a search does; Back returns to the table as it was
+  const pick = tr => { const r = +tr.dataset.r; if (!Number.isInteger(r)) return; state.tblGroup = null; syncTable(); relayout(); preview(r); };
   $("#mtBody").addEventListener("click", e => { const tr = e.target.closest("tr[data-r]"); if (tr) pick(tr); });
+  // the table's own controls: a category tab, a pitch type, a season (one, or All), the level
+  $("#mtTabs").addEventListener("click", e => { const b = e.target.closest("[data-g]"); if (b && b.dataset.g !== state.tblGroup) setTableGroup(b.dataset.g); });
+  $("#mtTypes").addEventListener("click", e => { const b = e.target.closest("[data-tview]"); if (b && b.dataset.tview !== state.view) setView(b.dataset.tview, null); });
+  $("#mtSeasons").addEventListener("click", e => {
+    const b = e.target.closest("[data-tseason]"); if (!b) return;
+    state.seasons = b.dataset.tseason === "all" ? new Set(D.seasons) : new Set([+b.dataset.tseason]);
+    syncSeasonChips(); render();
+  });
+  $("#mtLvl").querySelectorAll("button").forEach(b => b.addEventListener("click", () => setLevel(b.dataset.v)));
+  $("#tblOpen").addEventListener("click", () => {
+    if (state.sel !== null && state.sel !== undefined && !state.preview) select(null);   // the table sits where the card is
+    setTableGroup(state.tblLast && tableGroups().includes(state.tblLast) ? state.tblLast : tableGroups()[0]);
+  });
   $("#mtBody").addEventListener("keydown", e => {
     const tr = e.target.closest("tr[data-r]"); if (!tr) return;
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(tr); }
@@ -6946,13 +7064,14 @@ function wireTable() {
   });
   $("#mtHide").addEventListener("click", () => {
     const g = state.tblGroup; state.tblGroup = null; state.lookTbl = null; syncTable(); relayout();
-    const b = [...$("#slList").querySelectorAll(".sltbl")].find(x => x.dataset.g === g); if (b) b.focus();
+    const b = [...$("#slList").querySelectorAll(".sltbl")].find(x => x.dataset.g === g && x.offsetParent) || $("#tblOpen"); if (b) b.focus();
   });
 }
 
 
 function buildStatic() {
-  const syncSeasons = () => $("#seasonChips").querySelectorAll("[data-s]").forEach(c => c.setAttribute("aria-pressed", String(state.seasons.has(+c.dataset.s))));
+  const syncSeasons = syncSeasonChips;
+  buildTableControls();
   const syncThrows = () => $("#throwsSeg").querySelectorAll("button").forEach(c => c.setAttribute("aria-pressed", String(c.dataset.v === state.throws)));
   $("#seasonChips").innerHTML = D.seasons.map(s => `<button type="button" id="season-${s}" data-s="${s}" data-label="${s}" aria-pressed="true" title="Show or hide ${s} pitches">${s}</button>`).join("");
   $("#seasonChips").querySelectorAll("[data-s]").forEach(b => b.addEventListener("click", () => {
