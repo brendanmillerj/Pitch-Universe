@@ -67,10 +67,6 @@ button, input, select { font: inherit; color: inherit; }
 }
 /* the measure drawer sits beside the map row only: the header never reflows and the map never drops below the fold */
 .app.with-sliders { grid-template-columns: 300px minmax(0, 1fr); grid-template-areas: "head head" "controls controls" "sl map" "sl caption"; }
-/* the ranking table takes the map's place */
-.app.with-table { grid-template-areas: "head" "controls" "tbl" "caption"; }
-.app.with-sliders.with-table { grid-template-areas: "head head" "controls controls" "sl tbl" "sl caption"; }
-.app.with-table .map { display: none; }
 /* a selected pitcher: his card pops out over the map like the Pitch Simulation Lab; the map stays put underneath (it
    is not even redrawn while the card is open), so closing the card lands exactly where you were */
 .cardwrap { display: none; }
@@ -102,7 +98,7 @@ button, input, select { font: inherit; color: inherit; }
 .cardnav { display: contents; }
 .brand { display: flex; flex-direction: column; gap: 2px; }
 .brand h1 { white-space: nowrap; }   /* "Pitch-omics" never breaks at its hyphen */
-/* Leaderboards and Pitch simulation: green, the colour of buttons that open something; Leaderboards is ink while its table is open */
+/* Leaderboards, Pitch simulation, Clusters: white until open or on, then ink (see the one button rule at the end) */
 .hacts { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; }
 .hact { min-height: var(--ctl); padding: 0 14px; border-radius: var(--r); border: 1.5px solid var(--accent); background: var(--accent); color: #fff;
   font: 600 14px var(--font-ui); cursor: pointer; white-space: nowrap; }
@@ -538,7 +534,7 @@ button, input, select { font: inherit; color: inherit; }
 .lk-chips button { display: inline-flex; align-items: center; gap: 6px; font: 600 13px var(--font-ui); min-height: 30px; padding: 0 10px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--field); color: var(--ink2); cursor: pointer; }
 .lk-chips button:hover { border-color: var(--ink); color: var(--ink); }
 .lk-chips button[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
-#cbPool.poolseg { margin: 0; align-self: flex-start; }
+#cbPool.poolseg { flex: none; margin: 0; align-self: flex-start; }   /* flex: none, or its overflow: hidden lets the card squeeze it to a line */
 #cbPool[hidden] { display: none; }
 .lk-help { margin: 0; font: 400 13px/1.4 var(--font-ui); color: var(--ink2); }
 .lk-help:empty { display: none; }
@@ -1272,6 +1268,12 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
 /* the ranking table: in the map's place, filling its row; the body scrolls both ways */
 .mtable { grid-area: tbl; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--field); border: 1px solid var(--line);
   border-radius: var(--r-lg); overflow: hidden; }
+/* the leaderboards are a pop-up window over the map (user, 2026-11-14): a scrim behind, × or Escape or a click outside closes */
+.app .mtable { position: fixed; z-index: 67; inset: 24px max(24px, calc((100vw - 1400px) / 2)); height: auto; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35); border-radius: var(--r-lg); }
+.tblscrim { position: fixed; inset: 0; z-index: 66; background: rgba(0, 0, 0, 0.45); }
+.tblscrim[hidden] { display: none; }
+.mtx { flex: none; margin-left: auto; width: 36px; height: 36px; border: 1.5px solid var(--ink); border-radius: var(--r); background: var(--field); color: var(--ink); font: 400 22px/1 var(--font-ui); cursor: pointer; }
+.mtx:hover { background: var(--wash); }
 .mtable[hidden] { display: none; }
 .mt-in { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
 .mt-head { display: flex; align-items: center; gap: 12px; padding: 10px 12px 0; }
@@ -1345,10 +1347,6 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
 .slsec { border-bottom: 1px solid var(--line); }
 .slsec[hidden] { display: none; }
 .slghead { display: flex; align-items: center; gap: 6px; }
-.sltbl { flex: none; padding: 4px 8px; border: 1px solid var(--ink2); border-radius: 6px; background: var(--field); color: var(--ink);
-  font: 600 13px var(--font-ui); cursor: pointer; white-space: nowrap; }
-.sltbl:hover { background: var(--wash); }
-.sltbl[aria-pressed="true"] { background: var(--ink); color: var(--field); border-color: var(--ink); }
 .slgroup { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; padding: 12px 4px; border: 0; background: none; cursor: pointer;
   font: 700 15px var(--font-ui); color: var(--ink); text-align: left; }
 .slgroup:hover { background: var(--wash); }
@@ -1529,10 +1527,8 @@ tr.self td { font-weight: 600; background: none; }
 @media (max-width: 1099px) {
   .app { height: auto; min-height: 0; }
   .map { height: 70vh; min-height: 440px; }
-  .app.with-sliders, .app.with-sliders.with-table { grid-template-columns: minmax(0, 1fr); }
+  .app.with-sliders { grid-template-columns: minmax(0, 1fr); }
   .app.with-sliders { grid-template-areas: "head" "controls" "map" "caption"; }
-  .app.with-sliders.with-table { grid-template-areas: "head" "controls" "tbl" "caption"; }
-  .mtable { height: 70vh; }
   /* the measure drawer floats over the page */
   .sliders { position: fixed; z-index: 60; top: 0; bottom: 0; left: 0; width: min(340px, 88vw); margin: 0;
     padding: calc(16px + env(safe-area-inset-top, 0px)) 18px calc(24px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
@@ -1780,8 +1776,9 @@ html.at-home, html.at-home body { overflow: hidden; }
   .hcard h2 { font-size: 26px; }
   .home-tag { font-size: 17px; }
   .home-foot { justify-content: center; padding: 32px 16px 20px; }
-  /* the leaderboard: its controls scroll away with the page, so the rows get most of the screen */
-  .mtable { height: auto; }
+  /* the leaderboard: a sheet; its controls scroll away inside it, so the rows get most of the screen */
+  .mtable, .app .mtable { inset: 4vh 0 0 0; border-radius: var(--r-lg) var(--r-lg) 0 0; overflow-y: auto; }
+  .mt-in { flex: none; }
   .mt-scroll { flex: none; max-height: 80vh; }
   /* the header's popovers span the green buttons' row, so they never run off the screen */
   .hacts { position: relative; }
@@ -1794,6 +1791,49 @@ html.at-home, html.at-home body { overflow: hidden; }
 html.at-home .app { visibility: hidden; }
 /* iOS zooms the page when a field under 16px takes focus */
 @media (pointer: coarse) { #simBox .simsel, .railsel { font-size: 16px; } }
+/* ---- one button rule (user, 2026-11-14): no green. White with an ink outline = press it (it opens or turns
+   something on); ink-filled = open or on right now. The same on the light page and on the dark map. */
+.hact, .measbtn, .ctabtn.primary, #simBox .simprimary, .hgo, .hgo.hgo-out, .hchip.hall, .bigbtn.primary, .mbtn, .obtn {
+  background: var(--field); color: var(--ink); border-color: var(--ink); }
+.hact:hover, .measbtn:hover, .ctabtn.primary:hover, #simBox .simprimary:hover:not(:disabled), .hgo:hover, .hgo.hgo-out:hover, .hchip.hall:hover,
+.bigbtn.primary:hover, .mbtn:hover, .obtn:hover:not(:disabled) { background: var(--wash); color: var(--ink); border-color: var(--ink); }
+.hact[aria-pressed="true"], .hact[aria-expanded="true"], .hact.is-on, .measbtn[aria-expanded="true"],
+.mbtn[aria-pressed="true"], .mbtn[aria-expanded="true"], .obtn[aria-pressed="true"],
+.hact[aria-pressed="true"]:hover, .hact[aria-expanded="true"]:hover, .hact.is-on:hover, .measbtn[aria-expanded="true"]:hover {
+  background: var(--ink); color: var(--field); border-color: var(--ink); }
+.measseg { border-color: var(--ink); }
+.resetbtn, .typecol .resetbtn { border-color: var(--ink); }
+.measbtn:focus-visible { outline-color: var(--focus); }
+.obtn:disabled { background: var(--field); color: var(--muted); border-color: var(--line); }
+/* segmented switches, light page and dark map alike: white = not chosen, ink = chosen */
+.dimseg, .mseg, .ellp, .mk-scale { border-color: var(--ink); background: var(--field); }
+.maptools .dimseg, .mapkey .mk-scale, .mapkey .ellp, .mapkey .mseg { border-color: var(--field); }
+.dimseg button, .mseg button, .ellp button, .mk-scale button { background: var(--field); color: var(--ink); }
+.dimseg button + button, .mseg button + button, .ellp button + button, .mk-scale button + button { border-left-color: var(--ink); }
+.dimseg button:hover:not([aria-pressed="true"]):not(:disabled), .mseg button:hover:not([aria-pressed="true"]), .ellp button:hover:not([aria-pressed="true"]),
+.mk-scale button:hover:not([aria-pressed="true"]) { background: var(--wash); }
+.dimseg button[aria-pressed="true"], .mseg button[aria-pressed="true"], .ellp button[aria-pressed="true"], .mk-scale button[aria-pressed="true"] { background: var(--ink); color: var(--field); }
+.dimseg button:disabled { color: var(--muted); }
+/* home's MLB | Triple-A: the same switch on the dark panel */
+.home-lvl { background: var(--field); border-color: var(--field); }
+.home-lvl label { color: var(--ink); }
+.home-lvl label + input + label { border-left-color: var(--ink); }
+.home-lvl label:hover { background: var(--wash); }
+.home-lvl input:checked + label { background: var(--ink); color: var(--field); }
+.home-lvl input:focus-visible + label { outline: 3px solid var(--focus); outline-offset: -3px; }
+/* the lookalikes' pitch chips: ink when chosen; Simulate washes on hover rather than turning ink (ink = on) */
+.lk-chips button { border-color: var(--ink); color: var(--ink); }
+.lk-chips button[aria-pressed="true"] { background: var(--ink); color: var(--field); box-shadow: none; }
+.lk-cmp:hover { background: var(--wash); color: var(--ink); }
+/* ---- the map card in two sections (user, 2026-11-14: "I can't tell what goes with what"): the pitch, then its
+   lookalikes. One ink rule and one heading style open each section; nothing inside a section draws a line. */
+.selcta .cta-pitch, .selcta .cta-look { border-top: 2px solid var(--ink); padding-top: 10px; margin-top: 4px; }
+.selcta .ctp-head, .selcta .lk-head b { font: 700 16px/1.25 var(--font-ui); color: var(--ink); }
+.selcta .lk-head .lk-sub { display: block; margin-top: 2px; font: 400 13px var(--font-ui); color: var(--ink2); }
+.selcta .ctp-sub, .selcta .lk-share-h { margin-top: 8px; font: 600 13px var(--font-ui); color: var(--ink2); }
+.selcta .hrow { border-bottom: 0; }
+.selcta .lk-list { display: flex; flex-direction: column; gap: 2px; }
+.selcta .lk-list li { border-top: 0; }
 </style>
 
 <!-- Home: the front door (the user's mockup, 2026-11-14). Plain HTML, so it paints before the data arrives; the map
@@ -1886,7 +1926,7 @@ html.at-home .app { visibility: hidden; }
 })();
 </script>
 <div class="app" id="app">
-  <aside class="sliders" id="sliders" aria-label="Filter by measures &amp; show tables" hidden>
+  <aside class="sliders" id="sliders" aria-label="Filter by measures" hidden>
     <div class="sl-head">
       <span class="sl-title">Filter by measures &amp; show tables</span>
       <button type="button" class="slx" id="slClose" aria-label="Close the filter panel" title="Close"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 5 L19 19 M19 5 L5 19" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none"/></svg></button>
@@ -1904,11 +1944,12 @@ html.at-home .app { visibility: hidden; }
     <div class="sl-all"><button type="button" class="link" id="slExpand">Expand all</button><button type="button" class="link" id="slCollapse">Collapse all</button></div>
     <div id="slList"></div>
   </aside>
-  <section class="mtable" id="mTable" aria-label="Pitchers by measure" hidden><div class="mt-in">
+  <div class="tblscrim" id="tblScrim" hidden></div>
+  <section class="mtable" id="mTable" role="dialog" aria-modal="true" aria-labelledby="mtTitle" hidden><div class="mt-in">
     <div class="mt-head">
-      <button type="button" class="bigbtn" id="mtHide">← Back to map</button>
-      <h2 class="mt-title" id="mtTitle"></h2>
+            <h2 class="mt-title" id="mtTitle"></h2>
       <button type="button" class="bigbtn" id="mtDl" hidden>Download CSV</button><span class="mt-msg" id="mtMsg" aria-live="polite"></span>
+      <button type="button" class="mtx" id="mtHide" aria-label="Close the table" title="Close (Esc)">×</button>
     </div>
     <!-- the leaderboard's own controls: which measures (one tab per category), which pitches, which seasons, which level -->
     <div class="mt-tabs" id="mtTabs" role="group" aria-label="Measures in the table"></div>
@@ -1985,8 +2026,8 @@ html.at-home .app { visibility: hidden; }
       <div class="mapbody">
       <!-- left of the map: the measure filter, level, the pitch types, coloring and map tools, then who is shown -->
       <div class="typecol" id="typeCol">
-        <div class="measseg" role="group" aria-label="Filter by measures &amp; show tables">
-          <button type="button" class="measbtn" id="slOpen" aria-expanded="false" aria-controls="sliders"><span class="measarr" aria-hidden="true">‹</span><span id="slOpenTxt">Filter by measures &amp; show tables</span></button>
+        <div class="measseg" role="group" aria-label="Filter by measures">
+          <button type="button" class="measbtn" id="slOpen" aria-expanded="false" aria-controls="sliders"><span class="measarr" aria-hidden="true">‹</span><span id="slOpenTxt">Filter by measures</span></button>
           <button type="button" class="resetbtn" id="resetAll" disabled title="Reset filters: measures, the pitch cluster, free agents, the color-key range, season and hand">Reset</button>
         </div>
         <div class="lvlseg" id="lvlSeg" role="group" aria-label="Level shown" hidden>
@@ -2931,6 +2972,7 @@ function morphLayout() {
   requestAnimationFrame(step);
 }
 function render() {
+  { const hc = $("#hClu"); if (hc) hc.classList.toggle("is-on", clustersOn()); }   // the header's Clusters is ink while clusters are on
   navQueue();
   const view = state.view, kind = varKind(view), pal = mapPalette();
   const cardOpen = state.sel !== null && state.sel !== undefined && !state.preview;
@@ -3383,7 +3425,7 @@ function render() {
   const countText = !match && !keyIn ? `${rows.length.toLocaleString()} ${unitW}` : `${nOn.toLocaleString()} of ${rows.length.toLocaleString()} ${unitW}`;
   // only touch the live region when the text changes, so screen readers don't repeat it on every drag
   $("#slCount").textContent = countText;
-  $("#slOpenTxt").textContent = nR ? `${nR} filter${nR > 1 ? "s" : ""} on` : "Filter by measures & show tables";
+  $("#slOpenTxt").textContent = nR ? `${nR} filter${nR > 1 ? "s" : ""} on` : "Filter by measures";
   $("#resetAll").disabled = !anyFilter();
   $("#slClear").hidden = !nR;
   $("#slReset").disabled = !nR;
@@ -4577,7 +4619,13 @@ function pctSub(poolName, rows, v, r, lowGood) {
 
 const focusCard = () => { const t = $("#dHead").querySelector(".cname") || $("#detail").querySelector(".cname, .empty"); if (t) t.focus({ preventScroll: true }); };
 
+// the card and the leaderboards are modal pop-ups: the page under their scrim leaves the tab order and the screen
+// reader (as home does); the leaderboards themselves go inert under a card
 const CARD_UNDER = ["header.head", "#controls", "main.map", ".caption", "#mTable", "#sliders"];
+function syncUnder() {
+  const card = $("#app").classList.contains("has-sel"), tbl = !$("#mTable").hidden;
+  CARD_UNDER.forEach(s => { const e = $(s); if (e) e.inert = card || (tbl && s !== "#mTable"); });
+}
 function renderDetail() {
   const el = $("#detail"), view = state.view, r = state.sel;
   let cp = $("#comps");   // replaced by the in-card container when similar pitchers are open
@@ -4590,8 +4638,7 @@ function renderDetail() {
     // the map's width changed: let Plotly re-measure once the grid has reflowed
     requestAnimationFrame(() => { try { Plotly.Plots.resize(plotEl); } catch (e) {} });
   }
-  // the card is a modal dialog: the page under its scrim leaves the tab order and the screen reader (as home does)
-  CARD_UNDER.forEach(s => { const e = $(s); if (e) e.inert = has; });
+  syncUnder();
   $("#dHead").innerHTML = ""; $("#dTraits").innerHTML = "";
   if (!has) {
     if (!state.simOpen) stopFlight();   // the simulation overlay keeps its own flight running
@@ -6620,7 +6667,7 @@ function renderCompBox() {
   $("#compBox").hidden = !on; $("#selCta").classList.toggle("look", on);
   if (!on) { $("#cbList").innerHTML = ""; return; }
   const t = T.pitch_type[r], comps = compsOf(state.view, r);
-  $("#cbTitle").textContent = `Pitchers whose ${PTN[t].toLowerCase()} looks like his`;
+  $("#cbTitle").innerHTML = `Lookalikes<span class="lk-sub">Pitchers whose ${esc(PTN[t].toLowerCase())} looks like his</span>`;
   const mine = state.view === "all"
     ? TYPES.map(x => tRow(T.pitcher[r], T.season[r], x, T.level[r])).filter(x => x !== undefined && (x === r || T.n[x] >= state.minN)) : [];
   $("#cbChips").hidden = mine.length < 2;
@@ -7133,8 +7180,7 @@ function buildSliders() {
       if (g !== null) html += `</div></section>`;
       g = v.group; gi++;
       html += `<section class="slsec" data-g="${esc(g)}"><div class="slghead"><button type="button" class="slgroup" aria-expanded="false" aria-controls="slsec-${gi}">
-        <i class="chev" aria-hidden="true"></i><span class="slg-name">${esc(g)}</span><span class="slg-on"></span><span class="slg-n">${counts[g]}</span></button>
-        <button type="button" class="sltbl" data-g="${esc(g)}" aria-pressed="${state.tblGroup === g}">${state.tblGroup === g ? "Hide table" : "Show table"}</button></div>
+        <i class="chev" aria-hidden="true"></i><span class="slg-name">${esc(g)}</span><span class="slg-on"></span><span class="slg-n">${counts[g]}</span></button></div>
         <div class="slbody" id="slsec-${gi}">`;
     }
     const { min, max, step } = sliderSpec(v), cur = state.ranges[v.key] || [min, max];
@@ -7151,12 +7197,6 @@ function buildSliders() {
     const name = b.closest(".slsec").dataset.g, open = b.getAttribute("aria-expanded") !== "true";
     if (open) state.slGroupsOpen.add(name); else state.slGroupsOpen.delete(name);
     filterSliderList();
-  }));
-  list.querySelectorAll(".sltbl").forEach(b => b.addEventListener("click", () => {
-    if (state.tblGroup === b.dataset.g) { state.tblGroup = null; syncTable(); relayout(); return; }
-    // the table sits where the card is: opening it closes an open card (which also brings the drawer back)
-    if (state.sel !== null && state.sel !== undefined && !state.preview) select(null);
-    setTableGroup(b.dataset.g);
   }));
   const vars = sliderVars();
   list.querySelectorAll(".slrow").forEach(row => {
@@ -7231,8 +7271,7 @@ function setSlidersOpen(open, quiet) {   // quiet: no focus move (used when a ca
 }
 
 // ------------------------------------------------ measure table = the leaderboards
-// Opens on its own (the left column's Show table, a category's Show table in the measure drawer, the home page's
-// leaderboards): one tab per measure category, one column per measure in it, the sorted measure first and shaded,
+// A pop-up window over the map, opened by the header's Leaderboards or the home page's leaderboards: one tab per measure category, one column per measure in it, the sorted measure first and shaded,
 // a rank. Rows = every dot still lit on the map with enough pitches to rank (TBL_MIN_N; the Whole pitcher tab: one
 // row per pitcher, TBL_MIN_IP innings). Percentile mode colours each value against the MLB pool (mlbPct, as the card).
 const TABLE_CAP = 300;   // rows drawn per scroll step
@@ -7252,6 +7291,12 @@ function setTableGroup(g, key) {
 function closeTable() {
   if (!state.tblGroup && (state.lookTbl === null || state.lookTbl === undefined)) return;
   state.tblGroup = null; state.lookTbl = null; syncTable(); relayout();
+}
+// × , Escape, a click outside: the table closes and focus goes back to what opens it
+function closeTableFocus() {
+  const look = state.lookTbl !== null && state.lookTbl !== undefined;
+  state.tblGroup = null; state.lookTbl = null; syncTable(); relayout();
+  const b = look ? $("#cbTable") : $("#hBoards"); if (b && !b.hidden) b.focus({ preventScroll: true });
 }
 function syncSeasonChips() {
   $("#seasonChips").querySelectorAll("[data-s]").forEach(c => c.setAttribute("aria-pressed", String(state.seasons.has(+c.dataset.s))));
@@ -7276,8 +7321,11 @@ function syncTable() {
   navQueue();
   const look = state.lookTbl !== null && state.lookTbl !== undefined;
   const on = look || (!!state.tblGroup && sliderVars().some(v => v.group === state.tblGroup));
-  $("#mTable").hidden = !on;
+  const was = !$("#mTable").hidden;
+  $("#mTable").hidden = !on; $("#tblScrim").hidden = !on;
   $("#app").classList.toggle("with-table", on);
+  syncUnder();
+  if (on && !was) requestAnimationFrame(() => { const f = look ? $("#mtHide") : $("#mtSearch"); if (f) f.focus({ preventScroll: true }); });
   $("#hBoards").setAttribute("aria-pressed", String(on && !look));
   if (state.tblGroup) state.tblLast = state.tblGroup;   // the header's Leaderboards reopens the last tab
   $("#mtSearch").hidden = look; $("#mtScroll").hidden = look; $("#mtLook").hidden = !look;
@@ -7285,10 +7333,6 @@ function syncTable() {
   $("#mtDl").hidden = !look || !canSave(); if (!look) $("#mtMsg").textContent = "";
   const cb = $("#cbTable"); if (cb) { cb.setAttribute("aria-pressed", String(look)); cb.textContent = look ? "Hide table" : "Show table"; }
   if (look) { renderLookTable(); return; }
-  $("#slList").querySelectorAll(".sltbl").forEach(b => {
-    const me = on && b.dataset.g === state.tblGroup;
-    b.setAttribute("aria-pressed", String(me)); b.textContent = me ? "Hide table" : "Show table";
-  });
   if (on) renderTable();
 }
 const tableColumns = () => sliderVars().filter(v => v.group === state.tblGroup);
@@ -7515,10 +7559,8 @@ function wireTable() {
     if (e.key === "Escape" && e.target.value) { e.preventDefault(); e.target.value = ""; state.tblQuery = ""; renderTable(); }
     else if (e.key === "ArrowDown" || e.key === "Enter") { const tr = $("#mtBody").querySelector("tr[data-r]"); if (tr) { e.preventDefault(); if (e.key === "Enter") tr.click(); else tr.focus(); } }
   });
-  $("#mtHide").addEventListener("click", () => {
-    const g = state.tblGroup; state.tblGroup = null; state.lookTbl = null; syncTable(); relayout();
-    const b = [...$("#slList").querySelectorAll(".sltbl")].find(x => x.dataset.g === g && x.offsetParent) || $("#hBoards"); if (b) b.focus();
-  });
+  $("#mtHide").addEventListener("click", closeTableFocus);
+  $("#tblScrim").addEventListener("click", closeTableFocus);
 }
 
 
@@ -7946,6 +7988,7 @@ function buildStatic() {
   document.addEventListener("keydown", e => {
     if (e.key !== "Escape" || e.defaultPrevented || state.simOpen || state.home) return;   // the lab's own handler closes it; home leaves the map alone
     const ae = document.activeElement;
+    if (!$("#mTable").hidden && !state.cardOpen) { e.preventDefault(); closeTableFocus(); return; }
     if (!/^(INPUT|SELECT|TEXTAREA)$/.test(ae && ae.tagName)) {
       if (state.cardOpen && !state.simOpen) { e.preventDefault(); closeCard(); return; }
       const inCard = !!(ae && ($("#detail").contains(ae) || $("#dHead").contains(ae) || $("#dTraits").contains(ae))) || !!(ae && $("#keySel").contains(ae));

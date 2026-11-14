@@ -678,7 +678,7 @@ const J = JSON.stringify;
   run("navBack()"); await tick(); await tick();
   ok(run("state.tblGroup") === "Whole pitcher" && run("state.tblSort.key") === "P:xera" && getEl("#mTable").hidden === false, "Back returns to the table as it was");
   getEl("#mtHide")._h.click[0]({}); await tick();
-  ok(getEl("#mTable").hidden === true && !getEl("#app").classList.contains("with-table"), "← Back to map closes it");
+  ok(getEl("#mTable").hidden === true && !getEl("#app").classList.contains("with-table"), "× closes it");
   getEl("#hBoards")._h.click[0]({}); await tick();
   ok(run("state.tblGroup") === "Whole pitcher" && getEl("#mTable").hidden === false && getEl("#hBoards").getAttribute("aria-pressed") === "true"
     && run("state.seasons.size") === 1, "the header's Leaderboards reopens the last tab, on the latest season, and reads as on");
@@ -823,6 +823,28 @@ const J = JSON.stringify;
   ok(!/text-transform: uppercase/.test(html.match(/\.hs-tiles dt \{[^}]*\}/)[0]), "the card's tiles print xERA, not XERA");
   ok(!/turn off on the map/.test(html) && !/group: "Groups"/.test(html), "colour menu: Team says where it turns off; its first section is Categories, not Groups");
   ok(/html\.at-home \.app \{ visibility: hidden; \}/.test(html), "before the script runs, the page under home is out of the tab order");
+
+  // ---- the leaderboards are a pop-up window (user, 2026-11-14)
+  run(`select(null); setView("FF", null); setTableGroup("Results", "t:whiff")`); await tick();
+  const pageUnder = ["header.head", "#controls", "main.map", ".caption", "#sliders"];
+  ok(getEl("#mTable").hidden === false && getEl("#tblScrim").hidden === false && pageUnder.every(s => getEl(s).inert === true) && !getEl("#mTable").inert,
+    "the leaderboards open as a pop-up: a scrim behind, the page under it inert, the table itself usable");
+  ok(/id="mTable" role="dialog" aria-modal="true" aria-labelledby="mtTitle"/.test(markup) && !/\.app\.with-table \.map \{ display: none/.test(html), "it is a modal dialog, and the map stays in place under it");
+  getEl("#tblScrim")._h.click[0]({}); await tick();
+  ok(getEl("#mTable").hidden === true && getEl("#tblScrim").hidden === true && pageUnder.every(s => !getEl(s).inert) && !run("state.tblGroup"), "a click outside closes it and the page comes back");
+  ok(/id="mtHide" aria-label="Close the table"[^>]*>×</.test(markup), "× closes it (top right)");
+  ok(!/class="sltbl"/.test(html) && /id="slOpenTxt">Filter by measures</.test(markup), "the left column's drawer filters only: no Show table there (the leaderboards are the tables)");
+
+  // ---- one button rule: white = press it, ink = open or on; no green
+  ok(/one button rule/.test(html) && /\.hact\[aria-expanded="true"\], \.hact\.is-on/.test(html), "header buttons: white until open or on, then ink");
+  run(`state.color.t = "cat:subcluster"; render()`); await tick();
+  const cluOn = getEl("#hClu").classList.contains("is-on");
+  run(`state.color.t = "cat:pitch_type"; render()`); await tick();
+  ok(cluOn && !getEl("#hClu").classList.contains("is-on"), "the header's Clusters is ink while clusters are on");
+  run(`preview(${hr})`); await tick();
+  ok(/^Lookalikes<span class="lk-sub">Pitchers whose four-seam looks like his<\/span>$/.test(getEl("#cbTitle").innerHTML) && /\.selcta \.cta-pitch, \.selcta \.cta-look \{ border-top: 2px solid var\(--ink\)/.test(html),
+    "the map card has two headed sections, the pitch and its Lookalikes");
+  run("select(null)"); await tick();
 
   // ---- color menu: fixed beside its button on a wide screen
   getEl("#colorMenu").hidden = true;
