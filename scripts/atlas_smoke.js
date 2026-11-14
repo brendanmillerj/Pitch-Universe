@@ -186,8 +186,19 @@ const J = JSON.stringify;
   const chgBtns = [...chgHTML.matchAll(/data-home="chg" data-pid="(\d+)" data-season="(\d+)" data-pt="(\w+)" data-level="mlb" title="([^"]+)"[^>]*>([^<]+)</g)];
   ok(getEl("#homeChg").hidden === false && getEl("#homeChgLbl").textContent === `Biggest changes since ${run("D.home.from")}` && chgBtns.length === chgList.length
     && chgBtns.every((m, k) => +m[1] === chgList[k].pitcher && m[5] === run(`esc(${J(chgList[k].name)})`)), `five name chips under "${getEl("#homeChgLbl").textContent}", each with what changed as its tooltip`);
+  getEl("#homeAAA").checked = true; run("syncHome()");
+  ok(getEl("#homeChg").hidden === !run("(D.home.changes.aaa || []).length") && (getEl("#homeChg").hidden || /data-level="aaa"/.test(getEl("#homeChgChips").innerHTML)), "Triple-A at the top: its own list (or none)");
+  getEl("#homeAAA").checked = false; run("syncHome()");
   const chg0 = chgList[0], chg0row = run(`tRow(${chg0.pitcher}, ${chg0.season}, ${J(chg0.pt)}, "mlb")`);
   ok(Number.isInteger(chg0row), "the first change is a pitch on the map");
+  // the simulate card's pitch: the top change (or, before that list, the most unique pitch), on its own clock
+  run("homeSim(true)"); await tick();
+  const hsRow = run("HS.F ? HS.F.j : null");
+  ok(Number.isInteger(hsRow) && hsRow === run("homeSimRow()") && run(`!!trajOf(${hsRow})`)
+    && getEl("#homeSimCap").textContent === run(`T.name[${hsRow}] + "’s " + SING[T.pitch_type[${hsRow}]] + ", " + T.season[${hsRow}]`), "the simulate card flies " + getEl("#homeSimCap").textContent);
+  ok(run("FLS") === null && run("HS.F.cvId") === "homeCv", "…on its own canvas and clock: the page's flight (card, lab) is left alone");
+  for (let k = 0; k < 12 && run("HS.raf"); k++) await pump(1000);
+  ok(run("HS.raf") === 0 && run("!!HS.F.paths[0].s") && run("FLS") === null, "…once, then it rests on its trail");
 
   // each way in: a fresh map at the chosen level, one Back/Forward step from home
   const homeStep = async (dataset, what) => { await run(`homeAct(${J({ dataset })})`); await tick(); await pump(1000); await tick(); await pump(1000); await tick();

@@ -7423,10 +7423,55 @@ function buildHome() {
   homeBoxes = [suggestBox($("#homeSearch"), $("#homeSugg"), () => homeAct($("#homeFind")), $("#homeSearchMsg")),
     suggestBox($("#homeSim"), $("#homeSimSugg"), () => homeAct($("#homeSimFind")), $("#homeSimMsg"))];
   $("#homeLink").addEventListener("click", e => { e.preventDefault(); showHome(true); $("#home").focus({ preventScroll: true }); });
+  $("#homeCv").addEventListener("click", () => { if (HS.F) homeSimRun(); });   // replay
+  window.addEventListener("resize", () => {   // keep the stage sharp at its new size; a flight in progress carries on
+    if (!state.home || !HS.F) return;
+    withHS(flightSetup); if (!HS.raf) withHS(() => flightDraw(HS.F.total - 1));
+  });
   syncHome();
 }
-// the simulate card's pitch (filled in with the flight engine; here, just started and stopped with home)
-function homeSim(on) {}
+// The simulate card's pitch: one real pitch flies once when home opens (the user's choice), then rests on its trail;
+// a click replays it; reduced motion draws the last frame only. It is the top MLB "biggest change", on the pitch that
+// changed (data built before that list: the most unique pitch of the latest season). It runs on its own F and clock:
+// the page's FLS (the card's flight panel, the lab) is swapped in only around flightSetup/flightDraw, never stopped.
+const HS = { F: null, raf: 0 };
+function homeSimRow() {
+  const list = D.home && D.home.changes ? D.home.changes.mlb || [] : [];
+  for (const c of list) { const r = tRow(c.pitcher, c.season, c.pt, "mlb"); if (r !== undefined && trajOf(r)) return r; }
+  const S = Math.max(...D.seasons); let best = null;
+  for (const r of ALL_ROWS) if (T.level[r] === "mlb" && T.season[r] === S && T.n[r] >= 300 && isNum(T.uniq_z[r]) && (best === null || T.uniq_z[r] > T.uniq_z[best]) && trajOf(r)) best = r;
+  return best;
+}
+const withHS = fn => { const keep = FLS; FLS = HS.F; try { fn(); } finally { FLS = keep; } };
+function homeSim(on) {
+  if (HS.raf) { cancelAnimationFrame(HS.raf); HS.raf = 0; }
+  if (!on) return;
+  const r = homeSimRow(), cap = $("#homeSimCap"), p = r === null ? null : trajOf(r);
+  if (!p) { HS.F = null; cap.textContent = ""; return; }
+  const pt = T.pitch_type[r], path = { type: pt, row: r, color: SAVANT_PITCH[pt], ...flightPath(p) };
+  const hold0 = Math.round(0.3 * FL.FPS), nAnim = Math.max(2, Math.round(FL.FPS * path.tEnd * FL.SLOW));
+  HS.F = { j: r, paths: [path], flight: path.tEnd, hold0, nAnim, total: hold0 + nAnim + 1, cam: "catcher", start: null, raf: 0,
+    zone: flightZone(r), cvId: "homeCv", aspects: { catcher: 16 / 9 } };   // the card's stage is 16:9
+  const c = (D.home && D.home.changes && D.home.changes.mlb || []).find(x => x.pitcher === T.pitcher[r] && x.pt === pt);
+  cap.textContent = `${T.name[r]}’s ${SING[pt] || PTN[pt].toLowerCase()}, ${T.season[r]}`;
+  $("#homeCv").title = (c ? c.tip + ". " : "") + "Click to replay";
+  homeSimRun();
+}
+function homeSimRun() {
+  const F = HS.F; if (!F) return;
+  if (HS.raf) { cancelAnimationFrame(HS.raf); HS.raf = 0; }
+  withHS(flightSetup);
+  if (reduced()) { withHS(() => flightDraw(F.total - 1)); return; }
+  F.start = null;
+  const step = now => {
+    if (HS.F !== F || !state.home) { HS.raf = 0; return; }
+    if (F.start === null) F.start = now;
+    const frame = Math.min(Math.floor((now - F.start) / 1000 * FL.FPS), F.total - 1);
+    withHS(() => flightDraw(frame));
+    HS.raf = frame < F.total - 1 ? requestAnimationFrame(step) : 0;
+  };
+  HS.raf = requestAnimationFrame(step);
+}
 
 function buildStatic() {
   const syncSeasons = syncSeasonChips;
