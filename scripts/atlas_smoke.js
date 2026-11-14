@@ -745,6 +745,23 @@ const J = JSON.stringify;
   ok(run("state.simOpen"), "…and with a pitcher on screen it opens his lab straight away");
   run("closeSim(true); select(null)"); await tick();
 
+  // ---- the header's Clusters menu (user, 2026-11-14): a pitch type's map with its clusters coloured and listed
+  ok(hIds.indexOf("hClu") === hIds.indexOf("hSim") + 1, "Clusters sits right after Pitch simulation in the header");
+  run(`clustersOff(); railClose(); select(null); setView("all", null)`); await tick();
+  getEl("#hClu")._h.click[0]({}); await tick();
+  const nClTypes = run("TYPES.filter(t => D.pitch_clusters.types[t] && D.pitch_clusters.types[t].clusters.length).length");
+  let cm = getEl("#hCluMenu").innerHTML;
+  ok(getEl("#hCluMenu").hidden === false && (cm.match(/data-clv="/g) || []).length === 1 + nClTypes && /data-clv="all"/.test(cm) && !/data-clv="off"/.test(cm) && /\d+ clusters/.test(cm),
+    `Clusters opens a menu: All pitches and the ${nClTypes} pitch types, each with its cluster count`);
+  getEl("#hCluMenu")._h.click[0](ev("data-clv", "SL")); await tick(); await pump(1000); await tick(); await pump(1000); await tick();
+  ok(run("state.view") === "SL" && run("clustersOn()") && run("state.rail.open") && run("state.rail.tab") === "clusters" && getEl("#hCluMenu").hidden === true,
+    "…a pitch type opens its map with the clusters coloured and listed");
+  getEl("#hClu")._h.click[0]({}); await tick(); cm = getEl("#hCluMenu").innerHTML;
+  ok(/data-clv="SL" aria-current="true"/.test(cm) && /data-clv="off"/.test(cm), "…with clusters on, the menu marks this map and offers Clusters off");
+  getEl("#hCluMenu")._h.click[0](ev("data-clv", "off")); await tick();
+  ok(!run("clustersOn()") && !run("state.rail.open"), "…and Clusters off turns them off");
+  run(`setView("all", null)`); await tick();
+
   // ---- his other seasons of the pitch on the map (user, 2026-11-14): full strength whatever the season filter, a year
   // tag on each, arrows in season order
   const multi = run(`(() => { const S = Math.max(...D.seasons); return ALL_ROWS.find(r => T.level[r] === "mlb" && T.season[r] === S && T.pitch_type[r] === "FF" && T.n[r] >= 300

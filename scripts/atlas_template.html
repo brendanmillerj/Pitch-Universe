@@ -113,6 +113,20 @@ button, input, select { font: inherit; color: inherit; }
 .hsimpop { position: absolute; z-index: 70; top: calc(100% + 6px); left: 0; width: min(360px, calc(100vw - 32px)); padding: 10px 12px 12px;
   background: var(--field); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--sh2); }
 .hsimpop[hidden] { display: none; }
+/* the header's Clusters menu: All pitches and each pitch type (with its cluster count); the map on screen marked while clusters are on */
+.hclwrap { position: relative; }
+.hcaret { margin-left: 2px; font-size: 11px; }
+.hclmenu { position: absolute; z-index: 70; top: calc(100% + 6px); left: 0; width: min(280px, calc(100vw - 32px)); padding: 6px; display: flex; flex-direction: column; gap: 2px;
+  background: var(--field); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--sh2); }
+.hclmenu[hidden] { display: none; }
+.hclmenu button { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 36px; padding: 0 10px; border: 0; border-radius: var(--r);
+  background: none; color: var(--ink); font: 600 14px var(--font-ui); text-align: left; cursor: pointer; }
+.hclmenu button:hover, .hclmenu button:focus-visible { background: var(--wash); outline: none; }
+.hclmenu button[aria-current="true"] { background: var(--ink); color: var(--field); }
+.hclmenu .ul { display: inline-flex; align-items: center; gap: 8px; }
+.hcm-n { font: 400 13px var(--font-ui); color: var(--ink2); white-space: nowrap; }
+.hclmenu button[aria-current="true"] .hcm-n { color: var(--field); opacity: 0.85; }
+.hclmenu .hcm-off { margin-top: 4px; border-top: 1px solid var(--line); border-radius: 0 0 var(--r) var(--r); color: var(--ink2); font-weight: 500; }
 /* the map's view switches and "Similar pitches kept together", on the map's top right (dark like every panel on the map) */
 .maptools { position: absolute; top: var(--mi); right: var(--mi); z-index: 7; display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
   pointer-events: none; }
@@ -1917,6 +1931,10 @@ html.at-home, html.at-home body { overflow: hidden; }
               <span class="help" id="hSimMsg" role="status" aria-live="polite"></span>
             </form>
           </div>
+        </div>
+        <div class="hclwrap">
+          <button type="button" class="hact" id="hClu" aria-haspopup="true" aria-expanded="false" aria-controls="hCluMenu" title="A pitch type’s map with its clusters coloured and listed">Clusters <span class="hcaret" aria-hidden="true">▾</span></button>
+          <div class="hclmenu" id="hCluMenu" role="menu" aria-label="Clusters on which map" hidden></div>
         </div>
       </div>
       <div class="hnav">
@@ -7403,7 +7421,8 @@ function wireTable() {
   });
   // the header's Pitch simulation: the lab for the pitcher on screen; with nobody chosen, a box to find one
   const hsBtn = $("#hSim"), hsPop = $("#hSimPop"), hsInp = $("#hSimSearch");
-  const hsOpen = on => { hsPop.hidden = !on; hsBtn.setAttribute("aria-expanded", String(on)); if (on) hsInp.focus(); else { hsBox.close(); $("#hSimMsg").textContent = ""; } };
+  const hsOpen = on => { if (on) hcOpen(false);   // one header popover at a time
+    hsPop.hidden = !on; hsBtn.setAttribute("aria-expanded", String(on)); if (on) hsInp.focus(); else { hsBox.close(); $("#hSimMsg").textContent = ""; } };
   const hsGo = async () => {
     const q = hsInp.value.trim(); if (!fold(q)) return;
     let cands = nameRows(q, "all");
@@ -7424,6 +7443,39 @@ function wireTable() {
   });
   hsInp.addEventListener("keydown", e => { if (e.key === "Escape" && $("#hSimSugg").hidden) { e.preventDefault(); hsOpen(false); hsBtn.focus(); } });
   document.addEventListener("click", e => { if (!hsPop.hidden && !e.target.closest(".hsimwrap")) hsOpen(false); });
+  // the header's Clusters (user, 2026-11-14): a pitch type's map with its clusters coloured and listed, as the home page's
+  // strip opens it; while clusters are on, the menu marks the map on screen and offers Clusters off
+  const hcBtn = $("#hClu"), hcMenu = $("#hCluMenu");
+  hcBtn.hidden = !D.pitch_clusters; hcMenu.hidden = true;
+  const cluCount = v => (v === "all" ? TYPES : [v]).reduce((n, t) => n + (D.pitch_clusters && D.pitch_clusters.types[t] ? D.pitch_clusters.types[t].clusters.length : 0), 0);
+  const hcPaint = () => {
+    const on = clustersOn(), row = (v, label) => { const n = cluCount(v);
+      return `<button type="button" role="menuitem" data-clv="${v}"${on && state.view === v ? ' aria-current="true"' : ""}><span class="ul">`
+        + `${SAVANT_PITCH[v] ? `<i class="psw" style="background:${SAVANT_PITCH[v]}"></i>` : ""}${esc(label)}</span><span class="hcm-n">${n} cluster${n === 1 ? "" : "s"}</span></button>`; };
+    hcMenu.innerHTML = row("all", "All pitches") + TYPES.filter(t => cluCount(t)).map(t => row(t, PTN[t])).join("")
+      + (on ? `<button type="button" role="menuitem" class="hcm-off" data-clv="off">Clusters off</button>` : "");
+  };
+  const hcOpen = on => {
+    if (on) { hcPaint(); hsOpen(false); }
+    hcMenu.hidden = !on; hcBtn.setAttribute("aria-expanded", String(on));
+    if (on) { const f = hcMenu.querySelector("[aria-current]") || hcMenu.querySelector("button"); if (f) f.focus(); }
+  };
+  hcBtn.addEventListener("click", () => hcOpen(hcMenu.hidden));
+  hcMenu.addEventListener("click", e => {
+    const b = e.target.closest("[data-clv]"); if (!b) return;
+    const v = b.dataset.clv; hcOpen(false); hcBtn.focus();
+    closeTable();   // the clusters are on the map
+    if (v === "off") { clustersOff(); return; }
+    state.color.all = state.color.t = "cat:subcluster"; state.op = "none"; buildVarSelects();
+    state.rail.open = true; state.rail.tab = "clusters";
+    if (v !== state.view) goView(v); else render();   // another map: All pitches glides into it, as from home
+  });
+  hcMenu.addEventListener("keydown", e => {
+    const items = [...hcMenu.querySelectorAll("button")], k = items.indexOf(document.activeElement), n = items.length;
+    if (e.key === "Escape") { e.preventDefault(); hcOpen(false); hcBtn.focus(); }
+    else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && n) { e.preventDefault(); items[((k < 0 ? (e.key === "ArrowDown" ? -1 : 0) : k) + (e.key === "ArrowDown" ? 1 : -1) + n) % n].focus(); }
+  });
+  document.addEventListener("click", e => { if (!hcMenu.hidden && !e.target.closest(".hclwrap")) hcOpen(false); });
   $("#mtBody").addEventListener("keydown", e => {
     const tr = e.target.closest("tr[data-r]"); if (!tr) return;
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(tr); }
