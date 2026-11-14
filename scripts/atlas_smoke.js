@@ -257,10 +257,11 @@ const J = JSON.stringify;
   // ---- layout
   const hEnd = markup.indexOf("</header>");
   const at = id => markup.indexOf(`id="${id}"`), r2 = markup.indexOf('class="hdrow hdrow2');
-  ok(["navBack", "search", "hBoards", "hClu", "startOver", "navFwd"].every(id => at(id) > 0 && at(id) < r2) && ["lvlSeg", "seasonChips", "throwsSeg", "minIP", "fa"].every(id => at(id) > r2 && at(id) < hEnd),
-    "header row 1: Back, search, Show leaderboard, Pitch Types/Clusters, Start over, Forward; row 2: Level, Season, Hand, Innings, Free agents (user, 2026-11-14 experiment)");
-  ok(at("typeCol") < 0 && at("hSim") < 0, "no left column, no Simulate pitch");
-  ok(at("pnClusters") > at("hClu") && at("universe") > at("pnClusters") && at("universe") < r2, "…the clusters switch and the pitch types sit in the Pitch Types/Clusters pop-over");
+  ok(["navBack", "search", "hBoards", "startOver", "navFwd"].every(id => at(id) > 0 && at(id) < r2) && at("hClu") < 0 && ["lvlSeg", "seasonChips", "throwsSeg", "minIP", "fa"].every(id => at(id) > r2 && at(id) < hEnd),
+    "header row 1: Back, search, Show leaderboard, Start over, Forward; row 2: Level, Season, Hand, Innings, Free agents (user, 2026-11-14 experiment)");
+  ok(at("hSim") < 0 && /class="typecol typeR" id="typeCol"/.test(markup) && at("universe") > at("typeCol") && at("universe") < at("plotArea"), "no Simulate pitch; the pitch types sit in their own column (right of the map on wide screens)");
+  ok(at("pnClusters") > at("mapTools") && at("pnClusters") < at("dimSeg") && /\.mapbody > \.plotarea \{ order: 0; \} \.mapbody > \.typecol \{ order: 1; \} \.mapbody > \.mrail \{ order: 2; \}/.test(html),
+    "the Clusters switch sits on the map just before 2D | 3D; map, then the types, then the panel at the far right");
   ok(["ellOn", "teamOn", "lassoOn", "lsColorBtn", "lbList"].every(id => at(id) < 0), "no ellipses, Team colors or Draw a group options, and no leaderboard drop-down (user, 2026-11-14)");
   const hStart = markup.indexOf('<header class="head">'), hIds = [...markup.slice(hStart, hEnd).matchAll(/<button[^>]* id="(\w+)"/g)].map(m => m[1]);
   const r1Ids = [...markup.slice(hStart, r2).matchAll(/<button[^>]* id="(\w+)"/g)].map(m => m[1]);
@@ -749,17 +750,12 @@ const J = JSON.stringify;
   run("closeTable(); select(null)"); await tick();
 
 
-  // ---- Pitch Types/Clusters (user, 2026-11-14): the types and the clusters switch, under one drop-down
+  // ---- the Clusters switch on the map (user, 2026-11-14 experiment)
   run(`clustersOff(); railClose(); select(null); setView("all", null)`); await tick();
-  getEl("#hClu")._h.click[0]({}); await tick();
-  ok(getEl("#lsTypes").hidden === false && getEl("#hClu").getAttribute("aria-expanded") === "true", "Pitch Types/Clusters opens its list");
-  ok(getEl("#lsTypesNow").textContent === "All pitches", "closed or open, it says which map is on: " + getEl("#lsTypesNow").textContent);
   getEl("#pnClusters")._h.click[0]({}); await tick();
-  ok(run("clustersOn()") && / · clusters on$/.test(getEl("#lsTypesNow").textContent), "its clusters switch turns clusters on, and the button says so");
+  ok(run("clustersOn()") && getEl("#pnClusters").getAttribute("aria-checked") === "true", "the map's Clusters switch turns clusters on");
   run("clustersOff()"); await tick();
-  ok(!run("clustersOn()") && getEl("#lsTypesNow").textContent === "All pitches", "…and off");
-  getEl("#hClu")._h.click[0]({}); await tick();
-  run(`setView("all", null)`); await tick();
+  ok(!run("clustersOn()") && getEl("#pnClusters").getAttribute("aria-checked") === "false", "…and off");
 
   // ---- his other seasons of the pitch on the map (user, 2026-11-14): full strength whatever the season filter, a year
   // tag on each, arrows in season order
@@ -836,9 +832,6 @@ const J = JSON.stringify;
 
   // ---- one button rule: white = press it, ink = open or on; no green
   ok(/one button rule/.test(html) && /\.hact\[aria-expanded="true"\], \.hact\.is-on/.test(html), "header buttons: white until open or on, then ink");
-  getEl("#hClu")._h.click[0]({}); await tick();
-  ok(getEl("#lsTypes").hidden === false && getEl("#hClu").getAttribute("aria-expanded") === "true" && /\.lsbtn\[aria-expanded="true"\]/.test(html), "a drop-down's button turns ink while open");
-  getEl("#hClu")._h.click[0]({}); await tick();
   run(`preview(${hr})`); await tick();
   ok(/^Lookalikes<span class="lk-sub">Pitchers whose four-seam looks like his<\/span>$/.test(getEl("#cbTitle").innerHTML) && /\.selcta \.cta-pitch, \.selcta \.cta-look \{ border-top: 2px solid var\(--ink\)/.test(html),
     "the map card has two headed sections, the pitch and its Lookalikes");

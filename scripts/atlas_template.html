@@ -212,7 +212,7 @@ button, input, select { font: inherit; color: inherit; }
 #pnClusters[aria-checked="true"] .pnswv i::after { left: 16px; }
 @media (prefers-reduced-motion: reduce) { .pnswv i, .pnswv i::after { transition: none; } }
 /* wide screens: controls column, then the panel, then the map (the DOM keeps plot-then-panel for the phone stack) */
-@media (min-width: 720px) { .mapbody > .typecol { order: 0; } .mapbody > .mrail { order: 1; } .mapbody > .plotarea { order: 2; } }
+@media (min-width: 720px) { .mapbody > .plotarea { order: 0; } .mapbody > .typecol { order: 1; } .mapbody > .mrail { order: 2; } }
 .typecol .ubtn { width: 100%; justify-content: flex-start; min-height: 32px; }
 .typecol .udiv { width: 100%; height: 1px; margin: 2px 0; background: var(--line); }
 .tcsub { margin-top: 8px; font: 600 13px var(--font-ui); color: var(--ink2); }
@@ -1910,6 +1910,15 @@ html.at-home .app { visibility: hidden; }
 .mappanels .ubtn { min-height: calc(var(--ctl) - 3px); gap: 8px; background: var(--field); }
 .mappanels .ubtn[aria-pressed="true"] { background: var(--ink); color: var(--field); }
 .plotarea .maptoast { bottom: calc(var(--mi) + 52px); }
+.typeR { width: 150px; }
+.typeR .universe { gap: 4px; }
+.maptools .mt-clu { display: flex; }
+.maptools .mt-clu .ubtn { min-height: calc(var(--ctl) - 3px); gap: 10px; background: var(--field); color: var(--ink); border: 1.5px solid var(--field); border-radius: var(--r); padding: 0 10px; }
+.maptools .mt-clu .ubtn:hover { background: var(--wash); }
+.maptools .mt-clu .ubtn[aria-checked="true"] { background: var(--ink); color: var(--field); border-color: var(--field); }
+#pnClusters[aria-checked="true"] .pnswv i { background: var(--field); }
+#pnClusters[aria-checked="true"] .pnswv i::after { background: var(--ink); }
+@media (max-width: 719px) { .typeR { width: auto; } }
 @media (max-width: 719px) { .mappanels { position: static; margin: 8px 0 0; } .mappanels .ubtn { flex: 1 1 0; justify-content: space-between; } .hcpanel { width: min(300px, calc(100vw - 32px)); } }
 @media (max-width: 719px) { .typecol > .lsec, .typecol > .measseg, .typecol > .lsdiv { flex: 1 1 100%; } .typecol .lsdiv { height: 1px; margin: 4px 0; } }
 /* ---- the map card in two sections (user, 2026-11-14: "I can't tell what goes with what"): the pitch, then its
@@ -2083,15 +2092,8 @@ html.at-home .app { visibility: hidden; }
         </form>
       </div>
       <!-- the actions (user, 2026-11-14 experiment): the leaderboard and the maps -->
-      <div class="hacts" role="group" aria-label="Leaderboard and maps">
+      <div class="hacts" role="group" aria-label="Leaderboard">
         <button type="button" class="hact" id="hBoards" aria-pressed="false" title="Every pitcher in a table, ranked by any measure">Show leaderboard</button>
-        <div class="hclwrap">
-          <button type="button" class="hact hcbtn" id="hClu" data-ls aria-expanded="false" aria-controls="lsTypes"><span class="lsl">Pitch Types/Clusters</span><span class="lsnow" id="lsTypesNow"></span><i class="lschev" aria-hidden="true"></i></button>
-          <div class="hclmenu hcpanel" id="lsTypes" hidden>
-            <div class="panelnav"><button type="button" class="ubtn" id="pnClusters" data-panel="clusters" role="switch" aria-checked="false">Clusters</button></div>
-            <nav class="universe" id="universe" aria-label="Choose a map: all pitches or one pitch type"></nav>
-          </div>
-        </div>
       </div>
       <div class="hnav">
       <button type="button" class="restart" id="startOver" title="The full map as it first opens: All pitches, MLB, no one selected, no filters, colored by pitch type. Your saved groups stay."><span aria-hidden="true">↺</span> Start over</button>
@@ -2148,6 +2150,10 @@ html.at-home .app { visibility: hidden; }
     <div class="plotwrap" id="plotWrap">
       <div class="mapbody">
       <!-- left of the map: the measure filter, level, the pitch types, coloring and map tools, then who is shown -->
+      <!-- the maps: All pitches and each pitch type, in a column right of the map (user, 2026-11-14 experiment) -->
+      <div class="typecol typeR" id="typeCol">
+        <nav class="universe" id="universe" aria-label="Choose a map: all pitches or one pitch type"></nav>
+      </div>
       <div class="plotarea" id="plotArea">
         <!-- the map's view, on the map (user, 2026-11-14): flat or 3D, movement chart or t-SNE, and how well each layout
              keeps similar pitches together; a sibling of #plot, which Plotly and the 3D setup empty -->
@@ -2177,6 +2183,7 @@ html.at-home .app { visibility: hidden; }
                 <button type="button" class="explbtn" id="explBtn" aria-expanded="false" aria-controls="explBox" hidden>Explain</button>
                 <button type="button" class="resetcolor" id="colorReset" title="Color by pitch type again"><span aria-hidden="true">↺</span> Pitch type</button>
               </div>
+            <div class="panelnav mt-clu"><button type="button" class="ubtn" id="pnClusters" data-panel="clusters" role="switch" aria-checked="false">Clusters</button></div>
             <div class="dimseg" id="dimSeg" role="group" aria-label="Flat or 3D">
               <button type="button" id="dim2" data-v="2" title="Flat map">2D</button>
               <button type="button" id="dim3" data-v="3" title="Drag to rotate">3D</button>
@@ -3069,7 +3076,6 @@ function morphLayout() {
 // the left column's drop-down sections show what is on while closed: the map (and clusters), the colouring
 // (and ellipses), and in Simulate pitch a button for the pitcher on screen
 function syncLeftNow() {
-  const tn = $("#lsTypesNow"); if (tn) tn.textContent = (state.view === "all" ? "All pitches" : PTN[state.view]) + (clustersOn() ? " · clusters on" : "");
 }
 function render() {
   syncLeftNow();
@@ -7037,7 +7043,7 @@ function colorMenuHTML(pick, cur, filter) {
   const hit = v => !f.length || f.every(w => (v.label + " " + v.group).toLowerCase().includes(w));
   const head = [{ key: "cat:pitch_type", label: "Pitch type", group: "Categories" }]
     .concat(cur === "cat:team" ? [{ key: "cat:team", label: "Team (turn off with Team colors)", group: "Categories" }] : [])
-    .concat(cur === "cat:cluster" || cur === "cat:subcluster" ? [{ key: cur, label: "Clusters (turn off with the Clusters switch)", group: "Categories" }] : []);
+    .concat(cur === "cat:cluster" || cur === "cat:subcluster" ? [{ key: cur, label: "Clusters (the Clusters switch on the map turns them off)", group: "Categories" }] : []);
   let html = "", g = null;
   head.concat(pick).forEach(v => {
     if (!hit(v)) return;
@@ -7192,7 +7198,7 @@ function buildVarSelects() {
   const pick = vars.filter(v => !NOT_IN_LIST.has(v.key));
   const a = VMAP[kind][cur];
   const clOn = cur === "cat:cluster" || cur === "cat:subcluster";
-  $("#colorBtnTxt").textContent = cur === "cat:team" ? "Team (turn off with Team colors)" : clOn ? "Clusters (turn off with the Clusters switch)" : a ? a.label : "Pitch type";
+  $("#colorBtnTxt").textContent = cur === "cat:team" ? "Team (turn off with Team colors)" : clOn ? "Clusters" : a ? a.label : "Pitch type";
   if (!$("#colorMenu").hidden) $("#cmList").innerHTML = colorMenuHTML(pick, cur, $("#cmSearch").value);
   $("#colorB").innerHTML = optionsHTML(vars, state.colorB[kind], "", false);
   $("#colorAWrap").classList.toggle("on", !NOT_IN_LIST.has(cur));   // filled in while a measure is the color
@@ -7615,19 +7621,12 @@ function wireTable() {
   });
   $("#mtLvl").querySelectorAll("button").forEach(b => b.addEventListener("click", () => setLevel(b.dataset.v)));
   // the left column's drop-down sections: a press opens (ink) or closes (white) the section under it
-  [["#hClu", "#lsTypes"]].forEach(([sel, body]) => { const b = $(sel);
-    $(body).hidden = true;
-    b.addEventListener("click", () => { const on = $(body).hidden; $(body).hidden = !on; b.setAttribute("aria-expanded", String(on)); }); });
   // Show leaderboard: the leaderboard on its last tab (the latest season); pressed again, it closes
   $("#hBoards").addEventListener("click", () => {
     if (state.tblGroup && (state.lookTbl === null || state.lookTbl === undefined)) { closeTableFocus(); return; }
     openBoard(state.tblLast && tableGroups().includes(state.tblLast) ? state.tblLast : tableGroups()[0]);
   });
   $("#pnClusters").addEventListener("click", () => clustersRow());
-  const tyClose = (focus) => { $("#lsTypes").hidden = true; $("#hClu").setAttribute("aria-expanded", "false"); if (focus) $("#hClu").focus({ preventScroll: true }); };
-  $("#universe").addEventListener("click", e => { if (e.target.closest && e.target.closest("[data-view]")) tyClose(false); });
-  $("#lsTypes").addEventListener("keydown", e => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); tyClose(true); } });
-  document.addEventListener("click", e => { if (!$("#lsTypes").hidden && e.target.closest && !e.target.closest(".hclwrap")) tyClose(false); });
   $("#mtBody").addEventListener("keydown", e => {
     const tr = e.target.closest("tr[data-r]"); if (!tr) return;
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(tr); }
