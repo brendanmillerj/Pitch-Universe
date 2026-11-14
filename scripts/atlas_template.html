@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400&display=swap">
 <style>
 /* Layout: theme D, "split". Pale blue-gray chrome (top band, controls, card, comps, sliders) and a
    dim slate map panel so the colored dots pop, like Savant's charts. No white, no black.
@@ -1613,8 +1613,188 @@ tr.self td { font-weight: 600; background: none; }
   .app.has-sel .cardwrap { display: block; position: fixed; z-index: 65; left: 0; right: 0; top: 6vh; bottom: 0; overflow-y: auto; overscroll-behavior: contain;
     background: var(--panel); border-radius: var(--r-lg) var(--r-lg) 0 0; box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.35); padding: 8px var(--gr) 32px var(--gl); }
 }
+
+/* ---- home: the front door (the user's mockup, 2026-11-14). A fixed layer over the page with its own scroll; the map
+   is drawn underneath and the page itself does not scroll while home is up. */
+html.at-home, html.at-home body { overflow: hidden; }
+.homelink { color: inherit; text-decoration: none; }
+.homelink:hover { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 6px; }
+.home { position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain;
+  background: var(--bg); color: var(--ink); font: 400 16px var(--font-ui); }
+.home[hidden] { display: none; }
+.home:focus { outline: none; }
+.home-mast { flex: none; border-top: 5px solid var(--ink); border-bottom: 1px solid var(--line); padding: 18px 16px 16px; text-align: center; }
+.home-title { margin: 0; font: 700 64px/1.05 var(--font-serif); font-optical-sizing: auto; letter-spacing: -0.01em; color: var(--ink); white-space: nowrap; }
+.home-panel { flex: none; margin: 22px 24px 0; padding: 40px 48px 34px; background: var(--map); border-radius: var(--r-lg); }
+.home-in { max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; }
+/* MLB | Triple-A: two radio buttons, so the choice works before the page's script has loaded; white = chosen */
+.home-lvl { position: relative; align-self: center; display: inline-flex; border: 2px solid #fff; border-radius: var(--r); overflow: hidden; }
+.home-lvl[hidden] { display: none; }
+.home-lvl input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
+.home-lvl label { display: inline-flex; align-items: center; min-height: 43px; padding: 0 22px; font: 700 18px var(--font-ui); color: #fff; cursor: pointer; }
+.home-lvl label + input + label { border-left: 2px solid #fff; }
+.home-lvl input:checked + label { background: #fff; color: var(--ink); }
+.home-lvl label:hover { background: rgba(255, 255, 255, 0.12); }
+.home-lvl input:checked + label:hover { background: #fff; }
+.home-lvl input:focus-visible + label { outline: 3px solid var(--focus); outline-offset: -5px; }
+/* three cards of even height, each with its main action along the bottom edge */
+.home-cards { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); gap: 24px; margin-top: 24px; }
+.hcard { display: flex; flex-direction: column; gap: 16px; min-width: 0; padding: 26px 28px 28px; background: var(--field); border-radius: var(--r-lg); }
+.hcard h2 { margin: 0; font: 700 32px/1.1 var(--font-serif); font-optical-sizing: auto; color: var(--ink); }
+.hfind { display: flex; flex-direction: column; gap: 16px; flex: 1 1 auto; margin: 0; min-width: 0; }
+.hfind-end { flex: 0 0 auto; margin-top: auto; }
+.hbox { position: relative; }
+.hbox input[type=search] { width: 100%; min-height: 54px; padding: 0 12px 0 46px; border: 2px solid var(--ink); border-radius: 6px; background: var(--field);
+  font: 400 17px var(--font-ui); color: var(--ink); }
+.hbox input[type=search]::placeholder { color: var(--muted); }
+.hbox input[type=search]:focus-visible { outline: none; border-color: var(--link); box-shadow: 0 0 0 3px rgba(43, 93, 134, 0.25); }
+.hicon { position: absolute; left: 16px; top: 50%; width: 20px; height: 20px; margin-top: -10px; color: var(--ink); pointer-events: none; }
+.hbox .sugg { left: 0; right: 0; }
+.hmsg { margin: -6px 0 0; font: 500 14px var(--font-ui); color: var(--ink2); }
+.hmsg:empty { display: none; }
+.hlbl { display: block; margin-bottom: 10px; font: 700 15px var(--font-ui); color: var(--ink); }
+.hchg[hidden] { display: none; }
+.hchips { display: flex; flex-wrap: wrap; gap: 10px; }
+.hchip { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 15px; border: 2px solid var(--ink); border-radius: 6px;
+  background: var(--field); color: var(--ink); font: 500 16px var(--font-ui); cursor: pointer; white-space: nowrap; }
+.hchip:hover { background: var(--wash); }
+.hchip[hidden] { display: none; }
+.hchip .psw { width: 15px; height: 15px; }
+.hchip.hall { background: var(--ink); color: var(--field); font-weight: 600; }
+.hchip.hall:hover { background: var(--ink2); border-color: var(--ink2); }
+.hgo { margin-top: auto; width: 100%; min-height: 50px; border: 2px solid var(--ink); border-radius: 6px; background: var(--ink); color: var(--field);
+  font: 700 18px var(--font-ui); cursor: pointer; }
+.hgo:hover { background: var(--ink2); border-color: var(--ink2); }
+.hgo.hgo-out { background: var(--field); color: var(--ink); }
+.hgo.hgo-out:hover { background: var(--wash); border-color: var(--ink); }
+.hchip:focus-visible, .hgo:focus-visible, .hfoot:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+/* the simulate card's pitch: a dark stage like the lab's canvas */
+.hsim { position: relative; aspect-ratio: 16 / 9; border-radius: 6px; background: var(--map); overflow: hidden; }
+.hsim canvas { display: block; width: 100%; height: 100%; cursor: pointer; }
+.hcap { margin: -8px 0 0; font: 400 14px var(--font-ui); color: var(--ink2); }
+.hcap:empty { display: none; }
+/* the strip of maps: All pitches, then each pitch type with its Savant colour */
+.home-strip { display: flex; align-items: center; gap: 10px 18px; margin-top: 24px; padding: 10px 12px; background: var(--field); border-radius: var(--r-lg); }
+.hstrip-lbl { flex: 0 0 auto; font: 700 18px/1.15 var(--font-serif); color: var(--ink); }
+.hstrip-chips { flex: 1 1 auto; gap: 6px; }
+.hstrip-chips .hchip { padding: 0 11px; }
+.home-tag { margin: 30px 0 0; text-align: center; font: 400 20px/1.4 var(--font-ui); color: var(--map-ink); }
+.home-wait { margin: 10px 0 0; text-align: center; font: 500 15px var(--font-ui); color: var(--map-ink2); }
+.home-wait[hidden] { display: none; }
+.home-foot { flex: none; display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px; margin-top: auto; padding: 48px 24px 24px; }
+.hfoot { display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border: 2px solid var(--ink); border-radius: 6px; background: var(--bg);
+  font: 700 16px var(--font-ui); color: var(--ink); text-decoration: none; }
+.hfoot:hover { background: var(--wash); }
+.hfoot[hidden] { display: none; }
+@media (max-width: 1199px) {
+  .home-panel { padding: 32px 28px 30px; }
+  .home-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+  .hcard { padding: 22px 20px 22px; }
+  .hcard h2 { font-size: 28px; }
+}
+@media (max-width: 899px) {
+  .home-cards { grid-template-columns: minmax(0, 1fr); }
+  .home-strip { flex-direction: column; align-items: stretch; }
+  .hstrip-lbl br { display: none; }
+}
+@media (max-width: 719px) {
+  .home-title { font-size: 46px; }
+  .home-panel { margin: 14px 12px 0; padding: 22px 14px 24px; }
+  .hcard h2 { font-size: 26px; }
+  .home-tag { font-size: 17px; }
+  .home-foot { justify-content: center; padding: 32px 16px 20px; }
+}
 </style>
 
+<!-- Home: the front door (the user's mockup, 2026-11-14). Plain HTML, so it paints before the data arrives; the map
+     draws underneath at boot, so leaving home is instant. A shared address with a hash ("#FF/…") skips it. -->
+<section class="home" id="home" aria-label="Pitch-omics home" tabindex="-1">
+  <div class="home-mast"><h1 class="home-title">Pitch-omics</h1></div>
+  <div class="home-panel"><div class="home-in">
+    <div class="home-lvl" id="homeLvl" role="radiogroup" aria-label="Level">
+      <input type="radio" name="homeLvl" id="homeMLB" value="mlb" checked><label for="homeMLB">MLB</label><input type="radio" name="homeLvl" id="homeAAA" value="aaa"><label for="homeAAA">Triple-A</label>
+    </div>
+    <div class="home-cards">
+      <section class="hcard" aria-labelledby="hSearchT">
+        <h2 id="hSearchT">Search player name</h2>
+        <form class="hfind" id="homeFind" role="search" data-home="search">
+          <div class="hbox">
+            <svg class="hicon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+            <input id="homeSearch" type="search" placeholder="e.g. Shota Imanaga" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="homeSugg" aria-label="Search player name">
+            <ul class="sugg" id="homeSugg" role="listbox" aria-label="Matching pitchers" hidden></ul>
+          </div>
+          <p class="hmsg" id="homeSearchMsg" role="status" aria-live="polite"></p>
+          <div class="hchg" id="homeChg" hidden>
+            <span class="hlbl" id="homeChgLbl">Biggest changes</span>
+            <div class="hchips" id="homeChgChips" role="group" aria-labelledby="homeChgLbl"></div>
+          </div>
+          <button type="submit" class="hgo">Search</button>
+        </form>
+      </section>
+      <section class="hcard" aria-labelledby="hBoardT">
+        <h2 id="hBoardT">Show leaderboards</h2>
+        <div class="hchips" id="homeBoards">
+          <button type="button" class="hchip" data-home="board" data-g="Consistency" data-k="t:release_sd" data-v="FF">Release point consistency</button>
+          <button type="button" class="hchip" data-home="board" data-g="Dynamic Dead Zone" data-k="t:ddz_az" data-v="FF">Dynamic Dead Zone ride</button>
+          <button type="button" class="hchip" data-home="board" data-g="Results" data-k="t:uniq_z" data-v="all">Uniqueness</button>
+          <button type="button" class="hchip" data-home="board" data-g="Whole pitcher" data-k="P:xera" data-v="all" data-mlb-only="1">Pitcher xERA</button>
+          <button type="button" class="hchip" data-home="board" data-g="Results" data-k="t:whiff" data-v="FF">Whiff rate</button>
+        </div>
+        <button type="button" class="hgo hgo-out" data-home="boards">Open all leaderboards</button>
+      </section>
+      <section class="hcard" aria-labelledby="hSimT">
+        <h2 id="hSimT">Simulate pitch</h2>
+        <div class="hsim" id="homeSimBox"><canvas id="homeCv" aria-label="A pitch in flight, seen from behind the catcher"></canvas></div>
+        <p class="hcap" id="homeSimCap"></p>
+        <form class="hfind hfind-end" id="homeSimFind" role="search" data-home="sim">
+          <div class="hbox">
+            <svg class="hicon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+            <input id="homeSim" type="search" placeholder="Search a pitcher to simulate" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="homeSimSugg" aria-label="Search a pitcher to simulate">
+            <ul class="sugg" id="homeSimSugg" role="listbox" aria-label="Matching pitchers" hidden></ul>
+          </div>
+          <p class="hmsg" id="homeSimMsg" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+    </div>
+    <div class="home-strip">
+      <span class="hstrip-lbl">Find Pitcher <br>Cluster IDs</span>
+      <div class="hchips hstrip-chips" id="homeTypes">
+        <button type="button" class="hchip hall" data-home="map" data-v="all">All pitches</button>
+        <button type="button" class="hchip" data-home="clusters" data-v="FF"><i class="psw" style="background:#d22d49"></i>Four-seam</button>
+        <button type="button" class="hchip" data-home="clusters" data-v="SI"><i class="psw" style="background:#fe9d00"></i>Sinker</button>
+        <button type="button" class="hchip" data-home="clusters" data-v="FC"><i class="psw" style="background:#933f2c"></i>Cutter</button>
+        <button type="button" class="hchip" data-home="clusters" data-v="SL"><i class="psw" style="background:#eee716"></i>Slider</button>
+        <button type="button" class="hchip" data-home="clusters" data-v="ST"><i class="psw" style="background:#ddb33a"></i>Sweeper</button>
+        <button type="button" class="hchip" data-home="clusters" data-v="CU"><i class="psw" style="background:#00d1ed"></i>Curveball</button>
+        <button type="button" class="hchip" data-home="clusters" data-v="CH"><i class="psw" style="background:#1dbe3a"></i>Changeup</button>
+        <button type="button" class="hchip" data-home="clusters" data-v="FS"><i class="psw" style="background:#3bacac"></i>Splitter</button>
+      </div>
+    </div>
+    <p class="home-tag">Every pitch, mapped by what it is: shape, angles and delivery.</p>
+    <p class="home-wait" id="homeWait" role="status" aria-live="polite" hidden>Loading the pitch map…</p>
+  </div></div>
+  <footer class="home-foot">
+    <a class="hfoot" href="https://github.com/brendanmillerj" target="_blank" rel="noopener">Contact Brendan Miller</a>
+    <a class="hfoot" id="homeMethods" target="_blank" rel="noopener" hidden>Read methodology</a>
+  </footer>
+</section>
+<script>
+// Before the page's main script runs (the deployed page fetches its data first): a shared address with a hash skips
+// home, and the last click on one of home's controls is kept and run once the map is ready.
+(function () {
+  var h = document.getElementById("home"); if (!h) return;
+  if (location.hash.length > 1) { h.hidden = true; return; }
+  document.documentElement.classList.add("at-home");
+  var hold = function (e) {
+    if (window.__homeReady) return;
+    var t = e.type === "submit" ? e.target : (e.target.closest ? e.target.closest("button[data-home]") : null);
+    if (!t) return;
+    e.preventDefault(); window.__homeQ = t;
+    var w = document.getElementById("homeWait"); if (w) w.hidden = false;
+  };
+  h.addEventListener("click", hold, true); h.addEventListener("submit", hold, true);
+})();
+</script>
 <div class="app" id="app">
   <aside class="sliders" id="sliders" aria-label="Filter by measures &amp; show tables" hidden>
     <div class="sl-head">
@@ -1656,7 +1836,7 @@ tr.self td { font-weight: 600; background: none; }
   </div></section>
   <header class="head">
     <div class="hdrow hdrow1">
-      <div class="brand"><h1>Pitch-omics</h1></div>
+      <div class="brand"><h1><a href="#" class="homelink" id="homeLink" title="Home: search, leaderboards, a pitch to simulate, every map">Pitch-omics</a></h1></div>
       <div class="finders">
         <form class="find" role="search" id="findForm">
           <label class="find-lbl" for="search">Search for pitcher by name</label>
@@ -2222,6 +2402,7 @@ const seasonSpan = () => D.seasons.length > 1 ? `${D.seasons[0]}–${D.seasons[D
 
 // -------------------------------------------------------------------- state
 const state = {
+  home: false,        // the home page is up (over the map, which is drawn underneath)
   view: "all",
   color: { all: "cat:pitch_type", t: "cat:pitch_type" },   // pitch type is always the default
   op: "none", colorB: { all: "t:velo", t: "t:velo" },
@@ -3042,7 +3223,7 @@ function render() {
   $("#legSeasons").hidden = !(hasSel && nSame > 1);
   $("#clearSel").disabled = !hasSel;
   // one hint, once, that goes away on the first interaction with the map
-  if (!state.hinted) { state.hinted = true; toast(onPhone ? "Tap a dot to open the pitcher" : (is3D() ? "Drag to rotate · Scroll to zoom · " : `Drag to move · ${ZOOM_KEY} + scroll to zoom · `) + "Double-click to reset · Click a dot to open the pitcher", 9000); }
+  if (!state.hinted && !state.home) { state.hinted = true; toast(onPhone ? "Tap a dot to open the pitcher" : (is3D() ? "Drag to rotate · Scroll to zoom · " : `Drag to move · ${ZOOM_KEY} + scroll to zoom · `) + "Double-click to reset · Click a dot to open the pitcher", 9000); }
   syncRail(); writeHash(view);
   $("#ellOn").setAttribute("aria-pressed", String(state.ellipses));
   const lb = $("#lassoOn"); lb.hidden = onPhone; lb.disabled = is3D(); lb.setAttribute("aria-pressed", String(!!state.lasso && !is3D()));
@@ -6011,14 +6192,14 @@ const samePitcher = (a, b) => a !== null && a !== undefined && b !== null && b !
 const NAV = { entries: [], idx: -1, queued: false, restoring: false, browser: true };
 const navCopy = x => x === null || x === undefined ? x : JSON.parse(JSON.stringify(x));
 function navSnap() {
-  return { level: state.level, view: state.view, sel: state.sel ?? null, preview: !!state.preview, showComps: !!state.showComps,
+  return { home: !!state.home, level: state.level, view: state.view, sel: state.sel ?? null, preview: !!state.preview, showComps: !!state.showComps,
     noLook: !!state.noLook, lookFrom: state.lookFrom ?? null, archetype: state.archetype || "", color: { ...state.color }, op: state.op,
     colorB: { ...state.colorB }, simOpen: !!state.simOpen, sim: state.simOpen ? navCopy(state.sim) : null,
     lookTbl: state.lookTbl ?? null, tblGroup: state.tblGroup ?? null, tblSort: { ...state.tblSort }, slidersOpen: !!state.slidersOpen,
     rail: { open: !!state.rail.open, tab: state.rail.tab }, cardFrom: navCopy(state.cardFrom) };
 }
 // what makes two screens different (in the lab only which lab it is: slider edits are not steps, the snapshot keeps them)
-const navKey = s => JSON.stringify([s.level, s.view, s.sel, s.preview, s.showComps, s.noLook, s.lookFrom, s.archetype, s.color, s.op, s.colorB,
+const navKey = s => JSON.stringify([!!s.home, s.level, s.view, s.sel, s.preview, s.showComps, s.noLook, s.lookFrom, s.archetype, s.color, s.op, s.colorB,
   s.simOpen, s.sim ? [s.sim.key, s.sim.mode, s.sim.vs] : null, s.lookTbl, s.tblGroup, s.slidersOpen, s.rail.open, s.rail.open ? s.rail.tab : ""]);
 function navQueue() { if (NAV.queued) return; NAV.queued = true; queueMicrotask(navCommit); }
 function navCommit() {
@@ -6050,6 +6231,7 @@ function navTo(i) {
     if (!!state.slidersOpen !== s.slidersOpen) setSlidersOpen(s.slidersOpen, true);
     buildUniverse(); buildVarSelects(); buildSliders(); syncTable();
     render(); renderDetail();
+    if (!!s.home !== !!state.home) showHome(s.home);
     if (s.simOpen) openSim();
     state.rail.open = s.rail.open; state.rail.tab = s.rail.tab; syncRail();   // a restored highlight must not reopen Pitchers
     NAV.entries[i] = navSnap();
@@ -6063,6 +6245,7 @@ function navLabel(s, verb) {
   const nm = r => T.name[r] || "", where = s.view === "all" ? "All pitches" : `the ${PTN[s.view].toLowerCase()} map`;
   const a = s.archetype && ARCH_BY_ID[s.archetype], lit = a ? `, cluster ${a.cid ? a.cid.split("-").slice(1).join("-") : a.name} lit` : "";
   const has = s.sel !== null && s.sel !== undefined;
+  if (s.home) return `${verb} the home page`;
   if (s.simOpen && has) {
     const vs = s.sim && s.sim.mode === "compare" ? s.sim.vs : null;
     return `${verb} ${vs !== null && vs !== undefined ? `${lastName(nm(s.sel))} vs. ${lastName(nm(vs))} in the lab` : `${lastName(nm(s.sel))}’s pitch simulation`}`;
@@ -6441,6 +6624,7 @@ function syncLevel(loading) {
 // The address: "#FF", "#aaa/FF", and with a card open "#FF/tarik-skubal-2026", which reopens that card when shared
 const slugOf = r => fold(T.name[r]).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + "-" + T.season[r];
 function hashFor(view = state.view) {
+  if (state.home) return location.pathname + location.search;   // home: the bare address
   let h = (state.level === LEVELS[0] ? "" : state.level + "/") + view;
   const r = state.sel;
   if (r !== null && r !== undefined && !state.preview) h += "/" + slugOf(r);
@@ -6449,7 +6633,7 @@ function hashFor(view = state.view) {
 function writeHash(view = state.view) {
   if (NAV.queued && !NAV.restoring && NAV.idx >= 0) return;   // the step about to be recorded carries the new address
   const h = hashFor(view);
-  if (h === location.hash) return;
+  if (state.home ? !location.hash : h === location.hash) return;
   try { history.replaceState(NAV.idx >= 0 ? { nav: NAV.idx } : null, "", h); } catch (e) { location.hash = h.slice(1); }
 }
 function parseHash() {
@@ -7069,10 +7253,174 @@ function wireTable() {
 }
 
 
+function syncThrows() { $("#throwsSeg").querySelectorAll("button").forEach(c => c.setAttribute("aria-pressed", String(c.dataset.v === state.throws))); }
+function syncDim() { $("#dimSeg").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.v === state.dim))); }
+// The full map as it first opens, at `level`: All pitches, no one selected, no filters, coloured by pitch type, every
+// panel and table closed. Saved groups stay; unsaved picks go. Start over runs it, and so does every way in from home.
+// purge: a fresh plot, fully zoomed out (home's pitch-type chips keep the plot so the All -> type glide can run).
+function resetMap(level = LEVELS[0], purge = true) {
+  closeSim(true);
+  state.sel = null; state.preview = false; state.showComps = false; state.noLook = false; state.sim = null;
+  state.ranges = {}; state.archetype = "";
+  state.fa = "all"; syncFA(); state.keyRange = null;
+  state.seasons = new Set(D.seasons); state.throws = "all"; syncSeasonChips(); syncThrows(); state.minIP = 0; syncIPSel();
+  state.groupsHi = false; syncGroupsHi(); state.onlyGroup = null; OG = null; state.lookTbl = null; syncTable(); renderSaved();
+  state.color = { all: "cat:pitch_type", t: "cat:pitch_type" }; state.op = "none"; state.explainOpen = false;
+  state.ellipses = false; state.lasso = false; hideToast();
+  state.picks.clear(); renderPicks();
+  state.tblGroup = null; state.slSearch = ""; $("#slSearch").value = ""; if (state.slidersOpen) setSlidersOpen(false, true);
+  $("#search").value = ""; $("#searchMsg").textContent = ""; $("#mbSearch").value = "";
+  state.rail.open = false; state.rail.tab = "groups";
+  if (state.dim !== 2) { state.dim = 2; syncDim(); if (G3) dispose3D(); }
+  if (purge) { try { Plotly.purge(plotEl); } catch (e) {} plotReady = false; }
+  state.zoomK = 1;
+  if (state.level !== level && levelLoaded(level)) { state.level = level; syncLevel(); svRowCache.clear(); }
+  setView("all", null);
+}
+
+// ------------------------------------------------------------------ search
+// The rows a typed name can mean on a map: that exact name, else every name containing it (accents ignored)
+function nameRows(q, view) {
+  const n = fold(q); if (!n) return [];
+  const rows = viewRows(view), exact = rows.filter(r => fold(T.name[r]) === n);
+  return exact.length ? exact : rows.filter(r => fold(T.name[r]).includes(n));
+}
+// a name found only at a level that has not arrived yet (the deployed page's Triple-A): that level, to wait for
+const lazyLevelOf = q => { const n = fold(q); return n ? Object.keys(LAZY_NAMES).find(l => !levelLoaded(l) && LAZY_NAMES[l].some(x => fold(x[1]).includes(n))) : undefined; };
+// which of his rows a search shows: `level` first (else wherever he pitched), on All pitches his primary fastball,
+// his newest season
+function searchRow(cands, level, view) {
+  const here = cands.filter(r => T.level[r] === level); if (here.length) cands = here;
+  if (view === "all") { const fb = cands.filter(r => pOfT[r] >= 0 && P.primary_fb[pOfT[r]] === T.pitch_type[r]); if (fb.length) cands = fb; }
+  return cands.length ? cands.slice().sort((a, b) => T.season[b] - T.season[a])[0] : null;
+}
+// Suggestions as you type under a name box (the header's and home's two): every pitcher whose name contains the typed
+// letters (accents ignored), with his hand and newest season; arrows move, Enter or a click picks (onPick), Escape closes.
+function suggestBox(inp, list, onPick, msg) {
+  let cur = -1;
+  const close = () => { list.hidden = true; list.innerHTML = ""; inp.setAttribute("aria-expanded", "false"); inp.removeAttribute("aria-activedescendant"); cur = -1; };
+  const mark = () => list.querySelectorAll("li[data-n]").forEach((li, k) => { li.setAttribute("aria-selected", String(k === cur)); if (k === cur) { inp.setAttribute("aria-activedescendant", li.id); if (li.scrollIntoView) li.scrollIntoView({ block: "nearest" }); } });
+  const suggest = () => {
+    const q = fold(inp.value.trim()); if (!q) { close(); return; }
+    const { names, folded, latest } = suggIndex(), hits = [];
+    for (let k = 0; k < names.length && hits.length < 10; k++) if (folded[k].includes(q)) hits.push(k);
+    hits.sort((a, b) => (folded[a].startsWith(q) ? 0 : 1) - (folded[b].startsWith(q) ? 0 : 1));   // name-start matches first
+    list.innerHTML = hits.length ? hits.map((k, m) => {
+      const n = names[k], at = folded[k].indexOf(q), i = latest[n];
+      const sub = `${i.throws ? i.throws + "HP · " : ""}${i.season}${i.level === "mlb" ? "" : " " + (LVL_NAME[i.level] || i.level)}`;
+      return `<li id="${list.id}-${m}" role="option" data-n="${esc(n)}" aria-selected="false"><span class="sg-name">${esc(n.slice(0, at))}<mark>${esc(n.slice(at, at + q.length))}</mark>${esc(n.slice(at + q.length))}</span><span class="sg-sub">${esc(sub)}</span></li>`;
+    }).join("") : `<li class="none">No pitcher named “${esc(inp.value.trim())}”</li>`;
+    list.hidden = false; inp.setAttribute("aria-expanded", "true"); cur = -1;
+  };
+  const pick = n => { inp.value = n; close(); onPick(n); };
+  inp.addEventListener("input", () => { if (msg) msg.textContent = ""; suggest(); });
+  inp.addEventListener("focus", suggest);
+  inp.addEventListener("blur", () => setTimeout(close, 120));   // after a click on the list lands
+  inp.addEventListener("keydown", e => {
+    const n = list.hidden ? 0 : list.querySelectorAll("li[data-n]").length;
+    if (e.key === "ArrowDown" && n) { e.preventDefault(); cur = (cur + 1) % n; mark(); }
+    else if (e.key === "ArrowUp" && n) { e.preventDefault(); cur = (cur - 1 + n) % n; mark(); }
+    else if (e.key === "Escape" && !list.hidden) { e.preventDefault(); close(); }
+    else if (e.key === "Enter" && n && cur >= 0) { e.preventDefault(); pick(list.querySelectorAll("li[data-n]")[cur].dataset.n); }
+  });
+  list.addEventListener("mousedown", e => e.preventDefault());   // keep the input's focus
+  list.addEventListener("click", e => { const li = e.target.closest("li[data-n]"); if (li) pick(li.dataset.n); });
+  return { close, suggest };
+}
+
+// -------------------------------------------------------------------- home
+// The front door (the user's mockup, 2026-11-14): search a pitcher (with the five whose pitches changed most since last
+// season), leaderboards (the measure table, sorted), a pitch to simulate, and a way onto every map. It is a Back/Forward
+// step: a bare address opens on it (step 0); the title in the map's header comes back to it.
+const METHODS_URL = "";   // the paper, once it is out: set this and "Read methodology" appears beside Contact
+const homeLevel = () => { const a = document.getElementById("homeAAA"); return a && a.checked && LEVELS.includes("aaa") ? "aaa" : LEVELS[0]; };
+let homeBoxes = [];
+function showHome(on) {
+  on = !!on;
+  state.home = on;
+  $("#home").hidden = !on;
+  const app = $("#app"); app.inert = on;
+  if (on) app.setAttribute("aria-hidden", "true"); else app.removeAttribute("aria-hidden");
+  document.documentElement.classList.toggle("at-home", on);
+  homeBoxes.forEach(b => b.close());
+  if (on) { syncHome(state.booted); $("#home").scrollTop = 0; }
+  homeSim(on);
+  navQueue();
+}
+// leaving home for the map: the map afresh at that level (see resetMap)
+function leaveHome(level, purge = true) { showHome(false); resetMap(level, purge); }
+const homeWait = txt => { const w = $("#homeWait"); w.textContent = txt || "Loading the pitch map…"; w.hidden = !txt; };
+// the row a name means from home: the chosen level first, his newest season, his primary fastball
+async function homeFind(q, level) {
+  let cands = nameRows(q, "all");
+  if (!cands.length) { const lv = lazyLevelOf(q); if (lv && await ensureLevel(lv)) cands = nameRows(q, "all"); }
+  return searchRow(cands, level, "all");
+}
+let homeBusy = false;
+async function homeAct(el) {
+  if (!el || !el.dataset || homeBusy) return;
+  const d = el.dataset, kind = d.home, level = d.level || homeLevel();
+  homeBusy = true;
+  try {
+    if (!levelLoaded(level)) {   // the deployed page's Triple-A arrives in the background: wait for it
+      homeWait(`Loading ${LVL_NAME[level] || level}…`);
+      const ok = await ensureLevel(level);
+      homeWait(ok ? "" : `${LVL_NAME[level] || level} could not be loaded. Try again.`);
+      if (!ok) return;
+    }
+    if (kind === "search" || kind === "sim") {
+      const inp = $(kind === "sim" ? "#homeSim" : "#homeSearch"), msg = $(kind === "sim" ? "#homeSimMsg" : "#homeSearchMsg"), q = inp.value.trim();
+      if (!fold(q)) { inp.focus(); return; }
+      const r = await homeFind(q, level);
+      if (r === null) { msg.textContent = `No pitcher named “${q}”.`; return; }
+      inp.value = ""; msg.textContent = "";
+      leaveHome(T.level[r]);
+      preview(r);   // on the map, as a search shows him
+      if (kind === "sim") toggleSim(null);
+    } else if (kind === "chg") {   // one of the biggest changes: him on the map, on the pitch that changed
+      const r = tRow(+d.pid, +d.season, d.pt, level);
+      if (r === undefined) return;
+      leaveHome(level);
+      preview(r);
+    } else if (kind === "board" || kind === "boards") {   // the leaderboards: the measure table, latest season
+      leaveHome(level);
+      state.seasons = new Set([Math.max(...D.seasons)]); syncSeasonChips();
+      setView(VIEWS[d.v] ? d.v : "FF", null);   // redraws with the one season, which the table's rows come from
+      if (kind === "boards") setTableGroup(tableGroups()[0]); else setTableGroup(d.g, d.k);
+    } else if (kind === "clusters") {   // a pitch type's map with its clusters on: All pitches glides into it
+      leaveHome(level, false);
+      if (D.pitch_clusters) { state.color.all = state.color.t = "cat:subcluster"; state.op = "none"; buildVarSelects(); state.rail.open = true; state.rail.tab = "clusters"; }
+      goView(VIEWS[d.v] ? d.v : "all");
+    } else if (kind === "map") {
+      leaveHome(level);
+    }
+  } finally { homeBusy = false; }
+}
+// what depends on the level chosen at the top: no xERA for Triple-A (Savant publishes none). fromMap: home opened
+// from the map, so the choice starts at the map's level
+function syncHome(fromMap) {
+  if (fromMap) { const lv = document.getElementById(state.level === "aaa" ? "homeAAA" : "homeMLB"); if (lv) lv.checked = true; }
+  const aaa = homeLevel() === "aaa";
+  $("#homeBoards").querySelectorAll("[data-mlb-only]").forEach(b => { b.hidden = aaa; });
+}
+// home's dynamic parts and wiring, once at boot
+function buildHome() {
+  $("#homeLvl").hidden = !LEVELS.includes("aaa");
+  if (METHODS_URL) { const m = $("#homeMethods"); m.href = METHODS_URL; m.hidden = false; }
+  document.getElementsByName("homeLvl").forEach(x => x.addEventListener("change", syncHome));
+  $("#home").addEventListener("click", e => { const b = e.target.closest("button[data-home]"); if (b && window.__homeReady) homeAct(b); });
+  ["#homeFind", "#homeSimFind"].forEach(f => $(f).addEventListener("submit", e => { e.preventDefault(); if (window.__homeReady) homeAct(e.currentTarget); }));
+  homeBoxes = [suggestBox($("#homeSearch"), $("#homeSugg"), () => homeAct($("#homeFind")), $("#homeSearchMsg")),
+    suggestBox($("#homeSim"), $("#homeSimSugg"), () => homeAct($("#homeSimFind")), $("#homeSimMsg"))];
+  $("#homeLink").addEventListener("click", e => { e.preventDefault(); showHome(true); $("#home").focus({ preventScroll: true }); });
+  syncHome();
+}
+// the simulate card's pitch (filled in with the flight engine; here, just started and stopped with home)
+function homeSim(on) {}
+
 function buildStatic() {
   const syncSeasons = syncSeasonChips;
   buildTableControls();
-  const syncThrows = () => $("#throwsSeg").querySelectorAll("button").forEach(c => c.setAttribute("aria-pressed", String(c.dataset.v === state.throws)));
   $("#seasonChips").innerHTML = D.seasons.map(s => `<button type="button" id="season-${s}" data-s="${s}" data-label="${s}" aria-pressed="true" title="Show or hide ${s} pitches">${s}</button>`).join("");
   $("#seasonChips").querySelectorAll("[data-s]").forEach(b => b.addEventListener("click", () => {
     const s = +b.dataset.s;
@@ -7091,7 +7439,6 @@ function buildStatic() {
   setFATitle();
   $("#fa").addEventListener("change", e => { state.fa = e.target.value; syncFA(); render(); });
   syncFA();
-  const syncDim = () => $("#dimSeg").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.v === state.dim)));
   syncDim();
   $("#laySeg").querySelectorAll("[data-lay]").forEach(b => b.addEventListener("click", () => setLayout(b.dataset.lay)));
   $("#dimSeg").querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
@@ -7178,7 +7525,7 @@ function buildStatic() {
   // drag, scroll-zoom, modebar and margins differ on phones
   matchMedia("(max-width: 719px)").addEventListener("change", () => render());
   document.addEventListener("keydown", e => {
-    if (e.key !== "Escape" || e.defaultPrevented || state.simOpen) return;   // the lab's own handler closes it
+    if (e.key !== "Escape" || e.defaultPrevented || state.simOpen || state.home) return;   // the lab's own handler closes it; home leaves the map alone
     const ae = document.activeElement;
     if (!/^(INPUT|SELECT|TEXTAREA)$/.test(ae && ae.tagName)) {
       if (state.cardOpen && !state.simOpen) { e.preventDefault(); closeCard(); return; }
@@ -7266,25 +7613,9 @@ function buildStatic() {
     if (state.slidersOpen) buildSliders();
     render(); renderDetail();
   });
-  // Start over: everything back to how the page opens; saved groups are kept, unsaved picks are dropped
+  // Start over: the full map as it first opens (MLB); it stays on the map (the title is the way home)
   $("#startOver").addEventListener("click", () => {
-    closeSim(true);
-    state.sel = null; state.preview = false; state.showComps = false; state.noLook = false; state.sim = null;
-    state.ranges = {}; state.archetype = "";
-    state.fa = "all"; syncFA(); state.keyRange = null;
-    state.seasons = new Set(D.seasons); state.throws = "all"; syncSeasons(); syncThrows(); state.minIP = 0; syncIPSel();
-    state.groupsHi = false; syncGroupsHi(); state.onlyGroup = null; OG = null; state.lookTbl = null; syncTable(); renderSaved();
-    state.color = { all: "cat:pitch_type", t: "cat:pitch_type" }; state.op = "none"; state.explainOpen = false;
-    state.ellipses = false; state.lasso = false; hideToast();
-    state.picks.clear(); renderPicks();
-    state.tblGroup = null; state.slSearch = ""; $("#slSearch").value = ""; if (state.slidersOpen) setSlidersOpen(false, true);
-    $("#search").value = ""; $("#searchMsg").textContent = ""; $("#mbSearch").value = "";
-    state.rail.open = false; state.rail.tab = "groups";
-    if (state.dim !== 2) { state.dim = 2; syncDim(); if (G3) dispose3D(); }
-    try { Plotly.purge(plotEl); } catch (e) {}   // a fresh plot: fully zoomed out
-    plotReady = false; state.zoomK = 1;
-    if (state.level !== LEVELS[0]) { state.level = LEVELS[0]; syncLevel(); }
-    setView("all", null);
+    resetMap(LEVELS[0]);
     try { window.scrollTo({ top: 0, behavior: "auto" }); } catch (e) {}
   });
   $("#slMode").querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
@@ -7302,9 +7633,8 @@ function buildStatic() {
 
   // "More options" drawer remembers whether it was open (per viewer; storage may be unavailable)
 
-  // Suggestions as you type: every pitcher whose name contains the typed letters (accents ignored),
-  // with his hand and latest season; arrows move, Enter or a click picks, Escape closes.
-  const sInp = $("#search"), sList = $("#sugg");
+  // the header's name box: suggestions as you type (suggestBox); a pick, Enter or the form runs the lookup below
+  const sInp = $("#search");
   // the box says you can type a name, with an example that changes every few seconds until you click in or type
   { const ex = ["Tarik Skubal", "Paul Skenes", "Shota Imanaga", "Garrett Crochet", "Jacob Misiorowski", "Mason Miller", "Hunter Greene", "Yoshinobu Yamamoto"]
       .filter(n => suggIndex().latest[n]);
@@ -7312,56 +7642,26 @@ function buildStatic() {
     const show = () => { if (sInp.value || document.activeElement === sInp || !ex.length) return; sInp.placeholder = `Type a pitcher’s name, e.g. ${ex[k++ % ex.length]}`; };
     show();
     if (ex.length > 1 && !reduced() && typeof setInterval === "function") setInterval(show, 3000); }
-  let sCur = -1;
-  const suggClose = () => { sList.hidden = true; sList.innerHTML = ""; sInp.setAttribute("aria-expanded", "false"); sInp.removeAttribute("aria-activedescendant"); sCur = -1; };
-  const suggMark = () => sList.querySelectorAll("li[data-n]").forEach((li, k) => { li.setAttribute("aria-selected", String(k === sCur)); if (k === sCur) { sInp.setAttribute("aria-activedescendant", li.id); if (li.scrollIntoView) li.scrollIntoView({ block: "nearest" }); } });
-  const suggest = () => {
-    const q = fold(sInp.value.trim()); if (!q) { suggClose(); return; }
-    const { names, folded, latest } = suggIndex(), hits = [];
-    for (let k = 0; k < names.length && hits.length < 10; k++) if (folded[k].includes(q)) hits.push(k);
-    hits.sort((a, b) => (folded[a].startsWith(q) ? 0 : 1) - (folded[b].startsWith(q) ? 0 : 1));   // name-start matches first
-    sList.innerHTML = hits.length ? hits.map((k, m) => {
-      const n = names[k], at = folded[k].indexOf(q), i = latest[n];
-      const sub = `${i.throws ? i.throws + "HP · " : ""}${i.season}${i.level === "mlb" ? "" : " " + (LVL_NAME[i.level] || i.level)}`;
-      return `<li id="sugg-${m}" role="option" data-n="${esc(n)}" aria-selected="false"><span class="sg-name">${esc(n.slice(0, at))}<mark>${esc(n.slice(at, at + q.length))}</mark>${esc(n.slice(at + q.length))}</span><span class="sg-sub">${esc(sub)}</span></li>`;
-    }).join("") : `<li class="none">No pitcher named “${esc(sInp.value.trim())}”</li>`;
-    sList.hidden = false; sInp.setAttribute("aria-expanded", "true"); sCur = -1;
-  };
-  sInp.addEventListener("input", () => { $("#searchMsg").textContent = ""; suggest(); });
-  sInp.addEventListener("focus", suggest);
-  sInp.addEventListener("blur", () => setTimeout(suggClose, 120));   // after a click on the list lands
-  sInp.addEventListener("keydown", e => {
-    const n = sList.hidden ? 0 : sList.querySelectorAll("li[data-n]").length;
-    if (e.key === "ArrowDown" && n) { e.preventDefault(); sCur = (sCur + 1) % n; suggMark(); }
-    else if (e.key === "ArrowUp" && n) { e.preventDefault(); sCur = (sCur - 1 + n) % n; suggMark(); }
-    else if (e.key === "Escape" && !sList.hidden) { e.preventDefault(); suggClose(); }
-    else if (e.key === "Enter" && n && sCur >= 0) { e.preventDefault(); sInp.value = sList.querySelectorAll("li[data-n]")[sCur].dataset.n; suggClose(); sInp.dispatchEvent(new Event("change")); }
-  });
-  sList.addEventListener("mousedown", e => e.preventDefault());   // keep the input's focus
-  sList.addEventListener("click", e => { const li = e.target.closest("li[data-n]"); if (!li) return; sInp.value = li.dataset.n; suggClose(); sInp.dispatchEvent(new Event("change")); });
+  const sBox = suggestBox(sInp, $("#sugg"), () => sInp.dispatchEvent(new Event("change")), $("#searchMsg"));
   // Enter submits the form: run the same lookup as picking a name from the list
-  $("#findForm").addEventListener("submit", e => { e.preventDefault(); suggClose(); $("#search").dispatchEvent(new Event("change")); });
+  $("#findForm").addEventListener("submit", e => { e.preventDefault(); sBox.close(); sInp.dispatchEvent(new Event("change")); });
   $("#search").addEventListener("change", e => {
-    const q = e.target.value.trim(), n = fold(q); if (!n) return;
-    const view = state.view, tab = T;
-    let cands = viewRows(view).filter(r => fold(tab.name[r]) === n);
-    if (!cands.length) cands = viewRows(view).filter(r => fold(tab.name[r]).includes(n));
+    const q = e.target.value.trim(); if (!fold(q)) return;
+    const view = state.view, cands = nameRows(q, view);
     // a name only at a level that has not arrived yet: wait for it, then look again
     if (!cands.length) {
-      const lv = Object.keys(LAZY_NAMES).find(l => !levelLoaded(l) && LAZY_NAMES[l].some(x => fold(x[1]).includes(n)));
+      const lv = lazyLevelOf(q);
       if (lv) { ensureLevel(lv).then(ok => { if (ok) { e.target.value = q; e.target.dispatchEvent(new Event("change")); } }); return; }
     }
     // the level on screen first; a name only found at the other level switches the maps there
-    const here = cands.filter(r => T.level[r] === state.level);
-    if (here.length) cands = here; else if (cands.length) setLevel(T.level[cands[0]], true);
-    if (view === "all") { const fb = cands.filter(r => { const i = pRow(T.pitcher[r], T.season[r], T.level[r]); return i !== undefined && P.primary_fb[i] === T.pitch_type[r]; }); if (fb.length) cands = fb; }
-    if (!cands.length) {
+    const r = searchRow(cands, state.level, view);
+    if (r === null) {
       $("#searchMsg").textContent = `No ${view === "all" ? "pitch" : PTN[view].toLowerCase()} named “${q}” on this map.` + (view === "all" ? "" : " Try All pitches.");
       return;
     }
-    cands.sort((a, b) => tab.season[b] - tab.season[a]);
+    if (T.level[r] !== state.level) setLevel(T.level[r], true);
     $("#searchMsg").textContent = "";
-    preview(cands[0]);   // on the map first: his lookalikes, with Show Profile / Show Simulation
+    preview(r);   // on the map first: his lookalikes, with Show Profile / Show Simulation
     e.target.value = "";
   });
 
@@ -7398,7 +7698,12 @@ function buildStatic() {
     if (g.scrollIntoView) g.scrollIntoView({ block: "start", behavior: reduced() ? "auto" : "smooth" });
   });
 
-  window.addEventListener("hashchange", () => { if (history.state && Number.isInteger(history.state.nav)) return; applyHash(parseHash()); });   // our own steps come through popstate
+  window.addEventListener("hashchange", () => {   // an address typed or pasted by hand; our own steps come through popstate
+    if (history.state && Number.isInteger(history.state.nav)) return;
+    const bare = location.hash.length < 2;
+    if (bare !== state.home) showHome(bare);
+    if (!bare) applyHash(parseHash());
+  });
   window.addEventListener("popstate", e => { const i = e.state && Number.isInteger(e.state.nav) ? e.state.nav : null; if (i !== null) navTo(i); });
   document.addEventListener("click", e => { const b = e.target.closest("[data-nav]"); if (!b || b.disabled) return; if (b.dataset.nav === "back") navBack(); else navForward(); });
 }
@@ -7455,17 +7760,25 @@ async function refreshFreeAgents() {
 (function boot() {
   indexData();
   buildStatic();
-  // Open on the map alone; a shared address ("#FF/tarik-skubal-2026") opens that card
+  buildHome();
+  // A bare address opens on home, with the map drawn underneath; a shared address ("#FF/tarik-skubal-2026") opens
+  // that map or card
   state.sel = null;
+  state.home = location.hash.length < 2;
   const h = parseHash();
   state.level = levelLoaded(h.level) ? h.level : LEVELS[0]; syncLevel();
   setView(VIEWS[h.view] ? h.view : "all", null);
   applyHash(h);
+  showHome(state.home);
   refreshFreeAgents();
   state.booted = true;
   NAV.entries = [navSnap()]; NAV.idx = 0;   // the opening screen is step 0
   try { history.replaceState({ nav: 0 }, "", hashFor()); } catch (e) { NAV.browser = false; }
   syncNavButtons();
+  // a click on home while the page was still loading: run it now
+  window.__homeReady = true;
+  const q = window.__homeQ; window.__homeQ = null; homeWait("");
+  if (q && state.home) homeAct(q);
   Object.keys(LAZY).forEach(l => ensureLevel(l));   // Triple-A in the background, now that the map is up
 })();
 </script>

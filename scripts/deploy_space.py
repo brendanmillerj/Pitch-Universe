@@ -96,6 +96,9 @@ def split_level(data: dict, level: str = "aaa") -> tuple[dict, dict]:
 LOADER = """<div id="atlasLoading" style="position:fixed;inset:0;display:grid;place-items:center;font:500 17px 'Libre Franklin',Arial,sans-serif;color:#3d4756;background:#f0f3f7;z-index:100">Loading the pitch map…</div>
 <script>
 (function () {
+  // a bare address opens on the home page, which is its own loading screen: the full-page layer is for shared map addresses
+  var home = document.getElementById("home");
+  if (home && !home.hidden) { var l0 = document.getElementById("atlasLoading"); if (l0) l0.remove(); }
   var gz = typeof DecompressionStream === "function", ext = gz ? ".json.gz" : ".json";
   function get(u) {
     return fetch(u + ext).then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status + " for " + u + ext); return r.arrayBuffer(); })
@@ -111,7 +114,8 @@ LOADER = """<div id="atlasLoading" style="position:fixed;inset:0;display:grid;pl
     document.body.appendChild(s);
     var l = document.getElementById("atlasLoading"); if (l) l.remove();
   }).catch(function (e) {
-    var l = document.getElementById("atlasLoading"); if (l) l.textContent = "The pitch map could not load (" + e.message + "). Try reloading the page.";
+    var l = document.getElementById("atlasLoading") || document.getElementById("homeWait");
+    if (l) { l.textContent = "The pitch map could not load (" + e.message + "). Try reloading the page."; l.hidden = false; }
   });
 })();
 </script>

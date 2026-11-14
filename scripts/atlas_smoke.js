@@ -164,6 +164,68 @@ const J = JSON.stringify;
   const TT = run("T");
   ok(run("plotReady") === true, "plotReady after first draw");
 
+  // ---- home: a bare address opens on it, the map drawn underneath (the user's mockup, 2026-11-14)
+  ok(run("state.home") === true && getEl("#home").hidden === false && getEl("#app").inert === true && run("NAV.idx") === 0, "a bare address opens on home (step 0), the page under it inert");
+  ok(run("hashFor()") === "/" && !run("state.hinted"), "home keeps the bare address; the map's hint waits for the map");
+  const homeMk = markup.slice(markup.indexOf('<section class="home" id="home"'), markup.indexOf('<div class="app" id="app">'));
+  ok(homeMk.length > 1000 && !homeMk.includes("<header") && markup.indexOf('id="home"') < markup.indexOf('id="app"'), "home sits before the page, with no <header> of its own");
+  const typeTrip = run("TYPES.map(t => [t, PTN[t], SAVANT_PITCH[t]])");
+  const stripTrip = [...homeMk.matchAll(/data-home="clusters" data-v="(\w+)"><i class="psw" style="background:(#[0-9a-f]{6})"><\/i>([^<]+)</g)].map(m => [m[1], m[3], m[2]]);
+  ok(J(stripTrip) === J(typeTrip) && /data-home="map" data-v="all">All pitches</.test(homeMk), "the strip: All pitches, then the page's pitch types with their names and Savant colours");
+  ok(homeMk.includes('href="https://github.com/brendanmillerj"') && homeMk.includes(">Contact Brendan Miller<") && run("METHODS_URL") === "" && /id="homeMethods"[^>]*hidden/.test(homeMk), "Contact links to GitHub; no methodology button until the paper is out");
+  const boardChips = [...homeMk.matchAll(/data-home="board" data-g="([^"]+)" data-k="([^"]+)" data-v="(\w+)"[^>]*>([^<]+)</g)].map(m => ({ g: m[1], k: m[2], v: m[3], t: m[4] }));
+  ok(boardChips.length === 5 && boardChips.every(b => run(`!!VMAP.t[${J(b.k)}] && VMAP.t[${J(b.k)}].group === ${J(b.g)} && !!VIEWS[${J(b.v)}]`)), "five leaderboard chips, each a real measure in its tab: " + boardChips.map(b => b.t).join(", "));
+  // each way in: a fresh map at the chosen level, one Back/Forward step from home
+  const homeStep = async (dataset, what) => { await run(`homeAct(${J({ dataset })})`); await tick(); await pump(1000); await tick(); await pump(1000); await tick();
+    const ok1 = !run("state.home") && getEl("#home").hidden === true && !getEl("#app").inert && run("NAV.idx") === 1;
+    ok(ok1, what + ": home closes, one step"); return ok1; };
+  const back = async () => { run("navBack()"); await tick(); await tick(); };
+  await homeStep({ home: "map", v: "all" }, "All pitches");
+  ok(run("state.view") === "all" && run("state.color.all") === "cat:pitch_type" && !run("state.rail.open") && run("hashFor()") === "#all", "…the full map, clusters off, at #all");
+  await back();
+  ok(run("state.home") === true && run("NAV.idx") === 0 && getEl("#home").hidden === false, "Back from the map: home again");
+  await homeStep({ home: "clusters", v: "SL" }, "the Slider chip");
+  ok(run("state.view") === "SL" && run("state.color.t") === "cat:subcluster" && run("state.rail.open") && run("state.rail.tab") === "clusters", "…the slider map with its clusters on and listed");
+  await back();
+  await homeStep({ home: "board", g: "Results", k: "t:whiff", v: "FF" }, "the Whiff rate chip");
+  ok(run("state.tblGroup") === "Results" && run("state.tblSort.key") === "t:whiff" && run("state.tblSort.dir") === -1 && run("state.view") === "FF"
+    && run("state.seasons.size") === 1 && run("state.seasons.has(Math.max(...D.seasons))") && getEl("#mTable").hidden === false, "…the table on Results, highest whiff first, four-seamers, the latest season");
+  await back();
+  ok(run("state.home") && run("state.tblGroup") === null, "Back: home, the table closed");
+  await homeStep({ home: "board", g: "Whole pitcher", k: "P:xera", v: "all" }, "the Pitcher xERA chip");
+  ok(run("state.tblGroup") === "Whole pitcher" && run("state.tblSort.key") === "P:xera" && run("state.tblSort.dir") === 1 && run("state.view") === "all", "…pitchers by xERA, lowest first");
+  await back();
+  await homeStep({ home: "boards" }, "Open all leaderboards");
+  ok(run("state.tblGroup") === run("tableGroups()[0]") && run("state.view") === "FF", "…the first tab, four-seamers");
+  await back();
+  const hName = run(`(() => { const r = ALL_ROWS.find(r => T.level[r] === "mlb" && pOfT[r] >= 0 && P.primary_fb[pOfT[r]] === T.pitch_type[r] && T.season[r] === Math.max(...D.seasons)); return T.name[r]; })()`);
+  getEl("#homeSearch").value = "zzzz nobody";
+  await run(`homeAct({ dataset: { home: "search" } })`); await tick();
+  ok(run("state.home") === true && /No pitcher named/.test(getEl("#homeSearchMsg").textContent) && run("NAV.idx") === 0, "an unknown name stays on home with a note");
+  getEl("#homeSearch").value = hName;
+  await homeStep({ home: "search" }, "searching " + hName);
+  ok(run("state.preview") && run("T.name[state.sel]") === hName && run("T.level[state.sel]") === "mlb" && run("state.view") === "all", "…him on the map, as a search shows him");
+  await back();
+  getEl("#homeSim").value = hName;
+  await homeStep({ home: "sim" }, "simulating " + hName);
+  ok(run("state.simOpen") && run("T.name[state.sel]") === hName, "…his Pitch Simulation Lab");
+  run("closeSim(true)"); await tick(); await back(); await back();
+  ok(run("state.home") === true && run("NAV.idx") === 0, "Back, Back: home");
+  if (run(`LEVELS.includes("aaa")`)) {
+    getEl("#homeAAA").checked = true;
+    await homeStep({ home: "map", v: "all" }, "All pitches at Triple-A");
+    ok(run("state.level") === "aaa" && run("hashFor()") === "#aaa/all", "…the Triple-A map");
+    getEl("#homeAAA").checked = false; await back();
+  }
+  // the header's title comes back home, keeping the map for Back
+  await homeStep({ home: "clusters", v: "CU" }, "the Curveball chip");
+  getEl("#homeLink")._h.click[0]({ preventDefault() {} }); await tick();
+  ok(run("state.home") === true && run("NAV.idx") === 2 && /^Back to /.test(run("navLabel(NAV.entries[1], 'Back to')")), "the header's title opens home, a step of its own");
+  await back();
+  ok(!run("state.home") && run("state.view") === "CU" && run("state.color.t") === "cat:subcluster", "Back: the curveball map as it was");
+  getEl("#startOver")._h.click[0]({}); await tick();
+  ok(!run("state.home") && run("state.view") === "all", "Start over stays on the map");
+
   // ---- layout
   const hEnd = markup.indexOf("</header>");
   ok(markup.indexOf('id="dimSeg"') < hEnd && markup.indexOf('id="lqual"') < hEnd && markup.indexOf('id="navBack"') < hEnd && markup.indexOf('id="navFwd"') < hEnd, "header: view switches, meter, ← Back, Forward →");
@@ -172,7 +234,7 @@ const J = JSON.stringify;
   ok(!markup.includes('id="railPills"') && !markup.includes('id="mkX"'), "no pills or × on the map");
   ok(markup.indexOf('class="measseg"') > markup.indexOf('id="typeCol"') && markup.indexOf('class="measseg"') < markup.indexOf('id="lvlSeg"'), "filter at the top of the left column, above MLB | Triple-A");
   ok(!markup.includes('id="mapTool"') && !markup.includes('id="ptype"') && !markup.includes("Find pitchers"), "toolbar row and finder menus removed");
-  ok(/<title>Pitch-omics<\/title>/.test(html) && /<h1>Pitch-omics<\/h1>/.test(html), "named Pitch-omics");
+  ok(/<title>Pitch-omics<\/title>/.test(html) && /<h1><a href="#" class="homelink" id="homeLink"[^>]*>Pitch-omics<\/a><\/h1>/.test(html), "named Pitch-omics; the header's title leads home");
   ok(run("!!D.pitch_clusters") === !getEl("#clWrap").hidden, "cluster switch visibility follows the data");
 
   // ---- the Clusters panel beside the controls column: Off | On on top, the subcluster tree below
@@ -522,7 +584,8 @@ const J = JSON.stringify;
   run("navBack()"); await tick(); await tick();
   ok(run("state.view") === vS, "Back undoes Start over");
   for (const f of winL.popstate || []) f({ state: { nav: 0 } }); await tick();
-  ok(run("NAV.idx") === 0 && run("state.view") === "all" && run("state.sel") === null, "a popstate for step 0 restores the opening screen");
+  ok(run("NAV.idx") === 0 && run("state.home") === true && run("state.view") === "all" && run("state.sel") === null, "a popstate for step 0 restores the opening screen: home");
+  run("showHome(false)"); await tick();
 
   // ---- download: the t-SNE coordinates of every dot (the data line at the bottom)
   ok(getEl("#embLine").hidden === false && (getEl("#embDl")._h.click || []).length === 1, "the t-SNE download link shows on a standalone page and is wired");
