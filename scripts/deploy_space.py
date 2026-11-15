@@ -125,16 +125,24 @@ LOADER = """<div id="atlasLoading" style="position:fixed;inset:0;display:grid;pl
 PREMIUM_DIR = "p"   # served only to signed-in subscribers by the Cloudflare Pages middleware (functions/p/_middleware.js)
 
 
-def split_premium(main: dict, part: dict, tag: str) -> tuple[str, dict]:
+def split_premium(main: dict, part: dict) -> dict:
     """The paid Evolution data (user, 2026-11-15): the `evo` column of every pitch row and the midseason changes
     (D.mid). Cut out of the public files into one file under p/, which Cloudflare serves only with a valid
     subscriber cookie. `evo` comes back per file in row order ("main" = the main file's rows, "aaa" = the Triple-A
-    file's), so the page can put it back beside whichever rows it has loaded. Returns (path, object)."""
+    file's), so the page can put it back beside whichever rows it has loaded. Returns the object."""
     evo = {"main": main["types"].pop("evo")}
     if part and "evo" in part.get("types", {}):
         evo["aaa"] = part["types"].pop("evo")
-    base = f"{PREMIUM_DIR}/atlas-{tag}-evo"
-    return base, {"evo": evo, "mid": main.pop("mid", None)}
+    return {"evo": evo, "mid": main.pop("mid", None)}
+
+
+def _named(folder: str, kind: str, obj) -> tuple[str, bytes]:
+    """A data file named by the hash of its OWN bytes: any change to what it holds is a new name, so the
+    cache-forever rule (_headers: /data/* immutable) can never serve stale content under it. (The old names
+    hashed the whole data blob, so turning the paywall on kept the names while the contents changed, and
+    Cloudflare's cache went on serving the pre-paywall files, 2026-11-15.)"""
+    text = json.dumps(obj, separators=(",", ":"), allow_nan=False).encode()
+    return f"{folder}/atlas-{hashlib.sha256(text).hexdigest()[:10]}-{kind}", text
 
 
 def split_data(page: str, premium: bool = False) -> tuple[str, dict[str, bytes]]:
@@ -149,30 +157,29 @@ def split_data(page: str, premium: bool = False) -> tuple[str, dict[str, bytes]]
     if not m:
         raise SystemExit("could not find the inline data literal (`const D = {...} || window.__ATLAS_DATA__;`)")
     data = json.loads(m.group(1))
-    tag = hashlib.sha256(m.group(1).encode()).hexdigest()[:10]
     main, part = split_level(data, "aaa")
-    files = {}
+    files = {}   # name -> bytes; every name is the hash of its own bytes (_named), main last since it points at the rest
     if premium:
-        base, obj = split_premium(main, part, tag)
-        files[base] = obj
+        base, text = _named(PREMIUM_DIR, "evo", split_premium(main, part))
+        files[base] = text
         main["lazy_premium"] = base
     if "mid" in main:   # the midseason changes: their own file, fetched in the background (the page's ensureMid)
-        base = f"data/atlas-{tag}-mid"
-        files[base] = {"mid": main.pop("mid")}
+        base, text = _named("data", "mid", {"mid": main.pop("mid")})
+        files[base] = text
         main["lazy_mid"] = base
     if part:
-        base = f"data/atlas-{tag}-aaa"
+        base, text = _named("data", "aaa", part)
         main["lazy"] = {"aaa": [base]}
-        files[base] = part
-    files = {f"data/atlas-{tag}-main": main, **files}
+        files[base] = text
+    main_base, text = _named("data", "main", main)
+    files = {main_base: text, **files}
     out = {}
-    for base, obj in files.items():
-        text = json.dumps(obj, separators=(",", ":"), allow_nan=False).encode()
+    for base, text in files.items():
         out[base + ".json"] = text
         out[base + ".json.gz"] = gzip.compress(text, compresslevel=9, mtime=0)
     page = page[: m.start(1)] + "null" + page[m.end(1):]
     assert page.count(PAGE_SCRIPT) == 1, "page script tag not found exactly once"
-    page = page.replace(PAGE_SCRIPT, LOADER.replace("__MAIN__", json.dumps(f"data/atlas-{tag}-main"))
+    page = page.replace(PAGE_SCRIPT, LOADER.replace("__MAIN__", json.dumps(main_base))
                         + PAGE_SCRIPT.replace("<script>", '<script type="text/plain" id="atlasMain">'))
     return page, out
 
