@@ -40,7 +40,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "analysis" / "pitch_atlas.html"
-SPACE = "brmiller/Pitch-Universe"
+SPACE = "brmiller/pitchomics"   # renamed from Pitch-Universe by the user, 2026-11-15
 HEAD = (
     '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
     '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
