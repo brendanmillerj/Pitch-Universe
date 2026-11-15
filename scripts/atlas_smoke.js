@@ -997,6 +997,19 @@ const J = JSON.stringify;
   ok(nlAt > markup.indexOf('id="simBox"') && markup.indexOf('id="nlScrim"') > markup.indexOf('id="simBox"'),
     "newsletter: the pop-up sits outside home and the app, so neither's inert state blocks it");
 
+  // ---- the paywall (user, 2026-11-15): only a deployed page built with the paid split (D.lazy_premium) has one; this
+  // page has everything. The pop-up sits outside home and the app; the account button is there but hidden.
+  const lockAt = markup.indexOf('id="lockDlg"');
+  ok(lockAt > markup.indexOf('id="simBox"') && lockAt < nlAt && markup.slice(lockAt, nlAt).includes('class="hfoot nl-open nl-team"')
+    && markup.slice(lockAt, nlAt).includes('id="lockForm"'), "paywall: the Unlock / Log in pop-up sits outside the app, before the newsletter's script (its gold button opens the team sign-up)");
+  ok([homeFoot, cap].every(x => /class="hfoot acct-btn" hidden>Log in</.test(x) && x.indexOf("acct-btn") < x.indexOf("Contact Brendan Miller")),
+    "paywall: a Log in button beside Contact on home and under the map, hidden without a paywall");
+  ok(run("PAYWALL") === false && run("evoLocked()") === false && run("labLocked()") === false
+    && run('colorPick().some(v => v.key === "t:evo")') && run('sliderVars().some(v => v.key === "t:evo")'),
+    "paywall: with no paid split, Evolution and the Lab are open and t:evo is in the menus");
+  ok(!run("howChangedHTML(" + run('ALL_ROWS.find(j => T.level[j] === "mlb" && T.season[j] === Math.max(...D.seasons))') + ")").includes("sv-lock"),
+    "paywall: with no paid split, the card's How he changed is the real one");
+
   // ---- color menu: fixed beside its button on a wide screen
   getEl("#colorMenu").hidden = true;
   getEl("#colorBtn")._h.click[0]({}); await tick();

@@ -1359,6 +1359,17 @@ button.hfoot.nl-open[aria-expanded="true"] { background: var(--ink); color: var(
 .nl-note { margin: 0; min-height: 2.8em; font: 400 14px/1.4 var(--font-ui); color: var(--ink2); }
 .nl-go { align-self: flex-start; }
 .nl-small { margin: 0; font: 400 13px/1.4 var(--font-ui); color: var(--muted); }
+/* the paywall (user, 2026-11-15): the Unlock / Log in pop-up (same frame as the newsletter's), a locked card box,
+   the leaderboard's locked note, and the account button beside Contact */
+.lock-acts { display: flex; flex-wrap: wrap; gap: 10px; }
+.lock-acts[hidden], .lock-login[hidden] { display: none; }
+.lock-login { display: flex; flex-direction: column; gap: 12px; margin: 0; }
+button.hfoot.acct-btn { font: 700 16px var(--font-ui); }
+.sv-lock { padding: 12px 16px; border: 1.5px dashed var(--rule); border-radius: var(--r); }
+.sv-lock p { margin: 6px 0 10px; font: 400 15px/1.45 var(--font-ui); color: var(--ink2); }
+.mt-lock { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 6px 0; font: 400 14px/1.4 var(--font-ui); color: var(--ink2); }
+.mt-lock[hidden] { display: none; }
+#lockMsg:empty { display: none; }   /* no reserved gap until there is something to say */
 @media (max-width: 719px) { .glossdlg { inset: 4vh 0 0 0; border-radius: var(--r-lg) var(--r-lg) 0 0; } .glossdlg .howto { flex-direction: column; align-items: flex-start; } .glossdlg .gloss-in dl { columns: 1; } }
 .mt-key b { font-weight: 600; color: var(--ink); }
 .mt-kp { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); }
@@ -2113,6 +2124,7 @@ html.at-home .app { visibility: hidden; }
   <footer class="home-foot">
     <button type="button" class="hfoot nl-open nl-team" data-nl="team" aria-haspopup="dialog" aria-expanded="false" aria-controls="nlDlg">Weekly Team Newsletter, from $3/mo</button>
     <button type="button" class="hfoot nl-open nl-free" data-nl="free" aria-haspopup="dialog" aria-expanded="false" aria-controls="nlDlg">Free Weekly League Newsletter</button>
+    <button type="button" class="hfoot acct-btn" hidden>Log in</button>
     <a class="hfoot" href="https://github.com/brendanmillerj" target="_blank" rel="noopener">Contact Brendan Miller</a>
     <a class="hfoot" id="homeMethods" target="_blank" rel="noopener" hidden>Read methodology</a>
   </footer>
@@ -2122,7 +2134,10 @@ html.at-home .app { visibility: hidden; }
 // home, and the last click on one of home's controls is kept and run once the map is ready.
 (function () {
   var h = document.getElementById("home"); if (!h) return;
-  if (location.hash.length > 1) { h.hidden = true; return; }
+  if (location.hash === "#signin-expired") {   // /api/auth's answer to an expired or used sign-in link: home, with a note
+    window.__signinExpired = true;
+    try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
+  } else if (location.hash.length > 1) { h.hidden = true; return; }
   document.documentElement.classList.add("at-home");
   var hold = function (e) {
     if (window.__homeReady) return;
@@ -2174,6 +2189,7 @@ html.at-home .app { visibility: hidden; }
       </div>
     </div>
     <p class="mt-sub" id="mtSub"></p>
+    <p class="mt-lock" id="mtLock" hidden>Evolution, Big Evolvers and the midseason changes are for subscribers. <button type="button" class="hfoot" data-unlock="evo">Unlock Evolution</button></p>
     <p class="mt-key" id="mtKey" hidden></p>
     <input id="mtSearch" class="mt-search" type="search" placeholder="Find a pitcher in this table" autocomplete="off" aria-label="Find a pitcher in this table">
     <div class="mt-scroll" id="mtScroll"><p class="vh" id="mtRowHelp">Enter on a row shows that pitcher on the map.</p><table class="mt" aria-labelledby="mtTitle" aria-describedby="mtRowHelp"><thead id="mtHeadRow"></thead><tbody id="mtBody"></tbody></table></div>
@@ -2380,6 +2396,7 @@ html.at-home .app { visibility: hidden; }
       <button type="button" class="hfoot" id="glossBtn" aria-haspopup="dialog" aria-expanded="false" aria-controls="glossDlg">Glossary</button>
       <button type="button" class="hfoot nl-open nl-team" data-nl="team" aria-haspopup="dialog" aria-expanded="false" aria-controls="nlDlg">Weekly Team Newsletter, from $3/mo</button>
       <button type="button" class="hfoot nl-open nl-free" data-nl="free" aria-haspopup="dialog" aria-expanded="false" aria-controls="nlDlg">Free Weekly League Newsletter</button>
+      <button type="button" class="hfoot acct-btn" hidden>Log in</button>
       <a class="hfoot" href="https://github.com/brendanmillerj" target="_blank" rel="noopener">Contact Brendan Miller</a>
     </div>
   </div>
@@ -2427,6 +2444,28 @@ html.at-home .app { visibility: hidden; }
   <div class="simscrim" id="simScrim" hidden></div>
   <section class="simbox" id="simBox" role="dialog" aria-modal="true" aria-label="Pitch Simulation Lab" hidden></section>
 </div>
+
+<!-- The paywall's pop-up (user, 2026-11-15): "Unlock the Pitch Simulation Lab", "Unlock Evolution" or "Log in".
+     Subscribe = the newsletter's team sign-up (its gold button, wired by the newsletter script below); Log in = an
+     email to POST /api/login, which mails a sign-in link to a paying subscriber. Driven by the page script (openLock). -->
+<div class="tblscrim nlscrim" id="lockScrim" hidden></div>
+<section class="nldlg" id="lockDlg" role="dialog" aria-modal="true" aria-labelledby="lockTitle" hidden>
+  <div class="gd-head"><h2 class="gd-title" id="lockTitle" tabindex="-1">Log in</h2><button type="button" class="mtx" id="lockX" aria-label="Close" title="Close (Esc)">×</button></div>
+  <div class="nl-body">
+    <p class="nl-lede" id="lockText"></p>
+    <div class="lock-acts" id="lockActs">
+      <button type="button" class="hfoot nl-open nl-team" data-nl="team" aria-haspopup="dialog" aria-expanded="false" aria-controls="nlDlg">Weekly Team Newsletter, from $3/mo</button>
+      <button type="button" class="hfoot" id="lockLoginBtn">Log in</button>
+    </div>
+    <form class="lock-login" id="lockForm" hidden>
+      <label class="nl-field">Email you subscribed with
+        <input type="email" id="lockEmail" required autocomplete="email" placeholder="you@example.com">
+      </label>
+      <button type="submit" class="hfoot nl-go" id="lockSend">Email me a sign-in link</button>
+    </form>
+    <p class="nl-note" id="lockMsg" aria-live="polite"></p>
+  </div>
+</section>
 
 <!-- Weekly newsletter sign-up (user, 2026-11-15): two buttons open it, "Weekly Team Newsletter, from $3/mo" (gold) and
      "Free Weekly League Newsletter". The free one: a plain HTML form posting the email to Buttondown's
@@ -2727,6 +2766,127 @@ function ensureMid() {
   })();
   return midLoading;
 }
+// ---------------------------------------------------- the paywall (user, 2026-11-15)
+// The Pitch Simulation Lab and Evolution are for Weekly Team Newsletter subscribers. Only the deployed page built
+// with the paid split (deploy_space.py --premium: D.lazy_premium) has a paywall; the self-contained page has it all.
+// Who has paid: GET /api/me (a Cloudflare Pages Function reading the signed session cookie). The paid file
+// (the evo column per data file + D.mid) is served only to a subscriber; the Lab's lock is in the page only (its
+// flight data stays public for the card's flight panel, the user's choice).
+const PAYWALL = !!D.lazy_premium;
+const PAY = { paid: false, email: null, checked: false };
+let PREM = null, premLoading = null;
+const evoLocked = () => PAYWALL && !PREM;          // until the paid file is in, Evolution reads as locked
+const labLocked = () => PAYWALL && !PAY.paid;
+// the evo values back beside the rows: the main file's rows first, then the Triple-A file's (when it is loaded)
+function applyPremiumEvo() {
+  if (!PREM || !PREM.evo) return;
+  const m = PREM.evo.main || [], a = PREM.evo.aaa || [], n = T.pitcher.length;
+  T.evo = Array.from({ length: n }, (_, j) => j < m.length ? m[j] : (a[j - m.length] ?? null));
+}
+function ensurePremium() {
+  if (PREM) return Promise.resolve(true);
+  if (!PAYWALL) return Promise.resolve(false);
+  if (premLoading) return premLoading;
+  premLoading = (async () => {
+    try {
+      const ext = typeof DecompressionStream === "function" ? ".json.gz" : ".json";
+      PREM = await fetchData(D.lazy_premium + ext);   // same-origin: the session cookie goes with it
+      applyPremiumEvo();
+      if (PREM.mid) D.mid = PREM.mid;
+      indexData();   // caches keyed on measure values
+      if (state.booted) {
+        buildVarSelects(); if (state.slidersOpen) buildSliders();
+        if (state.tblGroup) syncTable();
+        render();
+        if (state.sel !== null && state.sel !== undefined && !state.preview) renderDetail();
+      }
+      return true;
+    } catch (e) { console.warn("the paid data failed to load", e); PREM = null; return false; }
+    finally { premLoading = null; }
+  })();
+  return premLoading;
+}
+async function authInit() {
+  if (!PAYWALL) return;
+  try {
+    const r = await fetch("/api/me", { credentials: "same-origin", cache: "no-store" });
+    const j = r.ok ? await r.json() : {};
+    PAY.paid = !!j.paid; PAY.email = j.email || null;
+  } catch (e) { console.warn("the sign-in check failed", e); }
+  PAY.checked = true; syncAcct();
+  if (PAY.paid) ensurePremium();
+  if (window.__signinExpired) { window.__signinExpired = false; openLock("login", null, "That sign-in link has expired or was already used. Ask for a new one here."); }
+}
+// the account button beside Contact: Log in, or Log out (signed in as ...)
+function syncAcct() {
+  document.querySelectorAll(".acct-btn").forEach(b => {
+    b.hidden = !PAYWALL;
+    b.textContent = PAY.paid ? "Log out" : "Log in";
+    b.title = PAY.paid ? "Signed in as " + (PAY.email || "a subscriber") : "Subscribers: sign in to the Pitch Simulation Lab and Evolution";
+  });
+}
+const LOCK_TXT = {
+  lab: ["Unlock the Pitch Simulation Lab", "The Lab comes with a Weekly Team Newsletter subscription. Already subscribed? Log in with the email you subscribed with."],
+  evo: ["Unlock Evolution", "Evolution, Big Evolvers and the midseason changes come with a Weekly Team Newsletter subscription. Already subscribed? Log in with the email you subscribed with."],
+  login: ["Log in", "Weekly Team Newsletter subscribers can use the Pitch Simulation Lab and Evolution. Enter the email you subscribed with and we'll send a sign-in link."],
+};
+let lockFrom = null, lockWas = [];
+function openLock(kind, from, msg) {
+  const [title, text] = LOCK_TXT[kind] || LOCK_TXT.login, login = kind === "login";
+  $("#lockTitle").textContent = title; $("#lockText").textContent = text;
+  $("#lockForm").hidden = !login; $("#lockLoginBtn").hidden = login; $("#lockMsg").textContent = msg || "";
+  $("#lockSend").disabled = false;
+  const under = [$("#home"), $("#app")];
+  if ($("#lockDlg").hidden) { lockWas = under.map(e => e && e.inert); under.forEach(e => { if (e) e.inert = true; }); }
+  $("#lockDlg").hidden = false; $("#lockScrim").hidden = false;
+  lockFrom = from && from.focus ? from : null;
+  requestAnimationFrame(() => (login ? $("#lockEmail") : $("#lockTitle")).focus({ preventScroll: true }));
+}
+function closeLock(restoreFocus) {
+  if ($("#lockDlg").hidden) return;
+  $("#lockDlg").hidden = true; $("#lockScrim").hidden = true;
+  [$("#home"), $("#app")].forEach((e, i) => { if (e) e.inert = !!lockWas[i]; });
+  if (restoreFocus !== false && lockFrom) lockFrom.focus({ preventScroll: true });
+  lockFrom = null;
+}
+async function sendSignInLink(e) {
+  e.preventDefault();
+  const email = $("#lockEmail").value.trim(); if (!email) return;
+  const back = /^#[\w\-\/]{0,120}$/.test(location.hash) ? location.hash : "";
+  $("#lockSend").disabled = true; $("#lockMsg").textContent = "Sending…";
+  try {
+    const r = await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, back }) });
+    const j = await r.json().catch(() => ({}));
+    $("#lockMsg").textContent = j.message || (r.ok ? "Check your email." : "Something went wrong. Try again in a few minutes.");
+  } catch (err) { $("#lockMsg").textContent = "Something went wrong. Try again in a few minutes."; }
+  $("#lockSend").disabled = false; $("#lockSend").focus({ preventScroll: true });   // keep focus in the pop-up
+}
+function initPaywallUI() {
+  syncAcct();
+  if (!PAYWALL) return;
+  $("#lockX").addEventListener("click", () => closeLock());
+  $("#lockScrim").addEventListener("click", () => closeLock());
+  // Escape closes it wherever focus is (sending the link disables its button for a moment, which drops focus to the body)
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#lockDlg").hidden) { e.preventDefault(); e.stopPropagation(); closeLock(); } }, true);
+  // its gold button opens the newsletter's team sign-up: this pop-up steps aside first (capture phase, so the page
+  // under it is no longer inert when the newsletter remembers how it found it)
+  $("#lockDlg").addEventListener("click", e => { if (e.target.closest && e.target.closest(".nl-team")) closeLock(false); }, true);
+  $("#lockLoginBtn").addEventListener("click", () => { $("#lockForm").hidden = false; $("#lockLoginBtn").hidden = true; $("#lockEmail").focus(); });
+  $("#lockForm").addEventListener("submit", sendSignInLink);
+  document.querySelectorAll(".acct-btn").forEach(b => b.addEventListener("click", async () => {
+    if (!PAY.paid) { openLock("login", b); return; }
+    try { await fetch("/api/logout", { method: "POST" }); } catch (e) {}
+    location.reload();
+  }));
+  document.addEventListener("click", e => {   // "Unlock Evolution" on the card and in the leaderboard
+    const b = e.target.closest && e.target.closest("[data-unlock]"); if (b) openLock(b.dataset.unlock, b);
+  });
+}
+// the leaderboard's Evolution tab, locked: its note
+function syncLockNote() {
+  const n = $("#mtLock"); if (n) n.hidden = !(state.tblGroup === "Evolution" && evoLocked());
+}
+
 function mergeLevel(part) {
   // columns: append row by row; a column one side lacks is padded with nulls
   const app = (dst, src, n0) => {
@@ -2737,7 +2897,7 @@ function mergeLevel(part) {
       for (let i = 0; i < n1; i++) dst[k].push(col[i]);
     });
   };
-  if (part.types) app(T, part.types, NT);
+  if (part.types) { app(T, part.types, NT); applyPremiumEvo(); }   // the paid evo values for the new rows, if in
   if (part.pitchers) app(P, part.pitchers, NP);
   (part.tcomps || []).forEach(c => D.tcomps.push(c));
   if (part.tcomps_aaa) D.tcomps_aaa = part.tcomps_aaa;
@@ -7103,6 +7263,7 @@ function toggleSim(opener) {
   openSim(opener);
 }
 function openSim(opener) {
+  if (labLocked()) { openLock("lab", opener && opener.nodeType ? opener : document.activeElement); return; }   // the paywall
   const ae = document.activeElement;
   state.simOpener = (opener && opener.nodeType) ? opener : (ae && ae !== document.body ? ae : null);
   state.simOpen = true; renderSim({ focus: "title" }); syncCta(); $("#simScrim").hidden = false; navQueue();
@@ -7281,7 +7442,8 @@ function buildUniverse() {
 
 // "Color pitchers by": the drawer's categories as headed sections (Groups, Shape, Dynamic Dead Zone, Angles,
 // Delivery, Command, Consistency, Usage, Results, Evolution), filtered by the search box's words
-const colorPick = () => VARS[varKind(state.view)].filter(v => !NOT_IN_LIST.has(v.key));
+const paidVar = v => v.key === "t:evo" && evoLocked();   // the paywall: Evolution is listed only once it is unlocked
+const colorPick = () => VARS[varKind(state.view)].filter(v => !NOT_IN_LIST.has(v.key) && !paidVar(v));
 function colorMenuHTML(pick, cur, filter) {
   const f = String(filter || "").toLowerCase().split(/\s+/).filter(Boolean);
   const hit = v => !f.length || f.every(w => (v.label + " " + v.group).toLowerCase().includes(w));
@@ -7477,7 +7639,7 @@ function rawBounds(view, v) {
   }
   return rawBoundsCache.get(k);
 }
-const sliderVars = () => VARS[varKind(state.view)].filter(v => !v.cat);
+const sliderVars = () => VARS[varKind(state.view)].filter(v => !v.cat && !paidVar(v));
 function sliderSpec(v) {
   if (state.rangeMode === "pct") return { min: 0, max: 100, step: 1 };
   const [lo, hi] = rawBounds(state.view, v), span = hi - lo;
@@ -7660,6 +7822,7 @@ function paintBoardList(on) {
 }
 // Big Evolvers: All pitches, the latest season, the Evolution tab sorted by Evolution (largest first)
 function openEvolvers() {
+  if (evoLocked()) { openLock("evo", $("#evoBtn")); return; }
   if (state.sel !== null && state.sel !== undefined && !state.preview) select(null);
   if (state.view !== "all") setView("all", null);
   state.lookTbl = null; state.tblMid = false; state.seasons = new Set([Math.max(...D.seasons)]); syncSeasonChips(); render();
@@ -7697,6 +7860,7 @@ function paintTableControls() {
   press("#mtSeasons", b => b.dataset.tseason === "all" ? state.seasons.size === D.seasons.length : +b.dataset.tseason === one);
 }
 function syncTable() {
+  syncLockNote();
   navQueue();
   const look = state.lookTbl !== null && state.lookTbl !== undefined;
   const on = look || (!!state.tblGroup && sliderVars().some(v => v.group === state.tblGroup));
@@ -7801,7 +7965,7 @@ function renderTable() {
   const unitTxt = v => v.unit && !shortLabel(v).endsWith(v.unit) ? ` <span class="tm">(${esc(v.unit)})</span>` : "";   // no "Whiff% (%)"
   const sc = k => k === sk ? ` class="mt-sorted"` : "";
   $("#mtHeadRow").innerHTML = `<tr><th scope="col"${ariaSort("name")}><button type="button" data-k="name">${ci >= 0 ? `<span class="mt-rkh" aria-hidden="true">#</span>` : ""}Pitcher${arrow("name")}</button></th>` +
-    cols.map(v => `<th scope="col"${sc(v.key)}${ariaSort(v.key)}><button type="button" data-k="${esc(v.key)}" title="${esc(tipFor(v))}"><span class="mt-h">${esc(shortLabel(v))}${unitTxt(v)}</span>${arrow(v.key)}</button></th>`).join("") + (g === "Evolution" ? `<th scope="col" class="mid-l" title="The measure of this pitch that moved most since his season before, season by season">Biggest move</th>` : "") + "</tr>";
+    cols.map(v => `<th scope="col"${sc(v.key)}${ariaSort(v.key)}><button type="button" data-k="${esc(v.key)}" title="${esc(tipFor(v))}"><span class="mt-h">${esc(shortLabel(v))}${unitTxt(v)}</span>${arrow(v.key)}</button></th>`).join("") + (g === "Evolution" && !evoLocked() ? `<th scope="col" class="mid-l" title="The measure of this pitch that moved most since his season before, season by season">Biggest move</th>` : "") + "</tr>";
   const cell = (v, c, first) => {
     const cls = first ? ` class="mt-sorted"` : "";
     if (c === null) return `<td${cls}>—</td>`;
@@ -7814,7 +7978,7 @@ function renderTable() {
     const meta = `${T.season[r]} · ${esc(teamStr(r))}${view === "all" ? ` · <i class="psw" style="background:${SAVANT_PITCH[pt] || "#999"}"></i>${esc(PTN[pt])}` : ""}`;
     const who = `<div class="mt-name">${esc(T.name[r])}</div><div class="mt-meta">${meta}</div>`;
     return `<tr data-r="${r}" tabindex="0"${r === state.sel ? ' class="on"' : ""}><td>${ci >= 0 ? `<div class="mt-pl"><span class="mt-rk">${rank.get(r) ?? ""}</span><div>${who}</div></div>` : who}</td>`
-      + `${cols.map((v, k) => cell(v, vs[k], k === ci)).join("")}${g === "Evolution" ? `<td class="mid-l">${evoChart(r)}</td>` : ""}</tr>`;
+      + `${cols.map((v, k) => cell(v, vs[k], k === ci)).join("")}${g === "Evolution" && !evoLocked() ? `<td class="mid-l">${evoChart(r)}</td>` : ""}</tr>`;
   };
   // the whole list, drawn TABLE_CAP rows at a time as you scroll; a re-render with the same list
   // (e.g. clicking a row) keeps as many rows as were already drawn so the scroll position holds
@@ -8030,7 +8194,7 @@ function wireTable() {
     openBoard(state.tblLast && tableGroups().includes(state.tblLast) ? state.tblLast : tableGroups()[0]);
   });
   // Evolution (beside Leaderboard): the leaderboard on its Evolution tab, latest season; pressed again, it closes
-  $("#hEvo").addEventListener("click", () => openBoard("Evolution", "t:evo"));   // sorted by Evolution, as Big Evolvers
+  $("#hEvo").addEventListener("click", () => evoLocked() ? openLock("evo", $("#hEvo")) : openBoard("Evolution", "t:evo"));   // sorted by Evolution, as Big Evolvers
   $("#pnClusters").addEventListener("click", () => clustersRow());
   $("#mtBody").addEventListener("keydown", e => {
     const tr = e.target.closest("tr[data-r]"); if (!tr) return;
@@ -8364,6 +8528,9 @@ function whatChangedHTML(r, parts = false) {
 const HOW_D0 = 85, HOW_D1 = 275;   // the strip's season: late March to early October (day of year)
 const HOW_MONTHS = [["Apr", 91], ["May", 121], ["Jun", 152], ["Jul", 182], ["Aug", 213], ["Sep", 244]];
 function howChangedHTML(r) {
+  if (evoLocked()) return `<section class="sv-chg sv-how sv-lock" aria-label="How he changed"><div class="chg-head"><h3>How he changed</h3></div>`
+    + `<p>How this pitch changed since last season and during the season is part of Evolution, for Weekly Team Newsletter subscribers.</p>`
+    + `<button type="button" class="hfoot" data-unlock="evo">Unlock Evolution</button></section>`;
   const s = T.season[r], pid = T.pitcher[r], lv = T.level[r], U = D.mid ? D.mid.units : {};
   if (state.howFor !== r) { if (state.howTab !== "all") state.howTab = ""; state.howFor = r; }   // a new card opens on its pitch (All pitches stays)
   // his pitches this season (most used first); the tab: All pitches, or one pitch (the card's own unless he picked another)
@@ -8774,5 +8941,6 @@ async function refreshFreeAgents() {
   if (q && state.home) homeAct(q);
   Object.keys(LAZY).forEach(l => ensureLevel(l));   // Triple-A in the background, now that the map is up
   ensureMid();                                        // and the midseason changes (their own file on the deployed page)
+  initPaywallUI(); authInit();                        // the paywall: who has paid, then their Evolution data
 })();
 </script>
