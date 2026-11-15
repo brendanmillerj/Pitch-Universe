@@ -16,7 +16,7 @@ change (below) is MLB's.
 
 Changepoints: PELT optimal partitioning of the game means into constant-mean segments, weighted by
 1 / (sigma2/n + tau2 + q_day * DRIFT_DAYS), with a conservative BIC-style penalty and at least MIN_SEG games
-per segment -- the same detector as scripts/time_prototype.py, run on everybody.
+per segment -- the same detector as scripts/archive/time_prototype.py, run on everybody.
 
 Measures: the Evolution reasons (velo, iVB, HB, spin, arm angle, release height and side, extension,
 location-adjusted VAA) plus usage (share of the pitcher's pitches each game, games without the pitch counted as 0,
@@ -57,7 +57,7 @@ GAP_DAYS = 20          # a gap this long around the change date is flagged (inju
 LEVELS = ("mlb", "aaa")
 CSV = paths.ROOT / "analysis" / "midseason_changes.csv"
 
-# key, source column (mirrored profile frame), unit, decimals, words (up, down) -- as atlas_build.CHANGE_WORDS
+# key, source column (mirrored profile frame), unit, decimals, words (up, down) -- as atlas_core.CHANGE_WORDS
 MEASURES = [
     ("velo", "release_speed", 1, "mph", 1, ("harder", "softer")),
     ("ivb", "pfx_z", 12, "in", 1, ("more ride", "less ride")),

@@ -19,7 +19,7 @@ game-to-game variation that does not shrink with pitch count (park, weather,
 tracking, the day's feel) -- without it the fit reads off-nights as drift.
 (q_day, q_off, tau2) are fitted by maximum likelihood per (pitch type, feature),
 POOLED over every pitcher with enough games, so no pitcher tunes his own
-smoothing. scripts/time_prototype.py showed this cuts next-game forecast error
+smoothing. scripts/archive/time_prototype.py showed this cuts next-game forecast error
 above the noise floor by about half versus half-season bins.
 
 Feature families (names match profiles.py so downstream code is unchanged):

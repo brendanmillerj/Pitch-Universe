@@ -1024,9 +1024,8 @@ def main():
         with open(OUT / "tables.md", "a") as fh:
             fh.write("\n" + lt)
     print("tables.md written")
-    figures(D, B)
-    figure_global(D)
-    figure_location(D, B)
+    import umap_benchmark_plots
+    umap_benchmark_plots.make_all(D, B, OUT)
     print("figures written")
 
 

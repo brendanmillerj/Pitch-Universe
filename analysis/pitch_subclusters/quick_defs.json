@@ -1,0 +1,494 @@
+{
+ "FF": {
+  "name": "Four-seam",
+  "n": 1850,
+  "res": 0.5,
+  "k": 4,
+  "pac": 0.4942259512081037,
+  "repro": 0.5208771007932023,
+  "persist": 0.8408018867924528,
+  "chance": 0.27258261504747994,
+  "core": 0.5908108108108108,
+  "clusters": [
+   {
+    "id": "FF-A",
+    "letter": "A",
+    "n": 638,
+    "n_core": 318,
+    "name": "More glove-side break, high slot",
+    "markers": [
+     {
+      "measure": "hb",
+      "idea": "run",
+      "smd": -1.420833560613653,
+      "word": "more glove-side break",
+      "mean": 4.492524502849689
+     },
+     {
+      "measure": "arm_angle",
+      "idea": "slot",
+      "smd": 1.1436336334378054,
+      "word": "high slot",
+      "mean": 48.0762109271598
+     },
+     {
+      "measure": "ddz_ax",
+      "idea": "run",
+      "smd": -0.9325745245660396,
+      "word": "less run than slot",
+      "mean": -2.1989256636529437
+     },
+     {
+      "measure": "vaa",
+      "idea": "vaa",
+      "smd": -0.9294021523966552,
+      "word": "steep approach",
+      "mean": -0.277674051047022
+     },
+     {
+      "measure": "rel_height",
+      "idea": "slot",
+      "smd": 0.8997393819897118,
+      "word": "high release",
+      "mean": 6.068227179089397
+     }
+    ],
+    "numbers": "93.7 mph \u00b7 ride 16.2 in \u00b7 run 4.5 in \u00b7 2297 rpm \u00b7 arm angle 48\u00b0",
+    "split": {
+     "res": 0.4,
+     "k": 2,
+     "pac": 0.37791764885360946,
+     "repro": 0.919986919042072,
+     "persist": 0.9354838709677419,
+     "chance": 0.5154086536099292,
+     "core": 0.9561128526645768
+    },
+    "subs": [
+     {
+      "id": "FF-A1",
+      "n": 375,
+      "n_core": 352,
+      "name": "More ride, more run for the slot",
+      "markers": [
+       {
+        "measure": "ivb",
+        "idea": "ride",
+        "smd": 1.2416907093466647,
+        "word": "more ride",
+        "mean": 17.484013751761754
+       },
+       {
+        "measure": "ddz_az",
+        "idea": "ride",
+        "smd": 1.0236038410939445,
+        "word": "more ride for the slot",
+        "mean": -0.1521591631145252
+       },
+       {
+        "measure": "ddz_ax",
+        "idea": "run",
+        "smd": 1.0061381275963832,
+        "word": "more run for the slot",
+        "mean": -0.9048474431464083
+       },
+       {
+        "measure": "arm_angle",
+        "idea": "slot",
+        "smd": 0.7974474381222906,
+        "word": "higher slot",
+        "mean": 52.05242865283334
+       },
+       {
+        "measure": "rel_height",
+        "idea": "slot",
+        "smd": 0.5839073833376449,
+        "word": "higher release",
+        "mean": 6.183648869763035
+       }
+      ],
+      "numbers": "94.1 mph \u00b7 ride 17.5 in \u00b7 run 5.0 in \u00b7 2279 rpm \u00b7 arm angle 52\u00b0"
+     },
+     {
+      "id": "FF-A2",
+      "n": 263,
+      "n_core": 258,
+      "name": "Less ride, less run for the slot",
+      "markers": [
+       {
+        "measure": "ivb",
+        "idea": "ride",
+        "smd": -1.2416907093466647,
+        "word": "less ride",
+        "mean": 14.38709146443229
+       },
+       {
+        "measure": "ddz_az",
+        "idea": "ride",
+        "smd": -1.0236038410939445,
+        "word": "less ride for the slot",
+        "mean": -2.3037414947833232
+       },
+       {
+        "measure": "ddz_ax",
+        "idea": "run",
+        "smd": -1.0061381275963832,
+        "word": "less run for the slot",
+        "mean": -4.044094229013974
+       },
+       {
+        "measure": "arm_angle",
+        "idea": "slot",
+        "smd": -0.7974474381222906,
+        "word": "lower slot",
+        "mean": 42.406698960895234
+       },
+       {
+        "measure": "rel_height",
+        "idea": "slot",
+        "smd": -0.5839073833376449,
+        "word": "lower release",
+        "mean": 5.903652525087059
+       }
+      ],
+      "numbers": "93.2 mph \u00b7 ride 14.4 in \u00b7 run 3.7 in \u00b7 2323 rpm \u00b7 arm angle 42\u00b0"
+     }
+    ]
+   },
+   {
+    "id": "FF-B",
+    "letter": "B",
+    "n": 499,
+    "n_core": 453,
+    "name": "Low slot, less ride",
+    "markers": [
+     {
+      "measure": "arm_angle",
+      "idea": "slot",
+      "smd": -1.5711611288670377,
+      "word": "low slot",
+      "mean": 25.13531725945874
+     },
+     {
+      "measure": "rel_height",
+      "idea": "slot",
+      "smd": -1.3869822708533883,
+      "word": "low release",
+      "mean": 5.299878397028832
+     },
+     {
+      "measure": "ivb",
+      "idea": "ride",
+      "smd": -1.3728217667929463,
+      "word": "less ride",
+      "mean": 12.894841565552644
+     },
+     {
+      "measure": "hb",
+      "idea": "run",
+      "smd": 1.2858446945159339,
+      "word": "more arm-side run",
+      "mean": 10.932241011929019
+     },
+     {
+      "measure": "vaa",
+      "idea": "vaa",
+      "smd": 0.8278764544207934,
+      "word": "flat approach",
+      "mean": 0.2338323849799599
+     }
+    ],
+    "numbers": "94.0 mph \u00b7 ride 12.9 in \u00b7 run 10.9 in \u00b7 2276 rpm \u00b7 arm angle 25\u00b0",
+    "split": {
+     "res": 0.3,
+     "k": 2,
+     "pac": 0.6018462628067379,
+     "repro": 0.7733711990452004,
+     "persist": 0.9468085106382979,
+     "chance": 0.5074718575427408,
+     "core": 0.9579158316633266
+    },
+    "subs": [
+     {
+      "id": "FF-B1",
+      "n": 280,
+      "n_core": 273,
+      "name": "Higher release, harder",
+      "markers": [
+       {
+        "measure": "rel_height",
+        "idea": "slot",
+        "smd": 1.2715332160758817,
+        "word": "higher release",
+        "mean": 5.567474431800727
+       },
+       {
+        "measure": "arm_angle",
+        "idea": "slot",
+        "smd": 1.0014032563131585,
+        "word": "higher slot",
+        "mean": 30.45132480355506
+       },
+       {
+        "measure": "velo",
+        "idea": "velo",
+        "smd": 0.9497380039975519,
+        "word": "harder",
+        "mean": 95.00361272781214
+       },
+       {
+        "measure": "extension",
+        "idea": "ext",
+        "smd": -0.8348014398674682,
+        "word": "shorter extension",
+        "mean": 6.322372467482151
+       },
+       {
+        "measure": "ivb",
+        "idea": "ride",
+        "smd": 0.7688329471398361,
+        "word": "more ride",
+        "mean": 13.736415800936443
+       }
+      ],
+      "numbers": "95.0 mph \u00b7 ride 13.7 in \u00b7 run 10.8 in \u00b7 2272 rpm \u00b7 arm angle 30\u00b0"
+     },
+     {
+      "id": "FF-B2",
+      "n": 219,
+      "n_core": 205,
+      "name": "Lower release, softer",
+      "markers": [
+       {
+        "measure": "rel_height",
+        "idea": "slot",
+        "smd": -1.2715332160758817,
+        "word": "lower release",
+        "mean": 4.957746480425496
+       },
+       {
+        "measure": "arm_angle",
+        "idea": "slot",
+        "smd": -1.0014032563131585,
+        "word": "lower slot",
+        "mean": 18.338595285271666
+       },
+       {
+        "measure": "velo",
+        "idea": "velo",
+        "smd": -0.9497380039975519,
+        "word": "softer",
+        "mean": 92.81753686219908
+       },
+       {
+        "measure": "extension",
+        "idea": "ext",
+        "smd": 0.8348014398674682,
+        "word": "longer extension",
+        "mean": 6.66257288478903
+       },
+       {
+        "measure": "ivb",
+        "idea": "ride",
+        "smd": -0.7688329471398361,
+        "word": "less ride",
+        "mean": 11.818856241774272
+       }
+      ],
+      "numbers": "92.8 mph \u00b7 ride 11.8 in \u00b7 run 11.1 in \u00b7 2280 rpm \u00b7 arm angle 18\u00b0"
+     }
+    ]
+   },
+   {
+    "id": "FF-C",
+    "letter": "C",
+    "n": 463,
+    "n_core": 202,
+    "name": "Run beyond slot, ride beyond slot",
+    "markers": [
+     {
+      "measure": "ddz_ax",
+      "idea": "run",
+      "smd": 1.0423970690746351,
+      "word": "run beyond slot",
+      "mean": 2.145739599716101
+     },
+     {
+      "measure": "ddz_az",
+      "idea": "ride",
+      "smd": 0.8928798967657239,
+      "word": "ride beyond slot",
+      "mean": 1.119829391030871
+     },
+     {
+      "measure": "ivb",
+      "idea": "ride",
+      "smd": 0.6860769757526118,
+      "word": "more ride",
+      "mean": 16.67817615926502
+     },
+     {
+      "measure": "velo",
+      "idea": "velo",
+      "smd": 0.6602067164830099,
+      "word": "harder",
+      "mean": 95.48665860222081
+     },
+     {
+      "measure": "hb",
+      "idea": "run",
+      "smd": 0.5564713956939408,
+      "word": "more arm-side run",
+      "mean": 9.13513905763872
+     }
+    ],
+    "numbers": "95.5 mph \u00b7 ride 16.7 in \u00b7 run 9.1 in \u00b7 2326 rpm \u00b7 arm angle 42\u00b0",
+    "split": null,
+    "subs": []
+   },
+   {
+    "id": "FF-D",
+    "letter": "D",
+    "n": 250,
+    "n_core": 120,
+    "name": "Middle of the type",
+    "markers": [
+     {
+      "measure": "vaa",
+      "idea": "vaa",
+      "smd": 0.4981111011269389,
+      "word": "flat approach",
+      "mean": 0.16058143933101887
+     },
+     {
+      "measure": "ddz_az",
+      "idea": "ride",
+      "smd": 0.4279074320497322,
+      "word": "ride beyond slot",
+      "mean": 0.4906337008731531
+     },
+     {
+      "measure": "ddz_ax",
+      "idea": "run",
+      "smd": -0.41353066398361527,
+      "word": "less run than slot",
+      "mean": -1.4085612477138272
+     },
+     {
+      "measure": "hb",
+      "idea": "run",
+      "smd": -0.31384549143870527,
+      "word": "more glove-side break",
+      "mean": 6.7634929104625945
+     },
+     {
+      "measure": "rel_height",
+      "idea": "slot",
+      "smd": -0.266433080431365,
+      "word": "low release",
+      "mean": 5.675077054079622
+     }
+    ],
+    "numbers": "94.5 mph \u00b7 ride 15.9 in \u00b7 run 6.8 in \u00b7 2325 rpm \u00b7 arm angle 38\u00b0",
+    "split": {
+     "res": 0.4,
+     "k": 2,
+     "pac": 0.3658473895582329,
+     "repro": 0.950793247446227,
+     "persist": 0.9555555555555556,
+     "chance": 0.5865279999999999,
+     "core": 0.984
+    },
+    "subs": [
+     {
+      "id": "FF-D1",
+      "n": 177,
+      "n_core": 174,
+      "name": "Flatter, harder",
+      "markers": [
+       {
+        "measure": "vaa",
+        "idea": "vaa",
+        "smd": 0.8989163799707623,
+        "word": "flatter",
+        "mean": 0.27122563959121543
+       },
+       {
+        "measure": "velo",
+        "idea": "velo",
+        "smd": 0.8899277965824585,
+        "word": "harder",
+        "mean": 95.06924660047497
+       },
+       {
+        "measure": "hb",
+        "idea": "run",
+        "smd": -0.663348186304935,
+        "word": "more glove-side",
+        "mean": 6.096403754257547
+       },
+       {
+        "measure": "ddz_az",
+        "idea": "ride",
+        "smd": 0.6100280371967024,
+        "word": "more ride for the slot",
+        "mean": 0.8650534170141866
+       },
+       {
+        "measure": "spin",
+        "idea": "spin",
+        "smd": 0.5280836073318325,
+        "word": "more spin",
+        "mean": 2347.5956976885313
+       }
+      ],
+      "numbers": "95.1 mph \u00b7 ride 16.3 in \u00b7 run 6.1 in \u00b7 2348 rpm \u00b7 arm angle 39\u00b0"
+     },
+     {
+      "id": "FF-D2",
+      "n": 73,
+      "n_core": 72,
+      "name": "Steeper, softer",
+      "markers": [
+       {
+        "measure": "vaa",
+        "idea": "vaa",
+        "smd": -0.8989163799707623,
+        "word": "steeper",
+        "mean": -0.10769285445055378
+       },
+       {
+        "measure": "velo",
+        "idea": "velo",
+        "smd": -0.8899277965824585,
+        "word": "softer",
+        "mean": 93.02083991351655
+       },
+       {
+        "measure": "hb",
+        "idea": "run",
+        "smd": 0.663348186304935,
+        "word": "more arm-side run",
+        "mean": 8.380955659069357
+       },
+       {
+        "measure": "ddz_az",
+        "idea": "ride",
+        "smd": -0.6100280371967024,
+        "word": "less ride for the slot",
+        "mean": -0.4172058848386677
+       },
+       {
+        "measure": "spin",
+        "idea": "spin",
+        "smd": -0.5280836073318325,
+        "word": "less spin",
+        "mean": 2271.8794078921237
+       }
+      ],
+      "numbers": "93.0 mph \u00b7 ride 15.1 in \u00b7 run 8.4 in \u00b7 2272 rpm \u00b7 arm angle 35\u00b0"
+     }
+    ]
+   }
+  ]
+ }
+}

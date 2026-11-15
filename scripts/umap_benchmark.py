@@ -29,7 +29,7 @@ Tests (each written to analysis/umap_benchmark/ as CSV / parquet; figures come f
 Per-type work runs in parallel (one process per pitch type).
 
 Version 3 (2026-11-04, evening): the truth is the atlas's new identity space (15 measures: shape, derived, delivery,
-near-duplicates dropped; atlas_build.MAP_FEATURES); the old 27-measure space is a comparison; section L measures
+near-duplicates dropped; atlas_core.MAP_FEATURES); the old 27-measure space is a comparison; section L measures
 "same pitch, different location".
 
 Usage:  python scripts/umap_benchmark.py                        (full; ~30-40 min on 8 CPUs)
@@ -59,7 +59,7 @@ from sklearn.neighbors import NearestNeighbors  # noqa: E402
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from mlbpitch import paths, profiles  # noqa: E402
 from profile_embed import block_scale, zscore  # noqa: E402
-from atlas_build import MAP_BLOCKS, MAP_FEATURES, scaler_fit, scaler_apply  # noqa: E402
+from atlas_core import MAP_BLOCKS, MAP_FEATURES, scaler_fit, scaler_apply  # noqa: E402
 
 warnings.filterwarnings("ignore")
 FAST = bool(os.environ.get("UMAP_BENCH_FAST"))

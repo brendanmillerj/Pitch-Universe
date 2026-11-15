@@ -1,6 +1,6 @@
 """Clusters and subclusters within each pitch type, for "Find a type of pitch" (replaces the hand-written tags).
 
-Same space as the atlas's maps and lookalikes: one pitch type's 15 identity measures (atlas_build.type_input: within-
+Same space as the atlas's maps and lookalikes: one pitch type's 15 identity measures (atlas_core.type_input: within-
 type median fill, z within type, block-scaled), PCA, a 15-nearest-neighbour graph, Leiden (RBConfiguration), as for
 the islands. Within a pitch type the pitches form a continuum (single Leiden runs agree with resampled runs at an
 adjusted Rand index of only 0.4-0.6), so the clusters are CONSENSUS clusters:
@@ -23,7 +23,7 @@ Names: each cluster's standardised mean differences from the rest of its parent 
 subclusters) on plain measures; at most one phrase per idea (ride, run, slot), the two largest |SMD| (>= 0.5 for clusters,
 >= 0.4 for subclusters). Subclusters are named only by what separates them from their siblings, in comparatives.
 
-Outputs (MLB rows only; Triple-A is placed later by atlas_build from its MLB lookalikes, never fitted):
+Outputs (MLB rows only; Triple-A is placed later from its MLB lookalikes by atlas_core.build_atlas, never fitted):
   data/meta/pitch_subclusters_2024_2026.parquet   pitcher, season, pitch_type, cl1, cl2, conf1, conf2
   data/meta/pitch_subclusters_2024_2026.json      per type: clusters (id, name, size, core size, markers, subclusters)
   analysis/pitch_subclusters/report.md, sweep.csv, Figure7.{pdf,png}
@@ -46,7 +46,7 @@ from sklearn.neighbors import NearestNeighbors
 from mlbpitch import paths, profiles
 
 sys.path.insert(0, str(paths.ROOT / "scripts"))
-import atlas_build as ab  # noqa: E402
+import atlas_core as ab  # noqa: E402
 from figure_style import PITCH_NAMES  # noqa: E402
 
 OUT = paths.ROOT / "analysis" / "pitch_subclusters"
