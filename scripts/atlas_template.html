@@ -22,6 +22,8 @@
   --gray-dot: #9aa6ba;   /* other / unselected dots: pale blue-gray, drawn at FADE opacity on the dim map */
   --link: #2b5d86;
   --focus: #2b5d86;
+  --gold: #e2b13c;       /* the Weekly newsletter button only (user, 2026-11-15); ink text on it is 7.9:1 (hover 6.5:1) */
+  --gold-dk: #d1a02a;    /* its hover */
   --flag: #a3241c;
   /* ink for things drawn ON the dim map */
   --map: #2a3038;        /* dim slate: the map and the movement charts */
@@ -1321,6 +1323,10 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
 .capbar { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 12px; padding: 10px 0 14px; }
 .hfoot[aria-expanded="true"] { background: var(--ink); color: var(--field); }
 button.hfoot { font: 600 15px var(--font-ui); cursor: pointer; }
+/* the Weekly newsletter button: gold, set like Contact Brendan Miller (700 16px); ink while its pop-up is open */
+button.hfoot.nl-open { font: 700 16px var(--font-ui); background: var(--gold); }
+button.hfoot.nl-open:hover { background: var(--gold-dk); }
+button.hfoot.nl-open[aria-expanded="true"] { background: var(--ink); color: var(--field); }
 /* the Glossary pop-up, over the card and the lab too */
 .glscrim { z-index: 78; }
 .glossdlg { position: fixed; z-index: 79; inset: 24px max(24px, calc((100vw - 1100px) / 2)); display: flex; flex-direction: column; min-height: 0;
