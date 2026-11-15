@@ -1080,9 +1080,12 @@ button, input, select { font: inherit; color: inherit; }
 .how-strip .hs-wdot { left: 50%; }
 .sv-how .how-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px 24px; padding-left: 0; list-style: none; }
 .how-when { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-bottom: 2px; }
-.sv-how .how-tabs { margin-left: auto; flex-wrap: wrap; }
-.sv-how .how-tabs button { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 10px; font-size: 13px; }
-.sv-how .how-tabs .psw { width: 10px; height: 10px; border-radius: 2px; }
+.sv-how .how-tabs, .pseg { margin-left: auto; flex-wrap: wrap; }
+.sv-how .how-tabs button, .pseg button { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 10px; font-size: 13px; }
+.sv-how .how-tabs .psw, .pseg .psw { width: 10px; height: 10px; border-radius: 2px; }
+.pseg button[aria-pressed="true"] { cursor: default; }
+.sv-all .mhead { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.sv-all .mhead h3 { margin: 0; }
 .how-which { display: inline-flex; align-items: center; gap: 4px; font: 500 14px var(--font-ui); color: var(--ink2); }
 .how-which .psw { width: 10px; height: 10px; border-radius: 2px; }
 .how-what { font-weight: 500; }
@@ -6444,6 +6447,13 @@ function headStats(view, j, i) {
     ["ERA − xERA", isNum(luck) ? (luck > 0 ? "+" : "") + luck.toFixed(2) : "—"]];
   return `<div class="hstats">${sw}<dl class="hs-tiles">${tiles.map(([l, x]) => `<div><dt>${l}</dt><dd>${x}</dd></div>`).join("")}</dl></div>`;
 }
+// A pitch switcher for a card section (user, 2026-11-15: Defining Traits and All measures say which pitch they are about
+// without scrolling up): his pitches, this one filled; another opens that pitch's card, as the arsenal chips do.
+function pitchSeg(j, ars, label) {
+  if (ars.length < 2) return "";
+  return `<div class="lvlseg pseg" role="group" aria-label="${esc(label)}">${ars.map(([x, r]) => `<button type="button" aria-pressed="${r === j}"${r === j ? "" : ` data-go="${x}:${r}"`}`
+    + ` title="${r === j ? "Showing" : "Show"} his ${PTN[x].toLowerCase()}"><i class="psw" style="background:${SAVANT_PITCH[x]}"></i>${esc(PTN[x])}</button>`).join("")}</div>`;
+}
 // Arsenal strip: one chip per pitch (most used first); a chip opens that pitch's own universe.
 // No "All pitches" chip: the card is always about one pitch; the map is where All pitches lives.
 function arsenalStrip(view, j, ars) {
@@ -6500,7 +6510,7 @@ function typeCard(view, j) {
   // every percentile on the card ranks his pitch among every pitch of its type on the atlas: all seasons, both hands
   const poolNote = `all ${pool.length.toLocaleString()} ${LEVELS.length > 1 ? "MLB " : ""}${PTN[t].toLowerCase()}s on the atlas, ${seasonSpan()}, both hands`;
   h += `<section class="sv-hero"><div class="herohead"><h3>Defining Traits</h3>
-    <span class="heropool">Percentiles among ${poolNote} · <button type="button" class="to-gloss">Glossary</button></span></div>${standoutTags(j)}
+    <span class="heropool">Percentiles among ${poolNote} · <button type="button" class="to-gloss">Glossary</button></span>${pitchSeg(j, ars, "Defining Traits of which pitch")}</div>${standoutTags(j)}
     <div class="herogrid">${hero.slice(0, HERO_MAX).map(it => heroRow(it, poolNote)).join("")}</div></section>`;
   h += howChangedHTML(j);    // How he changed (winter + midseason), moved under Defining Traits by renderDetail
   // ---------------- left: profile, value percentiles, seasons, pitch usage ----------------
@@ -6557,7 +6567,7 @@ function typeCard(view, j) {
 
   // ---------------- panel 4: every measure, by category, sorted within ----------------
   const groups = [...new Set(items.map(it => it.v.group))];
-  h += `<section class="svp sv-all"><h3>All ${items.length} measures <span class="tm">percentiles among ${poolNote}</span></h3><div class="mcols">${groups.map(g =>
+  h += `<section class="svp sv-all"><div class="mhead"><h3>All ${items.length} measures <span class="tm">percentiles among ${poolNote}</span></h3>${pitchSeg(j, ars, "Measures of which pitch")}</div><div class="mcols">${groups.map(g =>
     `<div class="mcat"><h4>${esc(g)}</h4>${items.filter(it => it.v.group === g).sort((a, b) => b.p - a.p).map(mRow).join("")}</div>`).join("")}</div></section>`;
   return h + `</div>`;
 }

@@ -782,6 +782,11 @@ const J = JSON.stringify;
   ok(Number.isInteger(wSame) && /About the same/.test(run(`whatChangedHTML(${wSame})`)) && /Nothing about his/.test(run(`whatChangedHTML(${wSame})`)), "no big change says so: " + plain(run(`whatChangedHTML(${wSame})`)).slice(0, 110));
   const firstRow = run(`ALL_ROWS.find(r => T.level[r] === "mlb" && T.season[r] === Math.min(...D.seasons))`);
   ok(/No earlier season/.test(run(`whatChangedHTML(${firstRow})`)), "a first season says there is nothing to compare");
+  // a pitch switcher on Defining Traits and on All measures, this pitch filled (user, 2026-11-15)
+  const cardH = run(`typeCard("FF", ${hr})`), segs = [...cardH.matchAll(/<div class="lvlseg pseg" role="group" aria-label="([^"]+)">([\s\S]*?)<\/div>/g)];
+  ok(segs.length === 2 && /Defining Traits/.test(segs[0][1]) && /Measures/.test(segs[1][1])
+    && segs.every(m => (m[2].match(/aria-pressed="true"/g) || []).length === 1 && new RegExp(`aria-pressed="true" title="Showing his ${run(`PTN[T.pitch_type[${hr}]]`).toLowerCase()}"`).test(m[2]) && /data-go="\w+:\d+"/.test(m[2])),
+    "Defining Traits and All measures each have a pitch switcher: this pitch filled, his others open their cards");
   ok(run(`typeCard("FF", ${hr}).includes('class="sv-chg sv-how"')`), "the player card carries it, in How he changed (under Defining Traits)");
   const hancock = run(`tRow(676106, Math.max(...D.seasons), "FF", "mlb")`);
   if (Number.isInteger(hancock)) ok(run(`whatChanged(${hancock}).big.some(x => x.k === "arm_angle" && x.dl < 0)`), "Emerson Hancock's four-seamer: a big drop in arm angle, as on the home list");
