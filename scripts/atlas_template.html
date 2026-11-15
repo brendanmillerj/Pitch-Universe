@@ -1324,8 +1324,9 @@ input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; marg
 .hfoot[aria-expanded="true"] { background: var(--ink); color: var(--field); }
 button.hfoot { font: 600 15px var(--font-ui); cursor: pointer; }
 /* the Weekly newsletter button: gold, set like Contact Brendan Miller (700 16px); ink while its pop-up is open */
-button.hfoot.nl-open { font: 700 16px var(--font-ui); background: var(--gold); }
-button.hfoot.nl-open:hover { background: var(--gold-dk); }
+button.hfoot.nl-open { font: 700 16px var(--font-ui); }
+button.hfoot.nl-team { background: var(--gold); }        /* the paid one: gold (user, 2026-11-15); the free one is plain */
+button.hfoot.nl-team:hover { background: var(--gold-dk); }
 button.hfoot.nl-open[aria-expanded="true"] { background: var(--ink); color: var(--field); }
 /* the Glossary pop-up, over the card and the lab too */
 .glscrim { z-index: 78; }
@@ -2110,7 +2111,8 @@ html.at-home .app { visibility: hidden; }
     <p class="home-wait" id="homeWait" role="status" aria-live="polite" hidden>Loading the pitch map…</p>
   </div></div>
   <footer class="home-foot">
-    <button type="button" class="hfoot nl-open" aria-haspopup="dialog" aria-expanded="false" aria-controls="nlDlg">Weekly newsletter</button>
+    <button type="button" class="hfoot nl-open nl-team" data-nl="team" aria-haspopup="dialog" aria-expanded="false" aria-controls="nlDlg">Weekly Team Newsletter, from $3/mo</button>
+    <button type="button" class="hfoot nl-open nl-free" data-nl="free" aria-haspopup="dialog" aria-expanded="false" aria-controls="nlDlg">Free Weekly League Newsletter</button>
     <a class="hfoot" href="https://github.com/brendanmillerj" target="_blank" rel="noopener">Contact Brendan Miller</a>
     <a class="hfoot" id="homeMethods" target="_blank" rel="noopener" hidden>Read methodology</a>
   </footer>
@@ -2376,7 +2378,8 @@ html.at-home .app { visibility: hidden; }
   <div class="caption">
     <div class="capbar">
       <button type="button" class="hfoot" id="glossBtn" aria-haspopup="dialog" aria-expanded="false" aria-controls="glossDlg">Glossary</button>
-      <button type="button" class="hfoot nl-open" aria-haspopup="dialog" aria-expanded="false" aria-controls="nlDlg">Weekly newsletter</button>
+      <button type="button" class="hfoot nl-open nl-team" data-nl="team" aria-haspopup="dialog" aria-expanded="false" aria-controls="nlDlg">Weekly Team Newsletter, from $3/mo</button>
+      <button type="button" class="hfoot nl-open nl-free" data-nl="free" aria-haspopup="dialog" aria-expanded="false" aria-controls="nlDlg">Free Weekly League Newsletter</button>
       <a class="hfoot" href="https://github.com/brendanmillerj" target="_blank" rel="noopener">Contact Brendan Miller</a>
     </div>
   </div>
@@ -2425,7 +2428,8 @@ html.at-home .app { visibility: hidden; }
   <section class="simbox" id="simBox" role="dialog" aria-modal="true" aria-label="Pitch Simulation Lab" hidden></section>
 </div>
 
-<!-- Weekly newsletter sign-up (user, 2026-11-15). "Free edition only": a plain HTML form posting the email to Buttondown's
+<!-- Weekly newsletter sign-up (user, 2026-11-15): two buttons open it, "Weekly Team Newsletter, from $3/mo" (gold) and
+     "Free Weekly League Newsletter". The free one: a plain HTML form posting the email to Buttondown's
      embed endpoint (it must be a real form post, never fetch), no tag. A team: Buttondown's plan page
      (?purchase=true&tag=team:<CODE>, the newsletter's codes), then its card form. Both open in a new tab. It sits outside #home and #app, with
      its own small script, so it works over home before the map's data has loaded. -->
@@ -2433,13 +2437,13 @@ html.at-home .app { visibility: hidden; }
 <section class="nldlg" id="nlDlg" role="dialog" aria-modal="true" aria-labelledby="nlTitle" hidden>
   <div class="gd-head"><h2 class="gd-title" id="nlTitle" tabindex="-1">Pitch-omics Weekly</h2><button type="button" class="mtx" id="nlX" aria-label="Close the newsletter sign-up" title="Close (Esc)">×</button></div>
   <form class="nl-body" id="nlForm" action="https://buttondown.com/api/emails/embed-subscribe/pitchomics" method="post" target="_blank">
-    <p class="nl-lede">A weekly email on the pitchers who changed, with charts and plain notes. Pick a team for its own edition, or get the league-wide issue free.</p>
+    <p class="nl-lede" id="nlLede">A weekly email on the pitchers who changed, with charts and plain notes.</p>
     <label class="nl-field" id="nlEmailRow">Email
       <input type="email" name="email" id="nlEmail" required autocomplete="email" placeholder="you@example.com">
     </label>
-    <label class="nl-field">Edition
-      <select id="nlTeam">
-          <option value="">Free edition only</option>
+    <label class="nl-field" id="nlTeamRow">Team
+      <select id="nlTeam" required>
+          <option value="" disabled selected>Choose a team</option>
           <option value="team:AZ">Arizona Diamondbacks</option>
           <option value="team:ATH">Athletics</option>
           <option value="team:ATL">Atlanta Braves</option>
@@ -2488,19 +2492,31 @@ html.at-home .app { visibility: hidden; }
   // directly. That page asks for the email itself. The free edition posts the email here, with no tag.
   var SUBSCRIBE_PAGE = "https://buttondown.com/pitchomics";
   var row = document.getElementById("nlEmailRow"), email = document.getElementById("nlEmail"), go = document.getElementById("nlGo");
+  var teamRow = document.getElementById("nlTeamRow"), title = document.getElementById("nlTitle"), lede = document.getElementById("nlLede");
+  var PRICE = "$4 a month, or $36 a year ($3 a month)";
+  var mode = "free";
   function setNote() {
-    var o = sel.options[sel.selectedIndex], team = !!sel.value;
-    row.hidden = team; email.required = !team; go.textContent = team ? "Continue to Buttondown" : "Subscribe";
+    var team = mode === "team", o = sel.options[sel.selectedIndex];
+    title.textContent = team ? "Weekly Team Newsletter" : "Free Weekly League Newsletter";
+    lede.textContent = team
+      ? "Every week, your team's pitchers who changed, with charts, plus the league-wide issue."
+      : "Every week, the league's pitchers who changed, with charts, free agents and fantasy notes.";
+    teamRow.hidden = !team; sel.required = team;
+    row.hidden = team; email.required = !team;
+    go.textContent = team ? "Continue to Buttondown" : "Subscribe";
     note.textContent = team
-      ? "Next, pick monthly or yearly on Buttondown. The " + o.text + " edition is $4 a month, or $36 a year."
-      : "The free edition is the league-wide issue, with no team section and nothing to pay.";
+      ? (sel.value ? "Next, pick monthly or yearly on Buttondown. The " + o.text + " edition is " + PRICE + "."
+                   : "The team edition is " + PRICE + ". Choose a team to continue.")
+      : "Free, with no team section. Unsubscribe from any email.";
   }
   function show(on, opener) {
     dlg.hidden = !on; scrim.hidden = !on;
-    document.querySelectorAll(".nl-open").forEach(function (b) { b.setAttribute("aria-expanded", String(on)); });
+    document.querySelectorAll(".nl-open").forEach(function (b) { b.setAttribute("aria-expanded", String(on && b === opener)); });
     under.forEach(function (e, i) { if (!e) return; if (on) { was[i] = e.inert; e.inert = true; } else e.inert = !!was[i]; });
-    if (on) { from = opener || null; setNote(); requestAnimationFrame(function () { (sel.value ? sel : email).focus({ preventScroll: true }); }); }
-    else if (from && from.focus) { from.focus({ preventScroll: true }); from = null; }
+    if (on) {
+      from = opener || null; mode = opener && opener.dataset.nl === "team" ? "team" : "free"; setNote();
+      requestAnimationFrame(function () { (mode === "team" ? sel : email).focus({ preventScroll: true }); });
+    } else if (from && from.focus) { from.focus({ preventScroll: true }); from = null; }
   }
   document.querySelectorAll(".nl-open").forEach(function (b) { b.addEventListener("click", function () { show(true, b); }); });
   document.getElementById("nlX").addEventListener("click", function () { show(false); });
@@ -2508,7 +2524,7 @@ html.at-home .app { visibility: hidden; }
   dlg.addEventListener("keydown", function (e) { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); show(false); } });
   sel.addEventListener("change", setNote);
   document.getElementById("nlForm").addEventListener("submit", function (e) {
-    if (sel.value) {   // a team edition: Buttondown's subscribe page, team attached
+    if (mode === "team") {   // a team edition: Buttondown's plan page, team attached (the select is required here)
       e.preventDefault();
       window.open(SUBSCRIBE_PAGE + "?purchase=true&tag=" + sel.value, "_blank", "noopener");
       show(false);

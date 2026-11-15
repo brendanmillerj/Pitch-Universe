@@ -981,16 +981,19 @@ const J = JSON.stringify;
   const nlAt = markup.indexOf('id="nlDlg"'), nl = markup.slice(nlAt, markup.indexOf("</section>", nlAt));
   const nlOpts = [...nl.matchAll(/<option value="team:([A-Z]+)">([^<]+)<\/option>/g)];
   ok(/action="https:\/\/buttondown\.com\/api\/emails\/embed-subscribe\/pitchomics"/.test(nl) && /method="post"/.test(nl) && /target="_blank"/.test(nl)
-    && /<input type="email" name="email"[^>]*required/.test(nl) && /<select id="nlTeam">/.test(nl) && /name="embed" value="1"/.test(nl)
+    && /<input type="email" name="email"[^>]*required/.test(nl) && /<select id="nlTeam"[ >]/.test(nl) && /name="embed" value="1"/.test(nl)
     && /https:\/\/buttondown\.com\/pitchomics"/.test(html.slice(html.indexOf('id="nlDlg"'))) && /\?purchase=true&tag=" \+ sel\.value/.test(html.slice(html.indexOf('id="nlDlg"'))),
     "newsletter: free = a real form post of the email to Buttondown's embed endpoint; a team = its plan page with ?purchase=true&tag=team:<CODE>");
-  ok(/<option value="">Free edition only<\/option>/.test(nl) && nlOpts.length === 30
+  ok(/<option value="" disabled selected>Choose a team<\/option>/.test(nl) && nlOpts.length === 30
     && nlOpts.every(m => run(`TEAM_NAMES[${JSON.stringify(m[1])}]`) === m[2]),
-    "newsletter: Free edition only and all 30 clubs as team:<CODE>, named as the site names them");
+    "newsletter: a Choose a team placeholder and all 30 clubs as team:<CODE>, named as the site names them");
   const homeFoot = markup.slice(markup.indexOf('<footer class="home-foot">'), markup.indexOf("</footer>"));
-  ok(/class="hfoot nl-open"[^>]*>Weekly newsletter</.test(homeFoot) && /class="hfoot nl-open"[^>]*>Weekly newsletter</.test(cap)
-    && cap.indexOf('id="glossBtn"') < cap.indexOf("Weekly newsletter") && cap.indexOf("Weekly newsletter") < cap.indexOf("Contact Brendan Miller"),
-    "newsletter: a Weekly newsletter button on home and under the map (between Glossary and Contact)");
+  const TEAM_LBL = "Weekly Team Newsletter, from $3/mo", FREE_LBL = "Free Weekly League Newsletter";
+  ok([homeFoot, cap].every(x => x.includes('class="hfoot nl-open nl-team" data-nl="team"') && x.includes(TEAM_LBL)
+      && x.includes('class="hfoot nl-open nl-free" data-nl="free"') && x.includes(FREE_LBL)
+      && x.indexOf(TEAM_LBL) < x.indexOf(FREE_LBL) && x.indexOf(FREE_LBL) < x.indexOf("Contact Brendan Miller"))
+    && cap.indexOf('id="glossBtn"') < cap.indexOf(TEAM_LBL),
+    "newsletter: two buttons, team (from $3/mo) then free, on home and under the map, before Contact");
   ok(nlAt > markup.indexOf('id="simBox"') && markup.indexOf('id="nlScrim"') > markup.indexOf('id="simBox"'),
     "newsletter: the pop-up sits outside home and the app, so neither's inert state blocks it");
 
