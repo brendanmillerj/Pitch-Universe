@@ -1351,6 +1351,7 @@ button.hfoot.nl-open[aria-expanded="true"] { background: var(--ink); color: var(
 .nl-body { display: flex; flex-direction: column; gap: 14px; padding: 14px 20px 20px; margin: 0; }
 .nl-lede { margin: 0; font: 400 15px/1.45 var(--font-ui); color: var(--ink2); }
 .nl-field { display: flex; flex-direction: column; gap: 6px; font: 600 14px var(--font-ui); color: var(--ink); }
+.nl-field[hidden] { display: none; }
 .nl-field input, .nl-field select { min-height: 44px; padding: 0 12px; font: 400 16px var(--font-ui); color: var(--ink); background: var(--field);
   border: 1.5px solid var(--ink); border-radius: var(--r); }
 .nl-field input:focus-visible, .nl-field select:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
@@ -2424,20 +2425,20 @@ html.at-home .app { visibility: hidden; }
   <section class="simbox" id="simBox" role="dialog" aria-modal="true" aria-label="Pitch Simulation Lab" hidden></section>
 </div>
 
-<!-- Weekly newsletter sign-up (user, 2026-11-15). A plain HTML form posting to Buttondown's embed endpoint (it must be a
-     real form post, never fetch); it opens in a new tab so the atlas stays where it was. The team edition is the tag
-     team:<CODE>, the newsletter's codes; "Free edition only" sends no tag at all. It sits outside #home and #app, with
+<!-- Weekly newsletter sign-up (user, 2026-11-15). "Free edition only": a plain HTML form posting the email to Buttondown's
+     embed endpoint (it must be a real form post, never fetch), no tag. A team: Buttondown's subscribe page with
+     ?tag=team:<CODE> (the newsletter's codes), where the trial and card form are. Both open in a new tab. It sits outside #home and #app, with
      its own small script, so it works over home before the map's data has loaded. -->
 <div class="tblscrim nlscrim" id="nlScrim" hidden></div>
 <section class="nldlg" id="nlDlg" role="dialog" aria-modal="true" aria-labelledby="nlTitle" hidden>
   <div class="gd-head"><h2 class="gd-title" id="nlTitle" tabindex="-1">Pitch-omics Weekly</h2><button type="button" class="mtx" id="nlX" aria-label="Close the newsletter sign-up" title="Close (Esc)">×</button></div>
   <form class="nl-body" id="nlForm" action="https://buttondown.com/api/emails/embed-subscribe/pitchomics" method="post" target="_blank">
     <p class="nl-lede">A weekly email on the pitchers who changed, with charts and plain notes. Pick a team for its own edition, or get the league-wide issue free.</p>
-    <label class="nl-field">Email
+    <label class="nl-field" id="nlEmailRow">Email
       <input type="email" name="email" id="nlEmail" required autocomplete="email" placeholder="you@example.com">
     </label>
     <label class="nl-field">Edition
-      <select name="tag" id="nlTeam">
+      <select id="nlTeam">
           <option value="">Free edition only</option>
           <option value="team:AZ">Arizona Diamondbacks</option>
           <option value="team:ATH">Athletics</option>
@@ -2473,7 +2474,7 @@ html.at-home .app { visibility: hidden; }
     </label>
     <p class="nl-note" id="nlNote" aria-live="polite">The free edition is the league-wide issue, with no team section and nothing to pay.</p>
     <input type="hidden" name="embed" value="1">
-    <button type="submit" class="hfoot nl-go">Subscribe</button>
+    <button type="submit" class="hfoot nl-go" id="nlGo">Subscribe</button>
     <p class="nl-small">Subscribing opens Buttondown, which runs the mailing list. You can unsubscribe from any email.</p>
   </form>
 </section>
@@ -2482,17 +2483,23 @@ html.at-home .app { visibility: hidden; }
   var dlg = document.getElementById("nlDlg"); if (!dlg) return;
   var scrim = document.getElementById("nlScrim"), sel = document.getElementById("nlTeam"), note = document.getElementById("nlNote");
   var under = [document.getElementById("home"), document.getElementById("app")], was = [], from = null;
+  // A team edition is paid: it goes to Buttondown's own subscribe page with the team as ?tag=team:<CODE>, where the
+  // 7-day trial and the card form are (its Embedded checkout); that page asks for the email itself. The free edition
+  // posts the email here to the embed endpoint, with no tag.
+  var SUBSCRIBE_PAGE = "https://buttondown.com/pitchomics";
+  var row = document.getElementById("nlEmailRow"), email = document.getElementById("nlEmail"), go = document.getElementById("nlGo");
   function setNote() {
-    var o = sel.options[sel.selectedIndex];
-    note.textContent = sel.value
-      ? "The " + o.text + " edition is $5 a month, or pay yearly. Buttondown asks for payment after you subscribe."
+    var o = sel.options[sel.selectedIndex], team = !!sel.value;
+    row.hidden = team; email.required = !team; go.textContent = team ? "Continue to Buttondown" : "Subscribe";
+    note.textContent = team
+      ? "Buttondown asks for your email and card next. The " + o.text + " edition starts with a 7-day free trial, then $5 a month, or pay yearly."
       : "The free edition is the league-wide issue, with no team section and nothing to pay.";
   }
   function show(on, opener) {
     dlg.hidden = !on; scrim.hidden = !on;
     document.querySelectorAll(".nl-open").forEach(function (b) { b.setAttribute("aria-expanded", String(on)); });
     under.forEach(function (e, i) { if (!e) return; if (on) { was[i] = e.inert; e.inert = true; } else e.inert = !!was[i]; });
-    if (on) { from = opener || null; setNote(); requestAnimationFrame(function () { document.getElementById("nlEmail").focus({ preventScroll: true }); }); }
+    if (on) { from = opener || null; setNote(); requestAnimationFrame(function () { (sel.value ? sel : email).focus({ preventScroll: true }); }); }
     else if (from && from.focus) { from.focus({ preventScroll: true }); from = null; }
   }
   document.querySelectorAll(".nl-open").forEach(function (b) { b.addEventListener("click", function () { show(true, b); }); });
@@ -2500,9 +2507,14 @@ html.at-home .app { visibility: hidden; }
   scrim.addEventListener("click", function () { show(false); });
   dlg.addEventListener("keydown", function (e) { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); show(false); } });
   sel.addEventListener("change", setNote);
-  document.getElementById("nlForm").addEventListener("submit", function () {
-    sel.disabled = !sel.value;   // the free edition: a disabled field is left out of the post, so no empty tag
-    setTimeout(function () { sel.disabled = false; show(false); }, 0);
+  document.getElementById("nlForm").addEventListener("submit", function (e) {
+    if (sel.value) {   // a team edition: Buttondown's subscribe page, team attached
+      e.preventDefault();
+      window.open(SUBSCRIBE_PAGE + "?tag=" + sel.value, "_blank", "noopener");
+      show(false);
+      return;
+    }
+    setTimeout(function () { show(false); }, 0);   // the free edition: the form posts the email, no tag
   });
 })();
 </script>
