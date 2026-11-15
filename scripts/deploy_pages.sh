@@ -45,8 +45,9 @@ fi
 # build the folder
 SCRATCH="${TMPDIR:-/tmp}"; [ -d "/scratch1/$USER" ] && SCRATCH="/scratch1/$USER/tmp"
 mkdir -p "$SCRATCH"
-OUT="$(mktemp -d "$SCRATCH/pitchomics-pages.XXXXXX")"
-trap 'rm -rf "$OUT"' EXIT
+STAGE="$(mktemp -d "$SCRATCH/pitchomics-pages.XXXXXX")"   # STAGE/public = the site; STAGE/functions = its server code
+OUT="$STAGE/public"; mkdir -p "$OUT"
+trap 'rm -rf "$STAGE"' EXIT
 cd "$REPO"
 # PITCHOMICS_PAYWALL=1 moves the paid Evolution data under p/ (deploy_space.py --premium). Leave it off until the page
 # fetches p/ (ensurePremium) and functions/p/_middleware.js guards it, or Evolution would vanish for everyone.
@@ -60,10 +61,20 @@ cat > "$OUT/_headers" <<'EOF'
   Cache-Control: no-cache
 /index.html
   Cache-Control: no-cache
+/p/*
+  Cache-Control: private, no-store
 EOF
+# the paywall's server code (pages/functions: sign-in, /api/me, the /p/ guard). PITCHOMICS_FUNCTIONS=1 ships it
+# without the paid split (to try the sign-in live first); PITCHOMICS_PAYWALL=1 ships both. Its secrets must be set
+# in Cloudflare first (wrangler pages secret put SESSION_SECRET / BUTTONDOWN_API_KEY / RESEND_API_KEY).
+if [ "${PITCHOMICS_FUNCTIONS:-0}" = "1" ] || [ -n "$PREMIUM" ]; then
+  cp -r "$REPO/pages/functions" "$STAGE/functions"
+  cp "$REPO/pages/_routes.json" "$OUT/_routes.json"
+  echo "  with the paywall's server code (functions/)"
+fi
 if [ "${1:-}" = "--build-only" ]; then
   trap - EXIT
-  echo "built $OUT (not deployed)"
+  echo "built $STAGE (not deployed)"
   exit 0
 fi
 
@@ -81,6 +92,7 @@ if ! $WRANGLER pages project list 2>/dev/null | grep -qw "$PROJECT"; then
   echo "creating the Cloudflare Pages project $PROJECT"
   $WRANGLER pages project create "$PROJECT" --production-branch main
 fi
-$WRANGLER pages deploy "$OUT" --project-name "$PROJECT" --branch main \
-  --commit-hash "$(git rev-parse --short HEAD)" --commit-message "Atlas $(git rev-parse --short HEAD)" --commit-dirty=true
+cd "$STAGE"   # wrangler takes functions/ from the folder it runs in
+$WRANGLER pages deploy public --project-name "$PROJECT" --branch main \
+  --commit-hash "$(git -C "$REPO" rev-parse --short HEAD)" --commit-message "Atlas $(git -C "$REPO" rev-parse --short HEAD)" --commit-dirty=true
 echo "live at https://$PROJECT.pages.dev (and https://pitchomics.com once the domain is attached)"
