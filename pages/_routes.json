@@ -1,5 +1,9 @@
 {
   "version": 1,
-  "include": ["/api/*", "/p/*"],
+  "include": [
+    "/api/*",
+    "/p/*",
+    "/data/*"
+  ],
   "exclude": []
 }
