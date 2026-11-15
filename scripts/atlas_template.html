@@ -1775,7 +1775,9 @@ html.at-home, html.at-home body { overflow: hidden; }
 .hstrip-lbl { flex: 0 0 auto; font: 700 18px/1.15 var(--font-serif); color: var(--ink); }
 .hstrip-chips { flex: 1 1 auto; gap: 6px; }
 .hstrip-chips .hchip { padding: 0 11px; }
-.home-tag { margin: 30px 0 0; text-align: center; font: 400 20px/1.4 var(--font-ui); color: var(--map-ink); }
+/* the caption at the panel's foot (user, 2026-11-14): a big white serif line under a short white rule */
+.home-tag { margin: 34px 0 0; text-align: center; font: 600 28px/1.25 var(--font-serif); font-optical-sizing: auto; color: #fff; text-wrap: balance; }
+.home-tag::before { content: ""; display: block; width: 56px; height: 3px; margin: 0 auto 16px; background: #fff; border-radius: 2px; }
 .home-wait { margin: 10px 0 0; text-align: center; font: 500 15px var(--font-ui); color: var(--map-ink2); }
 .home-wait[hidden] { display: none; }
 .home-foot { flex: none; display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px; margin-top: auto; padding: 48px 24px 24px; }
@@ -1801,7 +1803,7 @@ html.at-home, html.at-home body { overflow: hidden; }
   .home-title { font-size: 46px; }
   .home-panel { margin: 14px 12px 0; padding: 22px 14px 24px; }
   .hcard h2 { font-size: 26px; }
-  .home-tag { font-size: 17px; }
+  .home-tag { font-size: 22px; }
   .home-foot { justify-content: center; padding: 32px 16px 20px; }
   /* the leaderboard: a sheet; its controls scroll away inside it, so the rows get most of the screen */
   .mtable, .app .mtable { inset: 4vh 0 0 0; border-radius: var(--r-lg) var(--r-lg) 0 0; overflow-y: auto; }
@@ -2035,7 +2037,7 @@ html.at-home .app { visibility: hidden; }
         <button type="button" class="hchip" data-home="clusters" data-v="FS"><i class="psw" style="background:#3bacac"></i>Splitter</button>
       </div>
     </div>
-    <p class="home-tag">Every pitch, mapped by what it is: shape, angles and delivery.</p>
+    <p class="home-tag">Every MLB and Triple-A pitch, on one map.</p>
     <p class="home-wait" id="homeWait" role="status" aria-live="polite" hidden>Loading the pitch map…</p>
   </div></div>
   <footer class="home-foot">
