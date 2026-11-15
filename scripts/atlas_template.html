@@ -1336,6 +1336,21 @@ button.hfoot { font: 600 15px var(--font-ui); cursor: pointer; }
 .glossdlg .legendkey { margin: 0 0 12px; font-size: 14px; color: var(--ink); gap: 8px 20px; }
 .glossdlg .source { font-size: 13px; color: var(--ink2); }
 .glossdlg .gloss-in { border-top: 0; padding-top: 0; }
+/* the Weekly newsletter sign-up pop-up (user, 2026-11-15): over home (z 90), the map, the card and the lab */
+.nlscrim { z-index: 95; }
+.nldlg { position: fixed; z-index: 96; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(460px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px); overflow-y: auto; overscroll-behavior: contain;
+  background: var(--field); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35); }
+.nldlg[hidden] { display: none; }
+.nl-body { display: flex; flex-direction: column; gap: 14px; padding: 14px 20px 20px; margin: 0; }
+.nl-lede { margin: 0; font: 400 15px/1.45 var(--font-ui); color: var(--ink2); }
+.nl-field { display: flex; flex-direction: column; gap: 6px; font: 600 14px var(--font-ui); color: var(--ink); }
+.nl-field input, .nl-field select { min-height: 44px; padding: 0 12px; font: 400 16px var(--font-ui); color: var(--ink); background: var(--field);
+  border: 1.5px solid var(--ink); border-radius: var(--r); }
+.nl-field input:focus-visible, .nl-field select:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.nl-note { margin: 0; min-height: 2.8em; font: 400 14px/1.4 var(--font-ui); color: var(--ink2); }
+.nl-go { align-self: flex-start; }
+.nl-small { margin: 0; font: 400 13px/1.4 var(--font-ui); color: var(--muted); }
 @media (max-width: 719px) { .glossdlg { inset: 4vh 0 0 0; border-radius: var(--r-lg) var(--r-lg) 0 0; } .glossdlg .howto { flex-direction: column; align-items: flex-start; } .glossdlg .gloss-in dl { columns: 1; } }
 .mt-key b { font-weight: 600; color: var(--ink); }
 .mt-kp { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); }
@@ -2088,6 +2103,7 @@ html.at-home .app { visibility: hidden; }
     <p class="home-wait" id="homeWait" role="status" aria-live="polite" hidden>Loading the pitch map…</p>
   </div></div>
   <footer class="home-foot">
+    <button type="button" class="hfoot nl-open" aria-haspopup="dialog" aria-expanded="false" aria-controls="nlDlg">Weekly newsletter</button>
     <a class="hfoot" href="https://github.com/brendanmillerj" target="_blank" rel="noopener">Contact Brendan Miller</a>
     <a class="hfoot" id="homeMethods" target="_blank" rel="noopener" hidden>Read methodology</a>
   </footer>
@@ -2353,6 +2369,7 @@ html.at-home .app { visibility: hidden; }
   <div class="caption">
     <div class="capbar">
       <button type="button" class="hfoot" id="glossBtn" aria-haspopup="dialog" aria-expanded="false" aria-controls="glossDlg">Glossary</button>
+      <button type="button" class="hfoot nl-open" aria-haspopup="dialog" aria-expanded="false" aria-controls="nlDlg">Weekly newsletter</button>
       <a class="hfoot" href="https://github.com/brendanmillerj" target="_blank" rel="noopener">Contact Brendan Miller</a>
     </div>
   </div>
@@ -2400,6 +2417,89 @@ html.at-home .app { visibility: hidden; }
   <div class="simscrim" id="simScrim" hidden></div>
   <section class="simbox" id="simBox" role="dialog" aria-modal="true" aria-label="Pitch Simulation Lab" hidden></section>
 </div>
+
+<!-- Weekly newsletter sign-up (user, 2026-11-15). A plain HTML form posting to Buttondown's embed endpoint (it must be a
+     real form post, never fetch); it opens in a new tab so the atlas stays where it was. The team edition is the tag
+     team:<CODE>, the newsletter's codes; "Free edition only" sends no tag at all. It sits outside #home and #app, with
+     its own small script, so it works over home before the map's data has loaded. -->
+<div class="tblscrim nlscrim" id="nlScrim" hidden></div>
+<section class="nldlg" id="nlDlg" role="dialog" aria-modal="true" aria-labelledby="nlTitle" hidden>
+  <div class="gd-head"><h2 class="gd-title" id="nlTitle" tabindex="-1">Pitch-omics Weekly</h2><button type="button" class="mtx" id="nlX" aria-label="Close the newsletter sign-up" title="Close (Esc)">×</button></div>
+  <form class="nl-body" id="nlForm" action="https://buttondown.com/api/emails/embed-subscribe/pitchomics" method="post" target="_blank">
+    <p class="nl-lede">A weekly email on the pitchers who changed, with charts and plain notes. Pick a team for its own edition, or get the league-wide issue free.</p>
+    <label class="nl-field">Email
+      <input type="email" name="email" id="nlEmail" required autocomplete="email" placeholder="you@example.com">
+    </label>
+    <label class="nl-field">Edition
+      <select name="tag" id="nlTeam">
+          <option value="">Free edition only</option>
+          <option value="team:AZ">Arizona Diamondbacks</option>
+          <option value="team:ATH">Athletics</option>
+          <option value="team:ATL">Atlanta Braves</option>
+          <option value="team:BAL">Baltimore Orioles</option>
+          <option value="team:BOS">Boston Red Sox</option>
+          <option value="team:CHC">Chicago Cubs</option>
+          <option value="team:CWS">Chicago White Sox</option>
+          <option value="team:CIN">Cincinnati Reds</option>
+          <option value="team:CLE">Cleveland Guardians</option>
+          <option value="team:COL">Colorado Rockies</option>
+          <option value="team:DET">Detroit Tigers</option>
+          <option value="team:HOU">Houston Astros</option>
+          <option value="team:KC">Kansas City Royals</option>
+          <option value="team:LAA">Los Angeles Angels</option>
+          <option value="team:LAD">Los Angeles Dodgers</option>
+          <option value="team:MIA">Miami Marlins</option>
+          <option value="team:MIL">Milwaukee Brewers</option>
+          <option value="team:MIN">Minnesota Twins</option>
+          <option value="team:NYM">New York Mets</option>
+          <option value="team:NYY">New York Yankees</option>
+          <option value="team:PHI">Philadelphia Phillies</option>
+          <option value="team:PIT">Pittsburgh Pirates</option>
+          <option value="team:SD">San Diego Padres</option>
+          <option value="team:SF">San Francisco Giants</option>
+          <option value="team:SEA">Seattle Mariners</option>
+          <option value="team:STL">St. Louis Cardinals</option>
+          <option value="team:TB">Tampa Bay Rays</option>
+          <option value="team:TEX">Texas Rangers</option>
+          <option value="team:TOR">Toronto Blue Jays</option>
+          <option value="team:WSH">Washington Nationals</option>
+      </select>
+    </label>
+    <p class="nl-note" id="nlNote" aria-live="polite">The free edition is the league-wide issue, with no team section and nothing to pay.</p>
+    <input type="hidden" name="embed" value="1">
+    <button type="submit" class="hfoot nl-go">Subscribe</button>
+    <p class="nl-small">Subscribing opens Buttondown, which runs the mailing list. You can unsubscribe from any email.</p>
+  </form>
+</section>
+<script>
+(function () {
+  var dlg = document.getElementById("nlDlg"); if (!dlg) return;
+  var scrim = document.getElementById("nlScrim"), sel = document.getElementById("nlTeam"), note = document.getElementById("nlNote");
+  var under = [document.getElementById("home"), document.getElementById("app")], was = [], from = null;
+  function setNote() {
+    var o = sel.options[sel.selectedIndex];
+    note.textContent = sel.value
+      ? "The " + o.text + " edition is $5 a month, or pay yearly. Buttondown asks for payment after you subscribe."
+      : "The free edition is the league-wide issue, with no team section and nothing to pay.";
+  }
+  function show(on, opener) {
+    dlg.hidden = !on; scrim.hidden = !on;
+    document.querySelectorAll(".nl-open").forEach(function (b) { b.setAttribute("aria-expanded", String(on)); });
+    under.forEach(function (e, i) { if (!e) return; if (on) { was[i] = e.inert; e.inert = true; } else e.inert = !!was[i]; });
+    if (on) { from = opener || null; setNote(); requestAnimationFrame(function () { document.getElementById("nlEmail").focus({ preventScroll: true }); }); }
+    else if (from && from.focus) { from.focus({ preventScroll: true }); from = null; }
+  }
+  document.querySelectorAll(".nl-open").forEach(function (b) { b.addEventListener("click", function () { show(true, b); }); });
+  document.getElementById("nlX").addEventListener("click", function () { show(false); });
+  scrim.addEventListener("click", function () { show(false); });
+  dlg.addEventListener("keydown", function (e) { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); show(false); } });
+  sel.addEventListener("change", setNote);
+  document.getElementById("nlForm").addEventListener("submit", function () {
+    sel.disabled = !sel.value;   // the free edition: a disabled field is left out of the post, so no empty tag
+    setTimeout(function () { sel.disabled = false; show(false); }, 0);
+  });
+})();
+</script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.34.0/plotly.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>

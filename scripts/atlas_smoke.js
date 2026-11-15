@@ -975,6 +975,24 @@ const J = JSON.stringify;
   getEl("#glossScrim")._h.click[0]({}); await tick();
   ok(getEl("#glossDlg").hidden === true, "…and a click outside closes it");
 
+  // ---- Weekly newsletter sign-up (user, 2026-11-15): a plain form post to Buttondown; team = tag team:<CODE>, the
+  // newsletter's codes; "Free edition only" sends no tag. Its own small script (outside the page script) is tested in
+  // a real browser; here the markup.
+  const nlAt = markup.indexOf('id="nlDlg"'), nl = markup.slice(nlAt, markup.indexOf("</section>", nlAt));
+  const nlOpts = [...nl.matchAll(/<option value="team:([A-Z]+)">([^<]+)<\/option>/g)];
+  ok(/action="https:\/\/buttondown\.com\/api\/emails\/embed-subscribe\/pitchomics"/.test(nl) && /method="post"/.test(nl) && /target="_blank"/.test(nl)
+    && /<input type="email" name="email"[^>]*required/.test(nl) && /<select name="tag"/.test(nl) && /name="embed" value="1"/.test(nl),
+    "newsletter: a real form post to Buttondown's embed endpoint, with email and tag");
+  ok(/<option value="">Free edition only<\/option>/.test(nl) && nlOpts.length === 30
+    && nlOpts.every(m => run(`TEAM_NAMES[${JSON.stringify(m[1])}]`) === m[2]),
+    "newsletter: Free edition only (no tag) and all 30 clubs as team:<CODE>, named as the site names them");
+  const homeFoot = markup.slice(markup.indexOf('<footer class="home-foot">'), markup.indexOf("</footer>"));
+  ok(/class="hfoot nl-open"[^>]*>Weekly newsletter</.test(homeFoot) && /class="hfoot nl-open"[^>]*>Weekly newsletter</.test(cap)
+    && cap.indexOf('id="glossBtn"') < cap.indexOf("Weekly newsletter") && cap.indexOf("Weekly newsletter") < cap.indexOf("Contact Brendan Miller"),
+    "newsletter: a Weekly newsletter button on home and under the map (between Glossary and Contact)");
+  ok(nlAt > markup.indexOf('id="simBox"') && markup.indexOf('id="nlScrim"') > markup.indexOf('id="simBox"'),
+    "newsletter: the pop-up sits outside home and the app, so neither's inert state blocks it");
+
   // ---- color menu: fixed beside its button on a wide screen
   getEl("#colorMenu").hidden = true;
   getEl("#colorBtn")._h.click[0]({}); await tick();
