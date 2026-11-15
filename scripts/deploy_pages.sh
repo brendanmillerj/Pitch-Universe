@@ -49,9 +49,10 @@ STAGE="$(mktemp -d "$SCRATCH/pitchomics-pages.XXXXXX")"   # STAGE/public = the s
 OUT="$STAGE/public"; mkdir -p "$OUT"
 trap 'rm -rf "$STAGE"' EXIT
 cd "$REPO"
-# PITCHOMICS_PAYWALL=1 moves the paid Evolution data under p/ (deploy_space.py --premium). Leave it off until the page
-# fetches p/ (ensurePremium) and functions/p/_middleware.js guards it, or Evolution would vanish for everyone.
-PREMIUM=""; [ "${PITCHOMICS_PAYWALL:-0}" = "1" ] && PREMIUM="--premium"
+# The paywall is live (user, 2026-11-15), so it is the default: the paid Evolution data goes under p/
+# (deploy_space.py --premium) and the server code ships with it. PITCHOMICS_PAYWALL=0 deploys without it, which
+# puts Evolution back in the public files for everyone.
+PREMIUM=""; [ "${PITCHOMICS_PAYWALL:-1}" = "1" ] && PREMIUM="--premium"
 "$PY" scripts/deploy_space.py --dry-run --out "$OUT" $PREMIUM
 # caching: data files carry a content hash in their names, so browsers may keep them; the page itself is always fresh
 cat > "$OUT/_headers" <<'EOF'
