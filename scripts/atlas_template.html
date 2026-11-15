@@ -1978,9 +1978,6 @@ html.at-home .app { visibility: hidden; }
 <section class="home" id="home" aria-label="Pitch-omics home" tabindex="-1">
   <div class="home-mast"><h1 class="home-title">Pitch-omics</h1></div>
   <div class="home-panel"><div class="home-in">
-    <div class="home-lvl" id="homeLvl" role="radiogroup" aria-label="Level">
-      <input type="radio" name="homeLvl" id="homeMLB" value="mlb" checked><label for="homeMLB">MLB</label><input type="radio" name="homeLvl" id="homeAAA" value="aaa"><label for="homeAAA">Triple-A</label>
-    </div>
     <div class="home-cards">
       <section class="hcard" aria-labelledby="hSearchT">
         <h2 id="hSearchT">Search player name</h2>
@@ -2037,7 +2034,7 @@ html.at-home .app { visibility: hidden; }
         <button type="button" class="hchip" data-home="clusters" data-v="FS"><i class="psw" style="background:#3bacac"></i>Splitter</button>
       </div>
     </div>
-    <p class="home-tag">Find which pitchers changed the most, what makes them unique, and who they share features with.</p>
+    <p class="home-tag">Find which MLB and AAA pitchers changed the most, what makes them unique, and who they share features with.</p>
     <p class="home-wait" id="homeWait" role="status" aria-live="polite" hidden>Loading the pitch map…</p>
   </div></div>
   <footer class="home-foot">
@@ -2223,7 +2220,8 @@ html.at-home .app { visibility: hidden; }
         </div>
         <div id="plot" role="img" aria-label="The pitch map: each dot is one pitcher's pitch in one season. To reach a pitcher by keyboard, use the search or the Pitchers list."></div>
       <!-- Pitchers and Groups, bottom right of the map: each opens its panel beside the map -->
-      <div class="panelnav mappanels" id="panelNav" role="group" aria-label="Panels beside the map">
+      <div class="panelnav mappanels" id="panelNav" role="group" aria-label="Big Evolvers and the panels beside the map">
+        <button type="button" class="ubtn" id="evoBtn" title="The pitches that changed most since last season: the Uniqueness leaderboard sorted by Evolution">Big Evolvers</button>
         <button type="button" class="ubtn" id="pnPitchers" data-panel="pitchers" aria-pressed="false">Pitchers</button>
         <button type="button" class="ubtn" id="pnGroups" data-panel="groups" aria-pressed="false">Groups</button>
       </div>
@@ -2300,7 +2298,6 @@ html.at-home .app { visibility: hidden; }
   <!-- under the map, bottom right (user, 2026-11-14): the Glossary (how to read the map, the key, the data, the terms) and Contact -->
   <div class="caption">
     <div class="capbar">
-      <button type="button" class="hfoot" id="evoBtn" title="The pitches that changed most since last season: the Uniqueness leaderboard sorted by Evolution">Big Evolvers</button>
       <button type="button" class="hfoot" id="glossBtn" aria-haspopup="dialog" aria-expanded="false" aria-controls="glossDlg">Glossary</button>
       <a class="hfoot" href="https://github.com/brendanmillerj" target="_blank" rel="noopener">Contact Brendan Miller</a>
     </div>
@@ -7764,7 +7761,7 @@ function suggestBox(inp, list, onPick, msg) {
 // season), leaderboards (the measure table, sorted), a pitch to simulate, and a way onto every map. It is a Back/Forward
 // step: a bare address opens on it (step 0); the title in the map's header comes back to it.
 const METHODS_URL = "";   // the paper, once it is out: set this and "Read methodology" appears beside Contact
-const homeLevel = () => { const a = document.getElementById("homeAAA"); return a && a.checked && LEVELS.includes("aaa") ? "aaa" : LEVELS[0]; };
+const homeLevel = () => LEVELS[0];   // home opens on MLB (user, 2026-11-14: no level switch there); a search finds Triple-A names too
 let homeBoxes = [];
 function showHome(on) {
   on = !!on;
@@ -7830,7 +7827,6 @@ async function homeAct(el) {
 // what depends on the level chosen at the top: no xERA for Triple-A (Savant publishes none). fromMap: home opened
 // from the map, so the choice starts at the map's level
 function syncHome(fromMap) {
-  if (fromMap) { const lv = document.getElementById(state.level === "aaa" ? "homeAAA" : "homeMLB"); if (lv) lv.checked = true; }
   const aaa = homeLevel() === "aaa";
   $("#homeBoards").querySelectorAll("[data-mlb-only]").forEach(b => { b.hidden = aaa; });
   paintHomeChanges();
@@ -7846,9 +7842,7 @@ function paintHomeChanges() {
 }
 // home's dynamic parts and wiring, once at boot
 function buildHome() {
-  $("#homeLvl").hidden = !LEVELS.includes("aaa");
   if (METHODS_URL) { const m = $("#homeMethods"); m.href = METHODS_URL; m.hidden = false; }
-  document.getElementsByName("homeLvl").forEach(x => x.addEventListener("change", syncHome));
   $("#home").addEventListener("click", e => { const b = e.target.closest("button[data-home]"); if (b && window.__homeReady) homeAct(b); });
   ["#homeFind", "#homeSimFind"].forEach(f => $(f).addEventListener("submit", e => { e.preventDefault(); if (window.__homeReady) homeAct(e.currentTarget); }));
   homeBoxes = [suggestBox($("#homeSearch"), $("#homeSugg"), () => homeAct($("#homeFind")), $("#homeSearchMsg")),

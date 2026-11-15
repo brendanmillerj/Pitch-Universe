@@ -186,9 +186,7 @@ const J = JSON.stringify;
   const chgBtns = [...chgHTML.matchAll(/data-home="chg" data-pid="(\d+)" data-season="(\d+)" data-pt="(\w+)" data-level="mlb" title="([^"]+)"[^>]*>([^<]+)</g)];
   ok(getEl("#homeChg").hidden === false && getEl("#homeChgLbl").textContent === `Biggest changes since ${run("D.home.from")}` && chgBtns.length === chgList.length
     && chgBtns.every((m, k) => +m[1] === chgList[k].pitcher && m[5] === run(`esc(${J(chgList[k].name)})`)), `five name chips under "${getEl("#homeChgLbl").textContent}", each with what changed as its tooltip`);
-  getEl("#homeAAA").checked = true; run("syncHome()");
-  ok(getEl("#homeChg").hidden === !run("(D.home.changes.aaa || []).length") && (getEl("#homeChg").hidden || /data-level="aaa"/.test(getEl("#homeChgChips").innerHTML)), "Triple-A at the top: its own list (or none)");
-  getEl("#homeAAA").checked = false; run("syncHome()");
+  ok(!/id="homeLvl"|id="homeAAA"/.test(markup) && run("homeLevel()") === "mlb", "no MLB | Triple-A switch on home (user, 2026-11-14): home opens on MLB");
   const chg0 = chgList[0], chg0row = run(`tRow(${chg0.pitcher}, ${chg0.season}, ${J(chg0.pt)}, "mlb")`);
   ok(Number.isInteger(chg0row), "the first change is a pitch on the map");
   // the simulate card's pitch: the top change (or, before that list, the most unique pitch), on its own clock
@@ -239,12 +237,6 @@ const J = JSON.stringify;
   ok(run("state.simOpen") && run("T.name[state.sel]") === hName, "…his Pitch Simulation Lab");
   run("closeSim(true)"); await tick(); await back(); await back();
   ok(run("state.home") === true && run("NAV.idx") === 0, "Back, Back: home");
-  if (run(`LEVELS.includes("aaa")`)) {
-    getEl("#homeAAA").checked = true;
-    await homeStep({ home: "map", v: "all" }, "All pitches at Triple-A");
-    ok(run("state.level") === "aaa" && run("hashFor()") === "#aaa/all", "…the Triple-A map");
-    getEl("#homeAAA").checked = false; await back();
-  }
   // the header's title comes back home, keeping the map for Back
   await homeStep({ home: "clusters", v: "CU" }, "the Curveball chip");
   getEl("#homeLink")._h.click[0]({ preventDefault() {} }); await tick();
@@ -865,7 +857,8 @@ const J = JSON.stringify;
   ok(nEvo > 1000 && nFirst === 0, `Evolution for ${nEvo} pitches; none in the first season (nothing to compare)`);
   getEl("#evoBtn")._h.click[0]({}); await tick();
   ok(run("state.tblGroup") === "Uniqueness" && run("state.tblSort.key") === "t:evo" && run("state.tblSort.dir") === -1 && run("state.view") === "all" && run("state.seasons.size") === 1 && getEl("#mTable").hidden === false,
-    "Big Evolvers (bottom right) opens the Uniqueness board on All pitches, the latest season, biggest movers first");
+    "Big Evolvers (bottom right of the map) opens the Uniqueness board on All pitches, the latest season, biggest movers first");
+  ok(markup.indexOf('id="evoBtn"') > markup.indexOf('id="panelNav"') && markup.indexOf('id="evoBtn"') < markup.indexOf('id="pnPitchers"'), "Big Evolvers sits on the map's bottom right, beside Pitchers and Groups");
   const evRows = [...getEl("#mtBody").innerHTML.matchAll(/<tr data-r="(\d+)"/g)].map(m => +m[1]);
   ok(evRows.length > 50 && run(`${J(evRows.slice(0, 40))}.every((r, k, a) => k === 0 || !isNum(T.evo[r]) || T.evo[a[k - 1]] >= T.evo[r])`), "…sorted by Evolution, largest first");
   run("closeTable()"); await tick();
