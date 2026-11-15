@@ -48,7 +48,10 @@ mkdir -p "$SCRATCH"
 OUT="$(mktemp -d "$SCRATCH/pitchomics-pages.XXXXXX")"
 trap 'rm -rf "$OUT"' EXIT
 cd "$REPO"
-"$PY" scripts/deploy_space.py --dry-run --out "$OUT"
+# PITCHOMICS_PAYWALL=1 moves the paid Evolution data under p/ (deploy_space.py --premium). Leave it off until the page
+# fetches p/ (ensurePremium) and functions/p/_middleware.js guards it, or Evolution would vanish for everyone.
+PREMIUM=""; [ "${PITCHOMICS_PAYWALL:-0}" = "1" ] && PREMIUM="--premium"
+"$PY" scripts/deploy_space.py --dry-run --out "$OUT" $PREMIUM
 # caching: data files carry a content hash in their names, so browsers may keep them; the page itself is always fresh
 cat > "$OUT/_headers" <<'EOF'
 /data/*

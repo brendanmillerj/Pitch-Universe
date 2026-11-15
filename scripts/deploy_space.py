@@ -122,11 +122,28 @@ LOADER = """<div id="atlasLoading" style="position:fixed;inset:0;display:grid;pl
 """
 
 
-def split_data(page: str) -> tuple[str, dict[str, bytes]]:
+PREMIUM_DIR = "p"   # served only to signed-in subscribers by the Cloudflare Pages middleware (functions/p/_middleware.js)
+
+
+def split_premium(main: dict, part: dict, tag: str) -> tuple[str, dict]:
+    """The paid Evolution data (user, 2026-11-15): the `evo` column of every pitch row and the midseason changes
+    (D.mid). Cut out of the public files into one file under p/, which Cloudflare serves only with a valid
+    subscriber cookie. `evo` comes back per file in row order ("main" = the main file's rows, "aaa" = the Triple-A
+    file's), so the page can put it back beside whichever rows it has loaded. Returns (path, object)."""
+    evo = {"main": main["types"].pop("evo")}
+    if part and "evo" in part.get("types", {}):
+        evo["aaa"] = part["types"].pop("evo")
+    base = f"{PREMIUM_DIR}/atlas-{tag}-evo"
+    return base, {"evo": evo, "mid": main.pop("mid", None)}
+
+
+def split_data(page: str, premium: bool = False) -> tuple[str, dict[str, bytes]]:
     """Lift the inline JSON out of the page into gzipped data files (see the module docstring).
 
     Returns the page (literal replaced by null, script made inert, loader added) and {relative path: bytes}.
     Files are named by content hash so a redeploy never serves a stale cached data file with a new page.
+    premium: the paid Evolution data goes to p/ (split_premium) instead of the public files; `main.lazy_premium`
+    names it. Off by default, so the output is unchanged until the page knows how to fetch it.
     """
     m = DATA_RE.search(page)
     if not m:
@@ -135,6 +152,10 @@ def split_data(page: str) -> tuple[str, dict[str, bytes]]:
     tag = hashlib.sha256(m.group(1).encode()).hexdigest()[:10]
     main, part = split_level(data, "aaa")
     files = {}
+    if premium:
+        base, obj = split_premium(main, part, tag)
+        files[base] = obj
+        main["lazy_premium"] = base
     if "mid" in main:   # the midseason changes: their own file, fetched in the background (the page's ensureMid)
         base = f"data/atlas-{tag}-mid"
         files[base] = {"mid": main.pop("mid")}
@@ -160,13 +181,16 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--out", help="write the deployable folder here (default: a temp dir)")
+    ap.add_argument("--premium", action="store_true",
+                    help="put the paid Evolution data (evo column + midseason changes) under p/ for the paywall")
     a = ap.parse_args()
 
-    page, files = split_data(standalone(SRC.read_text(encoding="utf-8")))
+    page, files = split_data(standalone(SRC.read_text(encoding="utf-8")), premium=a.premium)
     files["index.html"] = page.encode("utf-8")
     out = Path(a.out) if a.out else Path(tempfile.mkdtemp(prefix="atlas-space-"))
-    if (out / "data").exists():
-        shutil.rmtree(out / "data")
+    for sub in ("data", PREMIUM_DIR):
+        if (out / sub).exists():
+            shutil.rmtree(out / sub)
     for rel, body in files.items():
         p = out / rel
         p.parent.mkdir(parents=True, exist_ok=True)
