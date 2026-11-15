@@ -6,7 +6,7 @@ One dot = one pitcher-season's version of one pitch (2024-2026).
   <type> universe    one t-SNE map per pitch type, fit on that type's rows alone
   (maps, comps and uniqueness all use the 15 pitch-identity measures, profile_embed.IDENTITY_BLOCKS:
    shape, derived and delivery without near-duplicates; location, scatter and usage are not part of
-   "similar" -- analysis/umap_benchmark.md)
+   "similar")
   comps              10 nearest DISTINCT other pitchers in the PCA space each map
                      is drawn from (not the 2D map), any season
 
@@ -30,7 +30,6 @@ import json
 import numpy as np
 import pandas as pd
 
-from comps import other_pitcher_neighbours
 from mlbpitch import paths, profiles, store
 from profile_embed import (IDENTITY_BLOCKS, TSNE_PERPLEXITY, TYPE_BLOCKS, block_scale, embed,
                            tsne_layout, zscore)
@@ -60,6 +59,34 @@ EVO_BLOCKS = {b: [c for c in cs if c not in ("spin_sin", "spin_cos")] for b, cs 
 EVO_FEATURES = [c for cs in EVO_BLOCKS.values() for c in cs]
 LAYOUT_META = paths.META / f"atlas_layout_{RANGE}.json"   # how the cached layout was made; a restart needs a match
 EMBEDS = {}        # (map, dims) -> (openTSNE embedding fitted this run, its coordinates' mean as stored)
+
+
+def other_pitcher_neighbours(P, pid, k, pool=None):
+    """For each row: indices/distances of its k nearest DISTINCT other pitchers.
+
+    `pool` restricts candidates (e.g. same pitch type). A pitcher is represented
+    by whichever of their halves is nearest.
+    """
+    from sklearn.neighbors import NearestNeighbors
+
+    rows = np.arange(len(P)) if pool is None else pool
+    nn = NearestNeighbors(n_neighbors=min(len(rows), 8 * k)).fit(P[rows])
+    dist, idx = nn.kneighbors(P[rows])
+    out_i = np.full((len(rows), k), -1)
+    out_d = np.full((len(rows), k), np.nan)
+    for r, (di, ii) in enumerate(zip(dist, idx)):
+        seen = {pid[rows[r]]}
+        j = 0
+        for d, i in zip(di, ii):
+            p = pid[rows[i]]
+            if p in seen:
+                continue
+            seen.add(p)
+            out_i[r, j], out_d[r, j] = rows[i], d
+            j += 1
+            if j == k:
+                break
+    return out_i, out_d
 
 
 def tsne_place(key, Q):
@@ -424,7 +451,7 @@ def build_type_space(types, prev=None):
 
 
 # -------------------------------------------------------------------- export
-LQ_K = 10   # neighbourhood size for "true neighbours kept", as in analysis/umap_benchmark.md (Table 3)
+LQ_K = 10   # neighbourhood size for "true neighbours kept"
 
 
 def layout_quality(types, space):

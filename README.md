@@ -12,8 +12,7 @@ Live atlas: **[pitchomics.com](https://pitchomics.com)**
 | | |
 |---|---|
 | [`src/mlbpitch/`](src/mlbpitch/README.md) | Installable package. Fetches Statcast pitches into a verified parquet store and derives release/approach angles and dead-zone deltas |
-| [`scripts/`](scripts/README.md) | Profiles, t-SNE maps, comps, the map benchmark and the figures |
-| [`analysis/`](analysis/README.md) | Write-ups and their figures. Start with [`umap_benchmark.md`](analysis/umap_benchmark.md) |
+| [`scripts/`](scripts/README.md) | Profiles, t-SNE maps, Triple-A placement and comps |
 | `data/meta/` | Small per-season tables. Bulk pitch data is not tracked |
 
 ## Quickstart
@@ -41,9 +40,7 @@ A pitch type is described by 15 measurements of its shape, movement and
 delivery. Location, command and usage are shown on the maps but never define
 which pitches count as similar. Maps are t-SNE layouts (openTSNE). Triple-A
 pitches are placed on the fixed MLB maps beside their 15 nearest MLB pitches.
-MLB baselines are never refit on Triple-A data. The evidence for these choices,
-including how t-SNE compares with UMAP, PaCMAP, PHATE and the movement plot, is
-in [`analysis/umap_benchmark.md`](analysis/umap_benchmark.md).
+MLB baselines are never refit on Triple-A data.
 
 ## Data
 

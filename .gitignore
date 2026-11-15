@@ -16,16 +16,14 @@ data/meta/atlas_layout_*.json
 *.log
 
 # Personal working notes, not published: session logs, agent instructions,
-# editor workspace, figure-style references
+# editor workspace
 context/
 CLAUDE.md
 mlb.code-workspace
-figure_aesthetics/
-paper/style_refs/
 
 *.mp4
-# Row-level analysis outputs (regenerable); write-ups, figures and tables are tracked
-analysis/**/*.parquet
+# Analysis outputs and write-ups stay local (scripts/ regenerates them)
+analysis/
 
 # Python
 __pycache__/

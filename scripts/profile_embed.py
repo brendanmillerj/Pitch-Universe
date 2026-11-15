@@ -32,7 +32,7 @@ SEED = 0
 K = 15               # kNN graph for Leiden islands
 N_PCS = 30
 RESOLUTION = 1.0
-# t-SNE layout settings for the atlas maps (2D and 3D), chosen in analysis/umap_benchmark.md (2026-11-04):
+# t-SNE layout settings for the atlas maps (2D and 3D), chosen 2026-11-04:
 # perplexity 30, PCA initialisation, Barnes-Hut. A later build restarts from the previous layout for
 # TSNE_RESTART_ITERS iterations without early exaggeration, which keeps the islands in place across refreshes.
 TSNE_PERPLEXITY = 30
