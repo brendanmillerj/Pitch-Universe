@@ -687,7 +687,7 @@ const J = JSON.stringify;
   ok(br.length > 50 && wp.uniq && wp.ip && wp.asc && getEl("#mtSub").textContent.endsWith("30+ innings"), `sorted by a whole-pitcher measure (xERA): ${br.length} pitchers, each once, 30+ innings, best xERA first`);
   ok(!run("tableGroups()").includes("Whole pitcher") && run("tableGroups()").includes("Uniqueness") && run(`tableColumns().some(v => v.key === "t:whiff")`) && run(`tableColumns().some(v => v.key === "P:k_pct")`),
     "Results holds the pitch and the whole-pitcher results; no Whole pitcher tab (user, 2026-11-14)");
-  ok(!run(`VARS.t.some(v => /^P:look_(xera|era)$/.test(v.key))`), "no Lookalikes' xERA or ERA");
+  ok(!run(`VARS.t.some(v => /^P:look_(xera|era|gap_3y)$/.test(v.key))`), "no Lookalikes' xERA or ERA, no 3-year xERA gap");
   // the drawer closing leaves the table; a row shows him on the map; Back returns to the table as it was
   run("setSlidersOpen(true); setSlidersOpen(false)"); await tick();
   ok(getEl("#mTable").hidden === false && run("state.tblGroup") === "Results", "closing the measure drawer leaves the table open");

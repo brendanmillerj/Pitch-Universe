@@ -2605,7 +2605,7 @@ const ID_KEYS = new Set(["velo", "spin", "spin_axis", "ivb", "hb", "ssw", "ddz_a
   "arm_angle", "rel_height", "rel_side", "extension"]);
 const PITCHER_RESULTS = [
   ["xera", "xERA", "", 2], ["era", "ERA", "", 2], ["luck", "ERA minus xERA (+ = unlucky)", "", 2, 1], ["look_gap", "xERA gap vs lookalikes (+ = trailed them)", "", 2, 1],
-  ["look_gap_3y", "xERA gap vs lookalikes, 2024–26 (innings-weighted)", "", 2, 1], ["look_era_gap", "ERA gap vs lookalikes (+ = trailed them)", "", 2, 1], ["k_pct", "Strikeout rate", "%", 1],
+  ["look_era_gap", "ERA gap vs lookalikes (+ = trailed them)", "", 2, 1], ["k_pct", "Strikeout rate", "%", 1],
   ["bb_pct", "Walk rate", "%", 1], ["k9", "Strikeouts per 9", "", 1], ["bb9", "Walks per 9", "", 1], ["whiff_sv", "Whiff rate (Savant)", "%", 1],
   ["csw", "Called + swinging strike rate", "%", 1], ["xwoba", "xwOBA allowed", "", 3],
   ["rv100", "Run value per 100 (+ good for pitcher)", "", 2, 1], ["ip", "Innings pitched", "", 1],
@@ -7145,7 +7145,6 @@ const EXPLAIN = {
   "P:luck": "ERA minus xERA. Positive means he allowed more runs than his strikeouts, walks and contact quality predict.",
   "P:look_xera": "For each of his pitches, the median xERA of its 10 closest lookalikes (same throwing hand, similar arm angle, at least 20 innings), averaged across his pitches by how often he throws each.",
   "P:look_gap": "His xERA minus his lookalikes’ xERA. Positive means pitchers with stuff like his did better than he did.",
-  "P:look_gap_3y": "His xERA gap against his lookalikes, pooled over 2024–26 and weighted by innings.",
   "P:look_era": "Like lookalikes’ xERA, but with actual ERA.",
   "P:look_era_gap": "His ERA minus his lookalikes’ ERA. Positive means pitchers with stuff like his allowed fewer runs.",
   "P:k_pct": "Strikeouts as a share of batters faced.",
@@ -7633,7 +7632,7 @@ const COL_SHORT = {
   usage: "Usage", usage_ahead: "Ahead", usage_behind: "Behind", usage_vs_lhb: "vs LHB", usage_vs_rhb: "vs RHB",
   whiff: "Whiff%", whiff_sv: "Whiff%", csw: "CSW%", xwoba_con: "xwOBAcon", gb_pct: "GB%", fb_pct: "FB%", xwoba: "xwOBA", rv100: "RV/100", uniq_z: "Unique", evo: "Evolution", n: "Pitches",
   whiff_vs_look: "Whiff vs look.", loc_height_vs_look: "Ht vs look.", zone_vs_look: "Zone vs look.",
-  xera: "xERA", era: "ERA", luck: "ERA − xERA", look_gap: "xERA gap", look_gap_3y: "xERA gap 3y",
+  xera: "xERA", era: "ERA", luck: "ERA − xERA", look_gap: "xERA gap",
   look_era_gap: "ERA gap", k_pct: "K%", bb_pct: "BB%", k9: "K/9", bb9: "BB/9", ip: "IP",
 };
 const shortLabel = v => COL_SHORT[v.key.replace(/^[A-Za-z]+:/, "")] || v.label.replace(/\s*\(.*\)\s*$/, "");
