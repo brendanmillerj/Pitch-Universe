@@ -556,6 +556,7 @@ button, input, select { font: inherit; color: inherit; }
 .lk-diff { font: 400 12px var(--font-ui); color: var(--ink2); }
 .lk-fit { flex: none; white-space: nowrap; font: 600 12px var(--font-ui); padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink2); }
 .lk-fit.lk-close { color: var(--ink); border-color: var(--ink); }
+.lk-fit.lk-far { color: var(--muted); border-style: dashed; }
 .lk-acts { display: flex; flex-wrap: wrap; gap: 6px; }
 .lk-cmp { flex: none; font: 600 12px var(--font-ui); min-height: 28px; padding: 0 9px; border-radius: 6px; border: 1.5px solid var(--ink); background: var(--field); color: var(--ink); cursor: pointer; }
 .lk-cmp:hover { background: var(--ink); color: var(--field); }
@@ -1999,9 +2000,9 @@ html.at-home .app { visibility: hidden; }
         <h2 id="hBoardT">Show leaderboards</h2>
         <div class="hchips" id="homeBoards">
           <button type="button" class="hchip" data-home="board" data-g="Consistency" data-k="t:release_sd" data-v="FF">Release point consistency</button>
-          <button type="button" class="hchip" data-home="board" data-g="Dynamic Dead Zone" data-k="t:ddz_az" data-v="FF">Dynamic Dead Zone ride</button>
-          <button type="button" class="hchip" data-home="board" data-g="Results" data-k="t:uniq_z" data-v="all">Uniqueness</button>
-          <button type="button" class="hchip" data-home="board" data-g="Whole pitcher" data-k="P:xera" data-v="all" data-mlb-only="1">Pitcher xERA</button>
+          <button type="button" class="hchip" data-home="board" data-g="Dynamic Dead Zone" data-k="t:ddz_az" data-v="FF">Dynamic Dead Zone Vert</button>
+          <button type="button" class="hchip" data-home="board" data-g="Uniqueness" data-k="t:uniq_z" data-v="all">Uniqueness</button>
+          <button type="button" class="hchip" data-home="board" data-g="Results" data-k="P:xera" data-v="all" data-mlb-only="1">Pitcher xERA</button>
           <button type="button" class="hchip" data-home="board" data-g="Results" data-k="t:whiff" data-v="FF">Whiff rate</button>
         </div>
         <button type="button" class="hgo hgo-out" data-home="boards">Open all leaderboards</button>
@@ -2297,6 +2298,7 @@ html.at-home .app { visibility: hidden; }
   <!-- under the map, bottom right (user, 2026-11-14): the Glossary (how to read the map, the key, the data, the terms) and Contact -->
   <div class="caption">
     <div class="capbar">
+      <button type="button" class="hfoot" id="evoBtn" title="The pitches that changed most since last season: the Uniqueness leaderboard sorted by Evolution">Big Evolvers</button>
       <button type="button" class="hfoot" id="glossBtn" aria-haspopup="dialog" aria-expanded="false" aria-controls="glossDlg">Glossary</button>
       <a class="hfoot" href="https://github.com/brendanmillerj" target="_blank" rel="noopener">Contact Brendan Miller</a>
     </div>
@@ -2558,9 +2560,9 @@ const TF = [
   ["ax", "Horizontal acceleration (arm-side +)", "ft/s²", 1, "Shape", 1],
   ["az", "Vertical acceleration", "ft/s²", 1, "Shape"],
   ["ssw", "Seam-shifted wake (spin vs movement axis)", "°", 1, "Shape", 1],
-  ["ddz_az", "Dynamic Dead Zone: ride vs. arm-slot expectation", "ft/s²", 2, "Dynamic Dead Zone", 1],
-  ["ddz_az_velo", "Dynamic Dead Zone: ride vs. slot + velo expectation", "ft/s²", 2, "Dynamic Dead Zone", 1],
-  ["ddz_ax", "Dynamic Dead Zone: run vs. slot expectation (arm-side +)", "ft/s²", 2, "Dynamic Dead Zone", 1],
+  ["ddz_az", "Dynamic Dead Zone Vert (ride vs. arm-slot expectation)", "ft/s²", 2, "Dynamic Dead Zone", 1],
+  ["ddz_az_velo", "Dynamic Dead Zone Vert, velo-adjusted (ride vs. slot + velo expectation)", "ft/s²", 2, "Dynamic Dead Zone", 1],
+  ["ddz_ax", "Dynamic Dead Zone Horiz (run vs. slot expectation, arm-side +)", "ft/s²", 2, "Dynamic Dead Zone", 1],
   ["vaa", "Vertical approach angle vs. expected (+ flatter)", "°", 2, "Angles", 1],
   ["haa", "Horizontal approach angle vs. expected", "°", 2, "Angles", 1],
   ["vra", "Vertical release angle vs. expected", "°", 2, "Angles", 1],
@@ -2590,18 +2592,20 @@ const TF = [
   ["whiff_vs_look", "Whiff rate vs. his lookalikes (+ more)", "pts", 1, "Results", 1],
   ["loc_height_vs_look", "Location height vs. his lookalikes (+ higher)", "in", 1, "Results", 1],
   ["zone_vs_look", "Zone rate vs. his lookalikes (+ more in the zone)", "pts", 1, "Results", 1],
-  ["uniq_z", "Uniqueness (SD from the typical pitch of its type)", "", 2, "Results"],
   ["n", "Pitches thrown", "", 0, "Results"],
+  ["uniq_z", "Uniqueness (SD from the typical pitch of its type)", "", 2, "Uniqueness"],
+  ["evo", "Evolution (how far it moved since last season)", "", 2, "Uniqueness"],
 ];
 const TFm = Object.fromEntries(TF.map(f => [f[0], f]));
+const OUTCOME_GROUPS = new Set(["Results", "Uniqueness"]);   // what a pitch did or how it compares, not what it is
 // What a pitch IS: the measures the maps, comps, uniqueness and group regions are built from (atlas_build MAP_FEATURES
 // = profile_embed.IDENTITY_BLOCKS: shape, derived, delivery, near-duplicates dropped). Location, scatter and usage are
 // shown, filtered and coloured on, but do not define "similar" (user decision 2026-11-04).
 const ID_KEYS = new Set(["velo", "spin", "spin_axis", "ivb", "hb", "ssw", "ddz_az", "ddz_ax", "vaa", "vra",
   "arm_angle", "rel_height", "rel_side", "extension"]);
 const PITCHER_RESULTS = [
-  ["xera", "xERA", "", 2], ["era", "ERA", "", 2], ["luck", "ERA minus xERA (+ = unlucky)", "", 2, 1], ["look_xera", "Lookalikes' xERA", "", 2], ["look_gap", "xERA gap vs lookalikes (+ = trailed them)", "", 2, 1],
-  ["look_gap_3y", "xERA gap vs lookalikes, 2024–26 (innings-weighted)", "", 2, 1], ["look_era", "Lookalikes' ERA", "", 2], ["look_era_gap", "ERA gap vs lookalikes (+ = trailed them)", "", 2, 1], ["k_pct", "Strikeout rate", "%", 1],
+  ["xera", "xERA", "", 2], ["era", "ERA", "", 2], ["luck", "ERA minus xERA (+ = unlucky)", "", 2, 1], ["look_gap", "xERA gap vs lookalikes (+ = trailed them)", "", 2, 1],
+  ["look_gap_3y", "xERA gap vs lookalikes, 2024–26 (innings-weighted)", "", 2, 1], ["look_era_gap", "ERA gap vs lookalikes (+ = trailed them)", "", 2, 1], ["k_pct", "Strikeout rate", "%", 1],
   ["bb_pct", "Walk rate", "%", 1], ["k9", "Strikeouts per 9", "", 1], ["bb9", "Walks per 9", "", 1], ["whiff_sv", "Whiff rate (Savant)", "%", 1],
   ["csw", "Called + swinging strike rate", "%", 1], ["xwoba", "xwOBA allowed", "", 3],
   ["rv100", "Run value per 100 (+ good for pitcher)", "", 2, 1], ["ip", "Innings pitched", "", 1],
@@ -2649,9 +2653,9 @@ function buildTypeVars(all) {
     v.push({ ...cat("cat:subcluster", "Pitch subcluster", c2, j => T.cl2 ? T.cl2[j] : null), names: n2, clusterLevel: 2,
       colors: pal => k2.map(([i, f]) => shadeHex(pal.cat[i % pal.cat.length], 0.45 - 0.9 * f)) });
   }
-  TF.forEach(f => v.push(mk("t:" + f[0], f[1], f[2], f[3], f[4], f[5], j => T[f[0]][j])));
+  TF.forEach(f => v.push(mk("t:" + f[0], f[1], f[2], f[3], f[4], f[5], j => (T[f[0]] || [])[j])));   // a column older data lacks reads as blank
   PITCHER_RESULTS.filter(r => r[0] !== "n" && r[0] !== "rv100").forEach(([k, l, u, d, dv]) =>
-    v.push(mk("P:" + k, "Pitcher " + (k === "luck" ? l : l.charAt(0).toLowerCase() + l.slice(1)), u, d, "Whole pitcher", dv,
+    v.push(mk("P:" + k, "Pitcher " + (k === "luck" ? l : l.charAt(0).toLowerCase() + l.slice(1)), u, d, "Results", dv,
       j => { const i = pOfT[j]; return i === undefined || i < 0 ? null : P[k][i]; })));
   return v;
 }
@@ -3834,7 +3838,7 @@ function sharedTraits(e) {
   if (rows.length < TRAIT_MIN_N) return { t, n: rows.length, traits: null };
   const pool = typeRows[t], traits = [];
   VARS.t.forEach(v => {
-    if (v.cat || !v.key.startsWith("t:") || v.group === "Results") return;
+    if (v.cat || !v.key.startsWith("t:") || OUTCOME_GROUPS.has(v.group)) return;
     const vals = rows.map(v.get).filter(isNum);
     if (vals.length < Math.max(TRAIT_MIN_N, 0.8 * rows.length)) return;
     const sorted = poolSorted("t" + t, pool, v), pcts = vals.map(x => pctRank(sorted, x)).sort((a, b) => a - b), med = pcts[pcts.length >> 1];
@@ -4688,7 +4692,7 @@ function setCompPool(v) {
 }
 
 // ------------------------------------------------------------------ detail
-const fitOf = q => q < 0.5 ? ["close", "Close Fit"] : q < 0.9 ? ["fair", "Loose Fit"] : ["loose", "Very Loose Fit"];
+const fitOf = q => q < 0.25 ? ["close", "Very close"] : q < 0.75 ? ["fair", "Close"] : q < 0.95 ? ["loose", "Loose"] : ["far", "Far"];
 
 function tile(k, v, sub) { return `<div><dt>${k}</dt><dd class="v">${v}</dd>${sub ? `<dd class="pc">${sub}</dd>` : ""}</div>`; }
 // Free-agent swatch colors match the map's free-agent coloring
@@ -6298,8 +6302,8 @@ function renderCompMovement(j, c) {
 
 // Short labels for the card's measure grid (full label in the tooltip)
 const SHORT = { velo: "Velocity", ivb: "Ride (IVB)", hb: "Horizontal break", spin: "Spin rate", spin_eff: "Spin efficiency",
-  spin_axis: "Spin axis", ax: "Horizontal accel.", az: "Vertical accel.", ssw: "Seam-shifted wake", ddz_az: "Dynamic Dead Zone (ride)",
-  ddz_az_velo: "Dynamic Dead Zone (ride + velo)", ddz_ax: "Dynamic Dead Zone (run)", vaa: "VAA vs. expected", haa: "HAA vs. expected", vra: "VRA vs. expected",
+  spin_axis: "Spin axis", ax: "Horizontal accel.", az: "Vertical accel.", ssw: "Seam-shifted wake", ddz_az: "Dynamic Dead Zone Vert",
+  ddz_az_velo: "Dynamic Dead Zone Vert (velo)", ddz_ax: "Dynamic Dead Zone Horiz", vaa: "VAA vs. expected", haa: "HAA vs. expected", vra: "VRA vs. expected",
   hra: "HRA vs. expected", arm_angle: "Arm angle", rel_height: "Release height", rel_side: "Release side", extension: "Extension",
   scaled_ext: "Extension ÷ height", loc_inside: "Location in / out", loc_height: "Location height", zone_pct: "Zone rate",
   release_sd: "Release scatter", movement_sd: "Movement scatter", velo_sd: "Velocity SD", usage: "Usage", usage_ahead: "Usage, ahead",
@@ -6317,7 +6321,7 @@ function measureItems(vars, r, poolName, rows) {
 const mName = v => SHORT[baseKey(v.key)] || v.label;
 // hover text for a measure anywhere on the page: its full name, then its plain-language meaning
 const tipFor = v => { const e = EXPLAIN[v.key] || EXPLAIN[baseKey(v.key)]; return v.label + (e ? ". " + e : ""); };
-const FIT_TIP = "Fit: how near this comp sits to him in the measure space, ranked against every pitcher's nearest comp of this pitch type. Close Fit: nearer than half of those. Loose Fit: a usual distance. Very Loose Fit: farther than nine in ten.";
+const FIT_TIP = "Fit: how near this lookalike sits to him on the measures that define the pitch, compared with every pitch's lookalike at the same place in its list (his 3rd closest against everyone's 3rd closest), same pitch type. Very close: nearer than three in four. Close: the middle half. Loose: farther than three in four. Far: farther than 95 in 100.";
 function mRow({ v, x, p, note }) {
   const bar = p < 0 ? `<span></span>` : (() => { const w = Math.max(0, Math.min(100, p)).toFixed(0);
     return `<span class="pbar" title="${ord(p)} percentile${note || ""}"><span class="track"></span>`
@@ -6385,7 +6389,7 @@ function arsenalStrip(view, j, ars) {
 const STANDOUT_HI = 80, STANDOUT_LO = 20, STANDOUT_MAX = 6;
 function standoutTags(j) {
   const t = T.pitch_type[j], pool = typeRows[t], tn = PTN[t].toLowerCase(); if (!pool || !pool.length) return "";
-  const tags = VARS.t.filter(v => !v.cat && v.key.startsWith("t:") && v.group !== "Results").map(v => {
+  const tags = VARS.t.filter(v => !v.cat && v.key.startsWith("t:") && !OUTCOME_GROUPS.has(v.group)).map(v => {
     const x = v.get(j); if (!isNum(x)) return null;
     const p = pctRank(poolSorted("t" + t, pool, v), x); if (p > STANDOUT_LO && p < STANDOUT_HI) return null;
     const w = traitWords(v, t, p >= 50); return w ? { v, x, p, w } : null;
@@ -6818,7 +6822,7 @@ function renderCompBox() {
     return `<li><button type="button" class="lk-row" data-cbp="${c}"><span class="lk-n">${k + 1}</span>`
       + `<span class="lk-who"><span class="lk-name">${esc(T.name[c])} <span class="lk-yr">’${String(T.season[c]).slice(2)} · ${esc(teamStr(c))}${T.level[c] === "mlb" ? "" : " · AAA"}</span></span>`
       + `<span class="lk-diff"${df.tip ? ` title="${esc(df.tip)}"` : ""}>${esc(df.text)}</span></span>`
-      + `<span class="lk-fit lk-${fc}">${ft}</span></button>`
+      + `<span class="lk-fit lk-${fc}" title="${esc(FIT_TIP)}">${ft}</span></button>`
       + (canFly ? `<button type="button" class="lk-cmp" data-cmp="${c}"${trajOf(c) ? "" : " disabled"} title="${trajOf(c) ? `Open the Pitch Simulation Lab: ${esc(lastName(T.name[r]))}’s ${PTN[t].toLowerCase()} flying beside ${esc(T.name[c])}’s` : "No tracked flight for this pitch"}" aria-label="Simulate beside ${esc(T.name[c])}"><span aria-hidden="true">▶</span> Simulate</button>` : "") + `</li>`; }).join("");
 }
 // The map card's quick look at the pitch on screen (user, 2026-11-14), above his lookalikes: its run value and the
@@ -7060,7 +7064,7 @@ function buildUniverse() {
 }
 
 // "Color pitchers by": the drawer's categories as headed sections (Groups, Shape, Dynamic Dead Zone, Angles,
-// Delivery, Command, Consistency, Usage, Results, Whole pitcher), filtered by the search box's words
+// Delivery, Command, Consistency, Usage, Results, Uniqueness), filtered by the search box's words
 const colorPick = () => VARS[varKind(state.view)].filter(v => !NOT_IN_LIST.has(v.key));
 function colorMenuHTML(pick, cur, filter) {
   const f = String(filter || "").toLowerCase().split(/\s+/).filter(Boolean);
@@ -7101,9 +7105,9 @@ const EXPLAIN = {
   ax: "The sideways push the spin puts on the ball, in feet per second squared. It is what creates horizontal break; positive is toward the arm side.",
   az: "The ball’s vertical acceleration, in feet per second squared, gravity included (about −32). Less negative means the spin is holding the ball up; more negative means extra drop.",
   ssw: "Seam-shifted wake: the gap, in degrees, between the direction the spin says the ball should move and the direction it actually moves. Large values mean the seams are steering the ball in a way spin alone does not explain, common on sinkers and changeups.",
-  ddz_az: "Dynamic Dead Zone, ride: how much more or less the pitch rides than a pitch from his arm angle and his extension (scaled to his height) normally does, in feet per second squared. Positive means more ride than his arm slot predicts, the sign of a fastball that escapes the dead zone. The idea comes from FanGraphs’ piece on Andrés Muñoz; the model is Max Bay’s.",
-  ddz_az_velo: "Dynamic Dead Zone, ride with velocity: the same comparison, but the expected ride also accounts for how hard he throws. Positive means more ride than his arm slot and velocity predict.",
-  ddz_ax: "Dynamic Dead Zone, run: sideways movement compared with what his arm angle and extension predict, in feet per second squared. Positive means more arm-side run than expected.",
+  ddz_az: "Dynamic Dead Zone Vert: how much more or less the pitch rides than a pitch from his arm angle and his extension (scaled to his height) normally does, in feet per second squared. Positive means more ride than his arm slot predicts, the sign of a fastball that escapes the dead zone. The idea comes from FanGraphs’ piece on Andrés Muñoz; the model is Max Bay’s.",
+  ddz_az_velo: "Dynamic Dead Zone Vert, velo-adjusted: the same comparison, but the expected ride also accounts for how hard he throws. Positive means more ride than his arm slot and velocity predict.",
+  ddz_ax: "Dynamic Dead Zone Horiz: sideways movement compared with what his arm angle and extension predict, in feet per second squared. Positive means more arm-side run than expected.",
   vaa: "Vertical approach angle against expectation: the angle at which the pitch arrives at the plate, compared with a pitch of the same type thrown to the same height. Positive is flatter than expected, which makes a high fastball harder to get on top of.",
   haa: "Horizontal approach angle against expectation: the sideways angle at the plate, compared with a pitch of the same type thrown to the same spot from the same release side. Left-handers are mirrored.",
   vra: "Vertical release angle against expectation: the up-or-down angle at which the ball leaves the hand, compared with a pitch of the same type thrown to the same height.",
@@ -7133,6 +7137,7 @@ const EXPLAIN = {
   csw: "Called strikes plus swinging strikes, as a share of every one of these pitches thrown.",
   xwoba_con: "Expected wOBA on balls hit into play, based on exit velocity and launch angle. Lower is better for the pitcher.",
   rv100: "Runs saved per 100 of these pitches, from the change in run expectancy on every pitch. Positive is good for the pitcher. Small samples are pulled toward average.",
+  evo: "How far this pitch moved since the pitcher's season before, on the 15 measures that define a pitch (shape, angles, delivery), in the map's standard-deviation units: the distance to the nearest pitch he threw at least 5% of the time that season, so a pitch renamed (a slider now called a sweeper) barely moves and a new pitch moves a lot. Blank in a first season. The home page's Biggest changes average this over each arsenal.",
   uniq_z: "How far this pitch sits from the typical pitch of its type across every measure the map is built from, in standard deviations. Above 2 counts as a Unique unicorn.",
   n: "How many of this pitch he threw that season.",
   "P:xera": "Expected ERA from Baseball Savant: the ERA his strikeouts, walks and quality of contact allowed would usually produce.",
@@ -7171,7 +7176,7 @@ const TERMS = () => [
   ["VRA, HRA", "Vertical and horizontal release angle: the direction the ball leaves the hand, in degrees, up-and-down and side-to-side."],
   ["vs. expected", "Approach and release angles depend mostly on where the pitch is thrown, so the atlas compares each with a pitch of the same type aimed at the same spot and shows the difference."],
   ["Seam-shifted wake (SSW)", EXPLAIN.ssw],
-  ["Dynamic Dead Zone", EXPLAIN.ddz_az + " “Ride vs. slot” is this plain version; “ride vs. slot + velo” also allows for how hard he throws; “run” is the same idea for sideways movement."],
+  ["Dynamic Dead Zone", EXPLAIN.ddz_az + " Vert is this plain version for ride; Vert, velo-adjusted also allows for how hard he throws; Horiz is the same idea for sideways movement."],
   ["Spin efficiency", EXPLAIN.spin_eff],
   ["Whiff rate", "Swings and misses, per swing."],
   ["CSW", "Called strikes plus swinging strikes, per pitch thrown."],
@@ -7181,7 +7186,7 @@ const TERMS = () => [
   ["Run value / 100", "Runs saved per 100 pitches, from the change in expected runs after each pitch. Positive is good for the pitcher."],
   ["Uniqueness", EXPLAIN.uniq_z],
   ["Comps, lookalikes, similar pitchers", "The ten other pitchers whose version of the pitch sits nearest his on what the pitch is: shape (velocity, spin, break), angles, dead-zone and seam-shifted-wake residuals, and delivery. Location, release and movement scatter, and usage are left out, so lookalikes can differ in how they use the same pitch. Same hand, arm angle within 7.5° (widened only when too few qualify), any season."],
-  ["Fit (Close, Loose, Very Loose)", FIT_TIP.replace(/^Fit: /, "")],
+  ["Fit (Very close, Close, Loose, Far)", FIT_TIP.replace(/^Fit: /, "")],
   ["Pitch clusters", "Clusters and subclusters within each pitch type (the Clusters switch in the left column turns them on and opens their list; click one to light it up), found from the data (consensus Leiden clustering on what the pitch is), named by what sets them apart. Core members light up; edge members, between two clusters, show in gray."],
 ];
 function glossaryHTML() {
@@ -7407,11 +7412,10 @@ function setSlidersOpen(open, quiet) {   // quiet: no focus move (used when a ca
 
 // ------------------------------------------------ measure table = the leaderboards
 // A pop-up window over the map, opened by the header's Leaderboards or the home page's leaderboards: one tab per measure category, one column per measure in it, the sorted measure first and shaded,
-// a rank. Rows = every dot still lit on the map with enough pitches to rank (TBL_MIN_N; the Whole pitcher tab: one
+// a rank. Rows = every dot still lit on the map with enough pitches to rank (TBL_MIN_N; sorted by a whole-pitcher measure: one
 // row per pitcher, TBL_MIN_IP innings). Percentile mode colours each value against the MLB pool (mlbPct, as the card).
 const TABLE_CAP = 300;   // rows drawn per scroll step
 const TBL_MIN_N = 100, TBL_MIN_IP = 30, TBL_MIN_N_AAA_P = 300;   // leaderboard floors (user, 2026-11-14); Triple-A has no innings
-const WHOLE_P = "Whole pitcher";
 const relayout = () => requestAnimationFrame(() => { try { Plotly.Plots.resize(plotEl); } catch (e) {} });
 const tableGroups = () => [...new Set(sliderVars().map(v => v.group))];
 // open (or switch) the table on a category, sorted by `key` (default: the category's first measure), best end first
@@ -7435,6 +7439,13 @@ function closeTableFocus() {
 }
 // Show leaderboard (the left column) is ink while a leaderboard is open
 function paintBoardList(on) { const b = $("#hBoards"); if (b) b.setAttribute("aria-pressed", String(!!on)); }
+// Big Evolvers: All pitches, the latest season, the Uniqueness tab sorted by Evolution (largest first)
+function openEvolvers() {
+  if (state.sel !== null && state.sel !== undefined && !state.preview) select(null);
+  if (state.view !== "all") setView("all", null);
+  state.lookTbl = null; state.seasons = new Set([Math.max(...D.seasons)]); syncSeasonChips(); render();
+  setTableGroup("Uniqueness", "t:evo");
+}
 // a leaderboard opens on the latest season, as the home page's do; the same category again closes it
 function openBoard(g) {
   if (state.tblGroup === g && (state.lookTbl === null || state.lookTbl === undefined)) { closeTableFocus(); return; }
@@ -7512,12 +7523,16 @@ function wireHeatRows(el) {   // rows open the pitcher, by click or Enter / Spac
 }
 function renderTable() {
   if (!state.tblGroup || !state.tblData) return;
-  const { view, rows, match } = state.tblData, pct = state.rangeMode === "pct", g = state.tblGroup, whole = g === WHOLE_P;
+  const { view, rows, match } = state.tblData, pct = state.rangeMode === "pct", g = state.tblGroup;
   const catCols = tableColumns();
   if (!catCols.length) return;
   paintTableControls();
-  // enough pitches to rank: TBL_MIN_N of the type; the Whole pitcher tab ranks pitchers, one row each (his most-used
-  // pitch stands in), with TBL_MIN_IP innings (Triple-A has no innings counts: TBL_MIN_N_AAA_P pitches instead)
+  let sk = state.tblSort.key;
+  if (sk !== "name" && !catCols.some(v => v.key === sk)) sk = catCols[0].key;
+  // enough pitches to rank: TBL_MIN_N of the type. Sorted by a whole-pitcher measure (xERA, K%…), the board ranks
+  // pitchers, one row each (his most-used pitch on the map stands in), with TBL_MIN_IP innings (Triple-A has no
+  // innings counts: TBL_MIN_N_AAA_P pitches instead)
+  const whole = sk.startsWith("P:");
   const enough = whole
     ? r => pOfT[r] >= 0 && (T.level[r] === "mlb" ? tIP[r] >= TBL_MIN_IP : pPitches[pOfT[r]] >= TBL_MIN_N_AAA_P)
     : r => T.n[r] >= TBL_MIN_N;
@@ -7528,8 +7543,6 @@ function renderTable() {
     lit.forEach(r => { const i = pOfT[r], b = best.get(i); if (b === undefined || (T.usage[r] || 0) > (T.usage[b] || 0)) best.set(i, r); });
     lit = [...best.values()];
   }
-  let sk = state.tblSort.key;
-  if (sk !== "name" && !catCols.some(v => v.key === sk)) sk = catCols[0].key;
   const dir = state.tblSort.dir;
   // the columns keep their catalogue order when sorted (user, 2026-11-14); the sorted one is shaded where it stands
   const cols = catCols, ci = sk === "name" ? -1 : cols.findIndex(v => v.key === sk);
@@ -7576,7 +7589,7 @@ function renderTable() {
   };
   const rowHTML = r => {
     const pt = T.pitch_type[r], vs = vals.get(r);
-    const meta = `${T.season[r]} · ${esc(teamStr(r))}${view === "all" && !whole ? ` · <i class="psw" style="background:${SAVANT_PITCH[pt] || "#999"}"></i>${esc(PTN[pt])}` : ""}`;
+    const meta = `${T.season[r]} · ${esc(teamStr(r))}${view === "all" ? ` · <i class="psw" style="background:${SAVANT_PITCH[pt] || "#999"}"></i>${esc(PTN[pt])}` : ""}`;
     const who = `<div class="mt-name">${esc(T.name[r])}</div><div class="mt-meta">${meta}</div>`;
     return `<tr data-r="${r}" tabindex="0"${r === state.sel ? ' class="on"' : ""}><td>${ci >= 0 ? `<div class="mt-pl"><span class="mt-rk">${rank.get(r) ?? ""}</span><div>${who}</div></div>` : who}</td>`
       + `${cols.map((v, k) => cell(v, vs[k], k === ci)).join("")}</tr>`;
@@ -7612,16 +7625,16 @@ function moreTableRows() {
 // column headers: short names so columns stay narrow (the full name is the header's tooltip)
 const COL_SHORT = {
   velo: "Velo", ivb: "IVB", hb: "HB", spin: "Spin", spin_eff: "Spin eff.", spin_axis: "Spin axis", ax: "Accel. x", az: "Accel. z", ssw: "SSW",
-  ddz_az: "DDZ ride", ddz_az_velo: "DDZ ride (velo)", ddz_ax: "DDZ run",
+  ddz_az: "DDZ Vert", ddz_az_velo: "DDZ Vert (velo)", ddz_ax: "DDZ Horiz",
   vaa: "VAA vs exp.", haa: "HAA vs exp.", vra: "VRA vs exp.", hra: "HRA vs exp.",
   arm_angle: "Arm angle", rel_height: "Release ht.", rel_side: "Release side", extension: "Extension", scaled_ext: "Ext. ÷ ht.", release_spread: "Release spread",
   loc_inside: "Inside", loc_height: "Loc. height", zone_pct: "Zone%",
   release_sd: "Release SD", movement_sd: "Move SD", velo_sd: "Velo SD",
   usage: "Usage", usage_ahead: "Ahead", usage_behind: "Behind", usage_vs_lhb: "vs LHB", usage_vs_rhb: "vs RHB",
-  whiff: "Whiff%", whiff_sv: "Whiff%", csw: "CSW%", xwoba_con: "xwOBAcon", gb_pct: "GB%", fb_pct: "FB%", xwoba: "xwOBA", rv100: "RV/100", uniq_z: "Unique", n: "Pitches",
+  whiff: "Whiff%", whiff_sv: "Whiff%", csw: "CSW%", xwoba_con: "xwOBAcon", gb_pct: "GB%", fb_pct: "FB%", xwoba: "xwOBA", rv100: "RV/100", uniq_z: "Unique", evo: "Evolution", n: "Pitches",
   whiff_vs_look: "Whiff vs look.", loc_height_vs_look: "Ht vs look.", zone_vs_look: "Zone vs look.",
-  xera: "xERA", era: "ERA", luck: "ERA − xERA", look_xera: "Lookalike xERA", look_gap: "xERA gap", look_gap_3y: "xERA gap 3y",
-  look_era: "Lookalike ERA", look_era_gap: "ERA gap", k_pct: "K%", bb_pct: "BB%", k9: "K/9", bb9: "BB/9", ip: "IP",
+  xera: "xERA", era: "ERA", luck: "ERA − xERA", look_gap: "xERA gap", look_gap_3y: "xERA gap 3y",
+  look_era_gap: "ERA gap", k_pct: "K%", bb_pct: "BB%", k9: "K/9", bb9: "BB/9", ip: "IP",
 };
 const shortLabel = v => COL_SHORT[v.key.replace(/^[A-Za-z]+:/, "")] || v.label.replace(/\s*\(.*\)\s*$/, "");
 function wireTable() {
@@ -7645,6 +7658,8 @@ function wireTable() {
   });
   $("#mtLvl").querySelectorAll("button").forEach(b => b.addEventListener("click", () => setLevel(b.dataset.v)));
   // the left column's drop-down sections: a press opens (ink) or closes (white) the section under it
+  // Big Evolvers (bottom right): every pitch on the latest season, ranked by how far it moved since the season before
+  $("#evoBtn").addEventListener("click", () => openEvolvers());
   // Show leaderboard: the leaderboard on its last tab (the latest season); pressed again, it closes
   $("#hBoards").addEventListener("click", () => {
     if (state.tblGroup && (state.lookTbl === null || state.lookTbl === undefined)) { closeTableFocus(); return; }

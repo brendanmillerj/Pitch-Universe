@@ -220,8 +220,8 @@ const J = JSON.stringify;
     && run("state.seasons.size") === 1 && run("state.seasons.has(Math.max(...D.seasons))") && getEl("#mTable").hidden === false, "…the table on Results, highest whiff first, four-seamers, the latest season");
   await back();
   ok(run("state.home") && run("state.tblGroup") === null, "Back: home, the table closed");
-  await homeStep({ home: "board", g: "Whole pitcher", k: "P:xera", v: "all" }, "the Pitcher xERA chip");
-  ok(run("state.tblGroup") === "Whole pitcher" && run("state.tblSort.key") === "P:xera" && run("state.tblSort.dir") === 1 && run("state.view") === "all", "…pitchers by xERA, lowest first");
+  await homeStep({ home: "board", g: "Results", k: "P:xera", v: "all" }, "the Pitcher xERA chip");
+  ok(run("state.tblGroup") === "Results" && run("state.tblSort.key") === "P:xera" && run("state.tblSort.dir") === 1 && run("state.view") === "all", "…pitchers by xERA, lowest first (on the Results tab, which holds the whole-pitcher measures now)");
   await back();
   await homeStep({ home: "boards" }, "Open all leaderboards");
   ok(run("state.tblGroup") === run("tableGroups()[0]") && run("state.view") === "FF", "…the first tab, four-seamers");
@@ -680,23 +680,26 @@ const J = JSON.stringify;
   ok(run("state.view") === "SL" && getEl("#mTable").hidden === false && getEl("#mtSub").textContent.startsWith("Slider"), "the table's pitch-type buttons switch the pitch; the table stays");
   getEl("#mtTabs")._h.click[0](ev("data-g", "Consistency")); await tick();
   ok(run("state.tblGroup") === "Consistency" && run("state.tblSort.key") === "t:release_sd" && run("state.tblSort.dir") === 1, "a tab sorts by its first measure, best end first (release-point scatter, lowest first)");
-  run(`setView("all", null); setTableGroup("Whole pitcher", "P:xera")`); await tick();
+  run(`setView("all", null); setTableGroup("Results", "P:xera")`); await tick();
   br = bodyRows();
   const wp = run(`(() => { const rs = ${J(br)}, ps = rs.map(r => pOfT[r]); return { uniq: new Set(ps).size === ps.length, ip: rs.every(r => tIP[r] >= 30),
     asc: rs.every((r, k) => k === 0 || !isNum(P.xera[pOfT[r]]) || P.xera[pOfT[rs[k - 1]]] <= P.xera[pOfT[r]]) }; })()`);
-  ok(br.length > 50 && wp.uniq && wp.ip && wp.asc && getEl("#mtSub").textContent.endsWith("30+ innings"), `Whole pitcher: ${br.length} pitchers, each once, 30+ innings, best xERA first`);
+  ok(br.length > 50 && wp.uniq && wp.ip && wp.asc && getEl("#mtSub").textContent.endsWith("30+ innings"), `sorted by a whole-pitcher measure (xERA): ${br.length} pitchers, each once, 30+ innings, best xERA first`);
+  ok(!run("tableGroups()").includes("Whole pitcher") && run("tableGroups()").includes("Uniqueness") && run(`tableColumns().some(v => v.key === "t:whiff")`) && run(`tableColumns().some(v => v.key === "P:k_pct")`),
+    "Results holds the pitch and the whole-pitcher results; no Whole pitcher tab (user, 2026-11-14)");
+  ok(!run(`VARS.t.some(v => /^P:look_(xera|era)$/.test(v.key))`), "no Lookalikes' xERA or ERA");
   // the drawer closing leaves the table; a row shows him on the map; Back returns to the table as it was
   run("setSlidersOpen(true); setSlidersOpen(false)"); await tick();
-  ok(getEl("#mTable").hidden === false && run("state.tblGroup") === "Whole pitcher", "closing the measure drawer leaves the table open");
+  ok(getEl("#mTable").hidden === false && run("state.tblGroup") === "Results", "closing the measure drawer leaves the table open");
   const nT = run("NAV.idx"), rr = br[0];
   getEl("#mtBody")._h.click[0]({ target: { closest: s => (s === "tr[data-r]" ? { dataset: { r: String(rr) } } : null) } }); await tick();
   ok(getEl("#mTable").hidden === true && run("state.preview") && run("state.sel") === rr && run("NAV.idx") === nT + 1, "a row shows that pitcher on the map, as one step");
   run("navBack()"); await tick(); await tick();
-  ok(run("state.tblGroup") === "Whole pitcher" && run("state.tblSort.key") === "P:xera" && getEl("#mTable").hidden === false, "Back returns to the table as it was");
+  ok(run("state.tblGroup") === "Results" && run("state.tblSort.key") === "P:xera" && getEl("#mTable").hidden === false, "Back returns to the table as it was");
   getEl("#mtHide")._h.click[0]({}); await tick();
   ok(getEl("#mTable").hidden === true && !getEl("#app").classList.contains("with-table"), "× closes it");
   getEl("#hBoards")._h.click[0]({}); await tick();
-  ok(run("state.tblGroup") === "Whole pitcher" && getEl("#mTable").hidden === false && getEl("#hBoards").getAttribute("aria-pressed") === "true" && run("state.seasons.size") === 1,
+  ok(run("state.tblGroup") === "Results" && getEl("#mTable").hidden === false && getEl("#hBoards").getAttribute("aria-pressed") === "true" && run("state.seasons.size") === 1,
     "Show leaderboard opens the leaderboard straight away (its last tab, the latest season) and reads as on");
   getEl("#hBoards")._h.click[0]({}); await tick();
   ok(getEl("#mTable").hidden === true && getEl("#hBoards").getAttribute("aria-pressed") === "false", "…and pressed again closes it");
@@ -855,6 +858,22 @@ const J = JSON.stringify;
   ok([...getEl("#mtBody").innerHTML.matchAll(/<tr data-r="(\d+)"/g)].length === allN, "…All teams brings everyone back");
   run("closeTable()"); await tick();
   ok(/\.capbar \{ display: flex; justify-content: flex-end;/.test(html), "Glossary and Contact sit at the bottom right");
+
+  // ---- Uniqueness tab, Evolution and Big Evolvers (user, 2026-11-14)
+  ok(run(`VARS.t.filter(v => v.group === "Uniqueness").map(v => v.key).join()`) === "t:uniq_z,t:evo", "a Uniqueness tab: Uniqueness and Evolution");
+  const nEvo = run(`ALL_ROWS.filter(r => isNum(T.evo && T.evo[r])).length`), nFirst = run(`ALL_ROWS.filter(r => T.season[r] === Math.min(...D.seasons) && isNum(T.evo && T.evo[r])).length`);
+  ok(nEvo > 1000 && nFirst === 0, `Evolution for ${nEvo} pitches; none in the first season (nothing to compare)`);
+  getEl("#evoBtn")._h.click[0]({}); await tick();
+  ok(run("state.tblGroup") === "Uniqueness" && run("state.tblSort.key") === "t:evo" && run("state.tblSort.dir") === -1 && run("state.view") === "all" && run("state.seasons.size") === 1 && getEl("#mTable").hidden === false,
+    "Big Evolvers (bottom right) opens the Uniqueness board on All pitches, the latest season, biggest movers first");
+  const evRows = [...getEl("#mtBody").innerHTML.matchAll(/<tr data-r="(\d+)"/g)].map(m => +m[1]);
+  ok(evRows.length > 50 && run(`${J(evRows.slice(0, 40))}.every((r, k, a) => k === 0 || !isNum(T.evo[r]) || T.evo[a[k - 1]] >= T.evo[r])`), "…sorted by Evolution, largest first");
+  run("closeTable()"); await tick();
+  ok(run(`fitOf(0.1)[1]`) === "Very close" && run(`fitOf(0.5)[1]`) === "Close" && run(`fitOf(0.8)[1]`) === "Loose" && run(`fitOf(0.97)[1]`) === "Far", "fit bands: Very close, Close, Loose, Far");
+  const fitShare = run(`(() => { const n = {}; ALL_ROWS.forEach(r => { if (T.level[r] !== "mlb") return; (compsOf ? compsOf(T.pitch_type[r], r) : []).slice(0, 10).forEach(([c, q]) => { const f = fitOf(q)[1]; n[f] = (n[f] || 0) + 1; }); }); return n; })()`);
+  const tot = Object.values(fitShare).reduce((a, b) => a + b, 0);
+  ok(tot > 0 && fitShare["Close"] / tot > 0.35 && (fitShare["Loose"] + (fitShare["Far"] || 0)) / tot < 0.45, "the fit words mean the same at every rank: " + JSON.stringify(fitShare));
+  ok(run('VMAP.t["t:ddz_az"].label').startsWith("Dynamic Dead Zone Vert") && run('VMAP.t["t:ddz_ax"].label').startsWith("Dynamic Dead Zone Horiz"), "Dynamic Dead Zone Vert and Horiz");
 
   // ---- under the map (user, 2026-11-14): no footer; Glossary at the left, Contact at the right; the Glossary pop-up
   const capStart = markup.indexOf('<div class="caption">'), capEnd = markup.indexOf('<div class="tblscrim glscrim"');

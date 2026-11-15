@@ -674,11 +674,25 @@ def type_comps(types, query_level=None, cand_level="mlb"):
                 rows_out[g[a], :len(picks)] = gc[picks]
                 dist_out[g[a], :len(picks)] = D[a, picks]
                 tol_out[g[a]] = tol
-    # fit percentile against the reference distribution of nearest-comp distances: MLB pitches among
-    # MLB candidates, or the queried level among its own
-    ref = lvl == cand_level   # MLB pitches among MLB candidates, or Triple-A pitches among Triple-A
-    first = np.sort(dist_out[ref, 0][~np.isnan(dist_out[ref, 0])])
-    pct = np.searchsorted(first, np.nan_to_num(dist_out, nan=np.inf)) / len(first)
+    # fit percentile, fair at every rank (user, 2026-11-14): the k-th comp's distance against every reference pitch's
+    # k-th comp distance, within the pitch type (each type has its own PCA space). Reference: MLB pitches among MLB
+    # candidates, or the queried level among its own. Before, every rank was measured against the nearest comp
+    # pooled over types, so comps 2-10 read "Loose" almost always.
+    ref = lvl == cand_level
+    ptype = types.pitch_type.to_numpy()
+    pct = np.full(dist_out.shape, np.nan)
+    for t_ in np.unique(ptype):
+        m = ptype == t_
+        for k in range(dist_out.shape[1]):
+            refk = dist_out[ref & m, k]
+            refk = np.sort(refk[~np.isnan(refk)])
+            if len(refk) < 20:   # too few at this rank in this type: fall back to every type's k-th
+                refk = dist_out[ref, k]
+                refk = np.sort(refk[~np.isnan(refk)])
+            if not len(refk):
+                continue
+            col = dist_out[m, k]
+            pct[m, k] = np.where(np.isnan(col), np.nan, np.searchsorted(refk, np.nan_to_num(col, nan=np.inf)) / len(refk))
     widened = np.nanmean(tol_out[is_query] > ARM_TOLS[0])
     log(f"comps among {cand_level} for {'every' if query_level is None else query_level} pitch: same hand, "
         f"arm angle within {ARM_TOLS[0]} deg ({100 * widened:.1f}% of pitches needed a wider window)")
@@ -879,6 +893,7 @@ def type_display(t):
     d["xwoba_con"] = t.xwoba_contact
     d["rv100"] = t.rv100
     d["uniq_z"] = uniqueness(t)      # SDs from the typical pitch of its type (the 15 identity measures)
+    d["evo"] = evolution(t)          # how far the pitch moved since his previous season (as the home page's list)
     return d
 
 
@@ -898,6 +913,30 @@ def look_deltas(types):
         ok = (~np.isnan(M)).sum(axis=1) >= 5
         out[name] = np.where(ok, v - np.nanmean(np.where(ok[:, None], M, 0.0), axis=1), np.nan)
     return out
+
+
+def evolution(types):
+    """Per pitch: how far it moved since the pitcher's previous season at the same level, on the all-pitches map's
+    15 identity measures scaled as that map scales them (fitted on MLB rows, as biggest_changes does): the distance
+    to the nearest pitch he threw >= CHANGE_THEN of the time the season before. A relabel (the same slider now called
+    a sweeper) scores ~0 and a new pitch scores high. NaN in a pitcher's first season at that level. The home page's
+    per-pitcher score is the usage-weighted mean of these over his pitches thrown >= CHANGE_NOW of the time."""
+    out = np.full(len(types), np.nan)
+    lvl = (types.level if "level" in types else pd.Series("mlb", index=types.index)).to_numpy()
+    mlb = lvl == "mlb"
+    pt = types.pitch_type.to_numpy()
+    sc = scaler_fit(types.loc[mlb, MAP_FEATURES], pt[mlb], MAP_BLOCKS)
+    X = scaler_apply(sc, types[MAP_FEATURES], pt)
+    key = pd.DataFrame({"lvl": lvl, "pid": types.pitcher.to_numpy(), "s": types.season.to_numpy(),
+                        "u": types.usage.to_numpy(dtype="float64")})   # positional index 0..n-1, like X
+    for _, g in key.groupby(["lvl", "pid"]):
+        for s in np.unique(g.s):
+            then = g.index[(g.s == s - 1) & (g.u >= CHANGE_THEN)].to_numpy()
+            if not len(then):
+                continue
+            now = g.index[g.s == s].to_numpy()
+            out[now] = np.linalg.norm(X[now][:, None, :] - X[then][None, :, :], axis=2).min(axis=1)
+    return pd.Series(out, index=types.index)
 
 
 def uniqueness(types):
