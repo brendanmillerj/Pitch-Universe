@@ -2426,8 +2426,8 @@ html.at-home .app { visibility: hidden; }
 </div>
 
 <!-- Weekly newsletter sign-up (user, 2026-11-15). "Free edition only": a plain HTML form posting the email to Buttondown's
-     embed endpoint (it must be a real form post, never fetch), no tag. A team: Buttondown's subscribe page with
-     ?tag=team:<CODE> (the newsletter's codes), where the trial and card form are. Both open in a new tab. It sits outside #home and #app, with
+     embed endpoint (it must be a real form post, never fetch), no tag. A team: Buttondown's plan page
+     (?purchase=true&tag=team:<CODE>, the newsletter's codes), then its card form. Both open in a new tab. It sits outside #home and #app, with
      its own small script, so it works over home before the map's data has loaded. -->
 <div class="tblscrim nlscrim" id="nlScrim" hidden></div>
 <section class="nldlg" id="nlDlg" role="dialog" aria-modal="true" aria-labelledby="nlTitle" hidden>
@@ -2483,16 +2483,16 @@ html.at-home .app { visibility: hidden; }
   var dlg = document.getElementById("nlDlg"); if (!dlg) return;
   var scrim = document.getElementById("nlScrim"), sel = document.getElementById("nlTeam"), note = document.getElementById("nlNote");
   var under = [document.getElementById("home"), document.getElementById("app")], was = [], from = null;
-  // A team edition is paid: it goes to Buttondown's own subscribe page with the team as ?tag=team:<CODE>, where the
-  // 7-day trial and the card form are (its Embedded checkout); that page asks for the email itself. The free edition
-  // posts the email here to the embed endpoint, with no tag.
+  // A team edition is paid: it goes straight to Buttondown's plan page (?purchase=true: Monthly $4 / Annual $36, then
+  // the card form) with the team as &tag=team:<CODE>; /buy redirects there but drops the tag, so it is linked
+  // directly. That page asks for the email itself. The free edition posts the email here, with no tag.
   var SUBSCRIBE_PAGE = "https://buttondown.com/pitchomics";
   var row = document.getElementById("nlEmailRow"), email = document.getElementById("nlEmail"), go = document.getElementById("nlGo");
   function setNote() {
     var o = sel.options[sel.selectedIndex], team = !!sel.value;
     row.hidden = team; email.required = !team; go.textContent = team ? "Continue to Buttondown" : "Subscribe";
     note.textContent = team
-      ? "Buttondown asks for your email and card next. The " + o.text + " edition starts with a 7-day free trial, then $5 a month, or pay yearly."
+      ? "Next, pick monthly or yearly on Buttondown. The " + o.text + " edition is $4 a month, or $36 a year."
       : "The free edition is the league-wide issue, with no team section and nothing to pay.";
   }
   function show(on, opener) {
@@ -2510,7 +2510,7 @@ html.at-home .app { visibility: hidden; }
   document.getElementById("nlForm").addEventListener("submit", function (e) {
     if (sel.value) {   // a team edition: Buttondown's subscribe page, team attached
       e.preventDefault();
-      window.open(SUBSCRIBE_PAGE + "?tag=" + sel.value, "_blank", "noopener");
+      window.open(SUBSCRIBE_PAGE + "?purchase=true&tag=" + sel.value, "_blank", "noopener");
       show(false);
       return;
     }

@@ -982,8 +982,8 @@ const J = JSON.stringify;
   const nlOpts = [...nl.matchAll(/<option value="team:([A-Z]+)">([^<]+)<\/option>/g)];
   ok(/action="https:\/\/buttondown\.com\/api\/emails\/embed-subscribe\/pitchomics"/.test(nl) && /method="post"/.test(nl) && /target="_blank"/.test(nl)
     && /<input type="email" name="email"[^>]*required/.test(nl) && /<select id="nlTeam">/.test(nl) && /name="embed" value="1"/.test(nl)
-    && /https:\/\/buttondown\.com\/pitchomics"/.test(html.slice(html.indexOf('id="nlDlg"'))) && /\?tag=" \+ sel\.value/.test(html.slice(html.indexOf('id="nlDlg"'))),
-    "newsletter: free = a real form post of the email to Buttondown's embed endpoint; a team = its subscribe page with ?tag=team:<CODE>");
+    && /https:\/\/buttondown\.com\/pitchomics"/.test(html.slice(html.indexOf('id="nlDlg"'))) && /\?purchase=true&tag=" \+ sel\.value/.test(html.slice(html.indexOf('id="nlDlg"'))),
+    "newsletter: free = a real form post of the email to Buttondown's embed endpoint; a team = its plan page with ?purchase=true&tag=team:<CODE>");
   ok(/<option value="">Free edition only<\/option>/.test(nl) && nlOpts.length === 30
     && nlOpts.every(m => run(`TEAM_NAMES[${JSON.stringify(m[1])}]`) === m[2]),
     "newsletter: Free edition only and all 30 clubs as team:<CODE>, named as the site names them");
