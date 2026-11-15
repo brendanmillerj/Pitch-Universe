@@ -12,13 +12,21 @@ export async function onRequestPost({ request, env }) {
   const back = typeof body.back === "string" && /^#[\w\-\/]{0,120}$/.test(body.back) ? body.back : "";
   let paid;
   try { paid = await isPaid(email, env); } catch (e) {
-    return json({ ok: false, message: "The subscription check is down. Try again in a few minutes." }, 502);
+    console.error("login: the Buttondown check failed:", e.message);   // shows in `wrangler pages deployment tail`
+    return json({ ok: false, reason: "subscription-check", message: "The subscription check is down. Try again in a few minutes." }, 503);
   }
   if (!paid) return json(SAME);
-  const link = new URL(request.url).origin + "/api/auth?t=" + encodeURIComponent(await linkToken(email, env)) +
-    (back ? "&b=" + encodeURIComponent(back) : "");
+  let link;
+  try {
+    link = new URL(request.url).origin + "/api/auth?t=" + encodeURIComponent(await linkToken(email, env)) +
+      (back ? "&b=" + encodeURIComponent(back) : "");
+  } catch (e) {
+    console.error("login: could not sign the link:", e.message);        // e.g. SESSION_SECRET missing or under 32 characters
+    return json({ ok: false, reason: "session-secret", message: "Sign-in is not set up yet. Try again later." }, 503);
+  }
   try { await sendLink(email, link, env); } catch (e) {
-    return json({ ok: false, message: "The sign-in email could not be sent. Try again in a few minutes." }, 502);
+    console.error("login: the email failed:", e.message);               // Resend's own reason
+    return json({ ok: false, reason: "email", message: "The sign-in email could not be sent. Try again in a few minutes." }, 503);
   }
   return json(env.PAYWALL_MOCK === "1" ? { ...SAME, mock_link: link } : SAME);
 }

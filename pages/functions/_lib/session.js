@@ -12,7 +12,7 @@ export const COOKIE = "pitchomics_session";
 export const SESSION_DAYS = 30;           // the cookie's life; then a new sign-in link
 export const RECHECK_HOURS = 24;          // how stale Buttondown's "paid" may get before it is asked again
 export const LINK_MINUTES = 15;           // a sign-in link's life
-export const FROM = "Pitch-omics <login@pitchomics.com>";
+export const FROM = "Pitch-omics <login@pitchomics.com>";   // override with LOGIN_FROM if Resend verified another (sub)domain
 // Buttondown's own definition: "premium, gifted, trialed, or churning have access to premium content".
 // The newsletter uses the same list (scripts/newsletter.py PAID_STATUSES).
 export const PAID_STATUSES = ["premium", "gifted", "trialed", "churning"];
@@ -68,7 +68,7 @@ export async function isPaid(email, env) {
     headers: { Authorization: "Token " + env.BUTTONDOWN_API_KEY },
   });
   if (r.status === 404) return false;
-  if (!r.ok) throw new Error("Buttondown answered " + r.status);
+  if (!r.ok) throw new Error("Buttondown answered " + r.status + ": " + (await r.text()).slice(0, 300));
   const s = await r.json();
   return PAID_STATUSES.includes(s.type);
 }
@@ -86,9 +86,9 @@ export async function sendLink(email, link, env) {
   const r = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: FROM, to: [email], subject: "Your Pitch-omics sign-in link", text, html }),
+    body: JSON.stringify({ from: env.LOGIN_FROM || FROM, to: [email], subject: "Your Pitch-omics sign-in link", text, html }),
   });
-  if (!r.ok) throw new Error("Resend answered " + r.status);
+  if (!r.ok) throw new Error("Resend answered " + r.status + ": " + (await r.text()).slice(0, 300));   // its reason, e.g. an unverified sender
 }
 
 // sign-in links and sessions
