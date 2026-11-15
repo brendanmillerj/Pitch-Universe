@@ -1065,6 +1065,33 @@ button, input, select { font: inherit; color: inherit; }
 .chg-list { margin: 6px 0 2px; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; font: 500 15px/1.35 var(--font-ui); color: var(--ink); }
 .chg-list li { cursor: help; }
 .chg-line { margin: 6px 0 2px; font: 400 14px/1.4 var(--font-ui); color: var(--ink2); }
+/* How he changed: a strip (last season, the winter, this season; a dot per change) over the changes in time order */
+.how-strip { display: flex; align-items: flex-start; gap: 0; margin: 10px 4px 2px; }
+.how-strip .hs-seg { flex: 6 1 0; position: relative; display: flex; flex-direction: column; }
+.how-strip .hs-win { flex: 1 1 0; position: relative; display: flex; flex-direction: column; }
+.how-strip .hs-ticks { position: relative; height: 16px; margin-top: 3px; }
+.how-strip .hs-tick { position: absolute; transform: translateX(-50%); font: 400 12px var(--font-ui); color: var(--muted); }
+.how-strip .hs-cur > .hs-lbl { position: absolute; right: 0; top: 12px; margin: 0; }
+.how-strip .hs-line { display: block; height: 0; border-top: 2px solid var(--ink2); margin-top: 5px; }
+.how-strip .hs-gap { border-top-style: dotted; border-top-color: var(--muted); }
+.how-strip .hs-lbl { margin-top: 6px; font: 400 13px var(--font-ui); color: var(--muted); text-align: center; }
+.how-strip .hs-cur .hs-lbl { color: var(--ink); font-weight: 600; }
+.how-strip .hs-dot { position: absolute; top: 1px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--ink); border: 1.5px solid var(--field); }
+.how-strip .hs-wdot { left: 50%; }
+.sv-how .how-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px 24px; padding-left: 0; list-style: none; }
+.how-when { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-bottom: 2px; }
+.sv-how .how-tabs { margin-left: auto; flex-wrap: wrap; }
+.sv-how .how-tabs button { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 10px; font-size: 13px; }
+.sv-how .how-tabs .psw { width: 10px; height: 10px; border-radius: 2px; }
+.how-which { display: inline-flex; align-items: center; gap: 4px; font: 500 14px var(--font-ui); color: var(--ink2); }
+.how-which .psw { width: 10px; height: 10px; border-radius: 2px; }
+.how-what { font-weight: 500; }
+.sv-how .how-win .chg-list { margin: 2px 0 0; padding-left: 18px; }
+.mid-when { font-weight: 700; }
+.mid-fate { display: block; font: 400 13px/1.35 var(--font-ui); color: var(--muted); }
+.mid-fate.mt-meta { display: flex; }
+.sv-how .mid-ch { margin-top: 3px; }
+.mid-acts { margin-top: 6px; }
 .herohead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; padding-bottom: 4px; border-bottom: 1.5px solid var(--rule); }
 .herohead h3 { margin: 0; font: 700 17px var(--font-ui); color: var(--ink); }
 .herotags { display: flex; flex-direction: column; gap: 5px; padding: 8px 0 8px; border-bottom: 1px solid var(--line); }
@@ -1359,6 +1386,16 @@ button.hfoot { font: 600 15px var(--font-ui); cursor: pointer; }
 .mt-look { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 12px 12px; }
 .mt-look .hmwrap { overflow: visible; border: 0; }
 .mt-more { padding: 8px 12px; font: 400 13px var(--font-ui); color: var(--muted); }
+/* Midseason changes: words and a game-by-game chart instead of measure columns */
+.mt th.mid-l, .mt td.mid-l { text-align: left; }
+.mt th.mid-l { padding: 6px 8px; font: 600 13px var(--font-ui); color: var(--ink2); }
+.mt td.mid-l { white-space: normal; vertical-align: middle; }
+.mid-why { font-weight: 600; min-width: 14em; }
+.mid-ch { display: block; color: var(--ink); }
+.mid-sws { display: inline-flex; gap: 2px; }
+.evo-mv { display: flex; align-items: center; gap: 10px; }
+.evo-lab { flex: none; width: 15em; font-weight: 500; }
+.mt tbody tr.on .mid-ch { color: var(--field); }
 .sl-links { display: inline-flex; gap: 12px; }
 .sliders { grid-area: sl; overflow-y: auto; overscroll-behavior: contain; border-right: 1px solid var(--line);
   padding: 18px 16px 32px 16px; margin-right: 20px; min-width: 0; display: flex; flex-direction: column; gap: 10px; background: var(--panel); }
@@ -1922,7 +1959,10 @@ html.at-home .app { visibility: hidden; }
 .hdrow1 > * { flex-shrink: 0; }
 .hdrow1 > .finders { flex-shrink: 1; }
 @media (min-width: 1260px) { .hdrow1 { flex-wrap: nowrap; } }
-/* under 1400 px: Back, Start over and Forward show only their arrows (the words stay for screen readers and in the tooltips) */
+/* Back and Forward are arrows only at every width (user, 2026-11-15); under 1400 px Start over is its icon only too
+   (the words stay for screen readers and in the tooltips) */
+.hdrow1 .navback .btxt, .hdrow1 #navFwd .btxt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.hdrow1 .navback, .hdrow1 #navFwd { min-width: var(--ctl); padding: 0 10px; font-size: 17px; }
 @media (max-width: 1399px) { .hdrow1 .btxt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .hdrow1 .restart { min-width: var(--ctl); padding: 0 10px; font-size: 17px; } }
 .hdrow1 .find-lbl { font-size: 12px; }
@@ -1931,6 +1971,13 @@ html.at-home .app { visibility: hidden; }
 .hdrow1 .hsel select { padding: 0 24px 0 8px; }
 .hdrow1 #faWrap select { max-width: 110px; }
 .hdrow1 .asof, .hdrow1 .facount { display: none; }
+/* 1260-1399 px (one row from 1260): a little tighter, so Leaderboard and Evolution fit beside everything else */
+@media (max-width: 1399px) {
+  .hdrow1 { column-gap: 8px; }
+  .hdrow1 .mseg button, .hdrow1 .lvlseg button { padding: 0 6px; }
+  .hdrow1 .hact { padding: 0 8px; }
+  .hdrow1 #faWrap select { max-width: 96px; }
+}
 .hdrow1 .hnav { flex-wrap: nowrap; }
 @media (max-width: 1259px) { .hdrow1 .hfilt { flex-wrap: wrap; } }
 .maptools .mt-types { display: flex; flex-direction: column; align-items: stretch; gap: 4px; width: 150px; }
@@ -2000,7 +2047,7 @@ html.at-home .app { visibility: hidden; }
         <div class="hchips" id="homeBoards">
           <button type="button" class="hchip" data-home="board" data-g="Consistency" data-k="t:release_sd" data-v="FF">Release point consistency</button>
           <button type="button" class="hchip" data-home="board" data-g="Dynamic Dead Zone" data-k="t:ddz_az" data-v="FF">Dynamic Dead Zone Vert</button>
-          <button type="button" class="hchip" data-home="board" data-g="Uniqueness" data-k="t:uniq_z" data-v="all">Uniqueness</button>
+          <button type="button" class="hchip" data-home="board" data-g="Evolution" data-k="t:uniq_z" data-v="all">Uniqueness</button>
           <button type="button" class="hchip" data-home="board" data-g="Results" data-k="P:xera" data-v="all" data-mlb-only="1">Pitcher xERA</button>
           <button type="button" class="hchip" data-home="board" data-g="Results" data-k="t:whiff" data-v="FF">Whiff rate</button>
         </div>
@@ -2088,6 +2135,9 @@ html.at-home .app { visibility: hidden; }
     <!-- the leaderboard's own controls: which measures (one tab per category), which pitches, which seasons, which level -->
     <div class="mt-tabs" id="mtTabs" role="group" aria-label="Measures in the table"></div>
     <div class="mt-ctl" id="mtCtl">
+      <div class="lvlseg" id="mtMode" role="group" aria-label="Evolution list" hidden>
+        <button type="button" data-m="0" aria-pressed="true">Every pitch</button><button type="button" data-m="1" aria-pressed="false">Midseason changes</button>
+      </div>
       <div class="mt-types" id="mtTypes" role="group" aria-label="Pitch type"></div>
       <div class="lvlseg" id="mtSeasons" role="group" aria-label="Season"></div>
       <span class="sel mselect mt-team"><select id="mtTeam" aria-label="Team"></select></span>
@@ -2117,8 +2167,9 @@ html.at-home .app { visibility: hidden; }
         </form>
       </div>
       <!-- the actions (user, 2026-11-14 experiment): the leaderboard and the maps -->
-      <div class="hacts" role="group" aria-label="Leaderboard">
+      <div class="hacts" role="group" aria-label="Leaderboards">
         <button type="button" class="hact" id="hBoards" aria-pressed="false" title="Every pitcher in a table, ranked by any measure">Leaderboard</button>
+        <button type="button" class="hact" id="hEvo" aria-pressed="false" title="How pitches changed: since last season, and during a season">Evolution</button>
       </div>
       <!-- which pitches the map shows: in the one header row (user, 2026-11-14) -->
       <div class="hfilt" role="group" aria-label="Which pitches the map shows">
@@ -2221,7 +2272,7 @@ html.at-home .app { visibility: hidden; }
         <div id="plot" role="img" aria-label="The pitch map: each dot is one pitcher's pitch in one season. To reach a pitcher by keyboard, use the search or the Pitchers list."></div>
       <!-- Pitchers and Groups, bottom right of the map: each opens its panel beside the map -->
       <div class="panelnav mappanels" id="panelNav" role="group" aria-label="Big Evolvers and the panels beside the map">
-        <button type="button" class="ubtn" id="evoBtn" title="The pitches that changed most since last season: the Uniqueness leaderboard sorted by Evolution">Big Evolvers</button>
+        <button type="button" class="ubtn" id="evoBtn" title="The pitches that changed most since last season: the Evolution leaderboard sorted by Evolution">Big Evolvers</button>
         <button type="button" class="ubtn" id="pnPitchers" data-panel="pitchers" aria-pressed="false">Pitchers</button>
         <button type="button" class="ubtn" id="pnGroups" data-panel="groups" aria-pressed="false">Groups</button>
       </div>
@@ -2519,6 +2570,26 @@ function ensureLevel(l) {
   })();
   return levelLoading;
 }
+// The midseason changes (D.mid) ship in their own file on the deployed page (D.lazy_mid, deploy_space.split_data),
+// fetched in the background once the map is up; until then the Evolution tab has no Midseason switch and the card
+// no "During <season>". When they land, an open table or card is drawn again.
+let midLoading = null;
+function ensureMid() {
+  if (D.mid) return Promise.resolve(true);
+  if (!D.lazy_mid) return Promise.resolve(false);
+  if (midLoading) return midLoading;
+  midLoading = (async () => {
+    try {
+      const ext = typeof DecompressionStream === "function" ? ".json.gz" : ".json";   // the deploy ships both
+      D.mid = (await fetchData(D.lazy_mid + ext)).mid;
+      if (state.tblGroup) syncTable();
+      if (state.sel !== null && state.sel !== undefined && !state.preview) renderDetail();
+      return true;
+    } catch (e) { console.warn("midseason changes failed to load", e); return false; }
+    finally { midLoading = null; }
+  })();
+  return midLoading;
+}
 function mergeLevel(part) {
   // columns: append row by row; a column one side lacks is padded with nulls
   const app = (dst, src, n0) => {
@@ -2592,11 +2663,11 @@ const TF = [
   ["loc_height_vs_look", "Location height vs. his lookalikes (+ higher)", "in", 1, "Results", 1],
   ["zone_vs_look", "Zone rate vs. his lookalikes (+ more in the zone)", "pts", 1, "Results", 1],
   ["n", "Pitches thrown", "", 0, "Results"],
-  ["uniq_z", "Uniqueness (SD from the typical pitch of its type)", "", 2, "Uniqueness"],
-  ["evo", "Evolution (how far it moved since last season)", "", 2, "Uniqueness"],
+  ["uniq_z", "Uniqueness (SD from the typical pitch of its type)", "", 2, "Evolution"],
+  ["evo", "Evolution (how far it moved since last season)", "", 2, "Evolution"],
 ];
 const TFm = Object.fromEntries(TF.map(f => [f[0], f]));
-const OUTCOME_GROUPS = new Set(["Results", "Uniqueness"]);   // what a pitch did or how it compares, not what it is
+const OUTCOME_GROUPS = new Set(["Results", "Evolution"]);   // what a pitch did or how it compares, not what it is
 // What a pitch IS: the measures the maps, comps, uniqueness and group regions are built from (atlas_build MAP_FEATURES
 // = profile_embed.IDENTITY_BLOCKS: shape, derived, delivery, near-duplicates dropped). Location, scatter and usage are
 // shown, filtered and coloured on, but do not define "similar" (user decision 2026-11-04).
@@ -2698,6 +2769,8 @@ const state = {
   tblQuery: "",             // name search inside the measure table
   tblTeam: "all",           // the leaderboard's Team drop-down: an MLB club (Triple-A rows count for their parent club)
   tblGroup: null,            // measure category shown in the table (null = no table)
+  tblMid: false,             // the Evolution tab lists midseason changes (D.mid) instead of every pitch
+  howTab: "",                // the card's How he changed: "" = the card's pitch, "all", or one of his pitch types
   tblSort: { key: null, dir: -1 },   // measure table: column key ("name" or a measure) and direction
   slGroupsOpen: new Set(),   // measure-filter sections the user has opened (all start closed)
   level: LEVELS[0],   // which level's pitchers the maps show; pools stay MLB
@@ -6429,7 +6502,7 @@ function typeCard(view, j) {
   h += `<section class="sv-hero"><div class="herohead"><h3>Defining Traits</h3>
     <span class="heropool">Percentiles among ${poolNote} · <button type="button" class="to-gloss">Glossary</button></span></div>${standoutTags(j)}
     <div class="herogrid">${hero.slice(0, HERO_MAX).map(it => heroRow(it, poolNote)).join("")}</div></section>`;
-  h += whatChangedHTML(j);   // moved under Defining Traits by renderDetail
+  h += howChangedHTML(j);    // How he changed (winter + midseason), moved under Defining Traits by renderDetail
   // ---------------- left: profile, value percentiles, seasons, pitch usage ----------------
   h += `<section class="svp sv-prof"><h3>Profile</h3>${faLine(j)}${typesLine(j)}
 `;
@@ -6530,12 +6603,12 @@ function navSnap() {
   return { home: !!state.home, level: state.level, view: state.view, sel: state.sel ?? null, preview: !!state.preview, showComps: !!state.showComps,
     noLook: !!state.noLook, lookFrom: state.lookFrom ?? null, archetype: state.archetype || "", color: { ...state.color }, op: state.op,
     colorB: { ...state.colorB }, simOpen: !!state.simOpen, sim: state.simOpen ? navCopy(state.sim) : null,
-    lookTbl: state.lookTbl ?? null, tblGroup: state.tblGroup ?? null, tblSort: { ...state.tblSort }, tblTeam: state.tblTeam, slidersOpen: !!state.slidersOpen,
+    lookTbl: state.lookTbl ?? null, tblGroup: state.tblGroup ?? null, tblMid: !!state.tblMid, tblSort: { ...state.tblSort }, tblTeam: state.tblTeam, slidersOpen: !!state.slidersOpen,
     rail: { open: !!state.rail.open, tab: state.rail.tab }, cardFrom: navCopy(state.cardFrom) };
 }
 // what makes two screens different (in the lab only which lab it is: slider edits are not steps, the snapshot keeps them)
 const navKey = s => JSON.stringify([!!s.home, s.level, s.view, s.sel, s.preview, s.showComps, s.noLook, s.lookFrom, s.archetype, s.color, s.op, s.colorB,
-  s.simOpen, s.sim ? [s.sim.key, s.sim.mode, s.sim.vs] : null, s.lookTbl, s.tblGroup, s.slidersOpen, s.rail.open, s.rail.open ? s.rail.tab : ""]);
+  s.simOpen, s.sim ? [s.sim.key, s.sim.mode, s.sim.vs] : null, s.lookTbl, s.tblGroup, !!s.tblMid, s.slidersOpen, s.rail.open, s.rail.open ? s.rail.tab : ""]);
 function navQueue() { if (NAV.queued) return; NAV.queued = true; queueMicrotask(navCommit); }
 function navCommit() {
   NAV.queued = false;
@@ -6559,7 +6632,7 @@ function navTo(i) {
     if (s.level !== state.level && levelLoaded(s.level)) { state.level = s.level; syncLevel(); svRowCache.clear(); }
     Object.assign(state, { zoomK: s.view !== state.view ? 1 : state.zoomK, view: s.view, sel: s.sel, preview: s.preview, showComps: s.showComps,
       noLook: s.noLook, lookFrom: s.lookFrom, archetype: s.archetype, color: { ...s.color }, op: s.op, colorB: { ...s.colorB },
-      lookTbl: s.lookTbl, tblGroup: s.tblGroup, cardFrom: navCopy(s.cardFrom), slPrev: false });
+      lookTbl: s.lookTbl, tblGroup: s.tblGroup, tblMid: !!s.tblMid, cardFrom: navCopy(s.cardFrom), slPrev: false });
     if (s.tblSort) state.tblSort = { ...s.tblSort };
     if (s.tblTeam) state.tblTeam = s.tblTeam;   // the Team drop-down, a setting like the sort   // a re-sort is a setting, not a step: the step keeps the latest one
     state.rail.open = s.rail.open; state.rail.tab = s.rail.tab;
@@ -7063,7 +7136,7 @@ function buildUniverse() {
 }
 
 // "Color pitchers by": the drawer's categories as headed sections (Groups, Shape, Dynamic Dead Zone, Angles,
-// Delivery, Command, Consistency, Usage, Results, Uniqueness), filtered by the search box's words
+// Delivery, Command, Consistency, Usage, Results, Evolution), filtered by the search box's words
 const colorPick = () => VARS[varKind(state.view)].filter(v => !NOT_IN_LIST.has(v.key));
 function colorMenuHTML(pick, cur, filter) {
   const f = String(filter || "").toLowerCase().split(/\s+/).filter(Boolean);
@@ -7136,7 +7209,7 @@ const EXPLAIN = {
   csw: "Called strikes plus swinging strikes, as a share of every one of these pitches thrown.",
   xwoba_con: "Expected wOBA on balls hit into play, based on exit velocity and launch angle. Lower is better for the pitcher.",
   rv100: "Runs saved per 100 of these pitches, from the change in run expectancy on every pitch. Positive is good for the pitcher. Small samples are pulled toward average.",
-  evo: "How far this pitch moved since the pitcher's season before, on the 15 measures that define a pitch (shape, angles, delivery), in the map's standard-deviation units: the distance to the nearest pitch he threw at least 5% of the time that season, so a pitch renamed (a slider now called a sweeper) barely moves and a new pitch moves a lot. Blank in a first season. The home page's Biggest changes average this over each arsenal.",
+  evo: "How far this pitch moved since the pitcher's season before, on the 13 measures that define a pitch apart from spin direction (shape, angles, delivery), in the map's standard-deviation units: the distance to the nearest pitch he threw at least 5% of the time that season, so a pitch renamed (a slider now called a sweeper) barely moves and a new pitch moves a lot. Blank in a first season. The home page's Biggest changes average this over each arsenal.",
   uniq_z: "How far this pitch sits from the typical pitch of its type across every measure the map is built from, in standard deviations. Above 2 counts as a Unique unicorn.",
   n: "How many of this pitch he threw that season.",
   "P:xera": "Expected ERA from Baseball Savant: the ERA his strikeouts, walks and quality of contact allowed would usually produce.",
@@ -7415,7 +7488,8 @@ function setSlidersOpen(open, quiet) {   // quiet: no focus move (used when a ca
 const TABLE_CAP = 300;   // rows drawn per scroll step
 const TBL_MIN_N = 100, TBL_MIN_IP = 30, TBL_MIN_N_AAA_P = 300;   // leaderboard floors (user, 2026-11-14); Triple-A has no innings
 const relayout = () => requestAnimationFrame(() => { try { Plotly.Plots.resize(plotEl); } catch (e) {} });
-const tableGroups = () => [...new Set(sliderVars().map(v => v.group))];
+const tableGroups = () => { const g = [...new Set(sliderVars().map(v => v.group))];   // Evolution first (user, 2026-11-15), the rest in catalogue order
+  return g.includes("Evolution") ? ["Evolution", ...g.filter(x => x !== "Evolution")] : g; };
 // open (or switch) the table on a category, sorted by `key` (default: the category's first measure), best end first
 function setTableGroup(g, key) {
   const cols = sliderVars().filter(v => v.group === g); if (!cols.length) return;
@@ -7433,23 +7507,26 @@ function closeTable() {
 function closeTableFocus() {
   const look = state.lookTbl !== null && state.lookTbl !== undefined;
   state.tblGroup = null; state.lookTbl = null; syncTable(); relayout();
-  const b = look ? $("#cbTable") : $("#hBoards"); if (b && !b.hidden) b.focus({ preventScroll: true });
+  const b = look ? $("#cbTable") : state.tblLast === "Evolution" ? $("#hEvo") : $("#hBoards"); if (b && !b.hidden) b.focus({ preventScroll: true });
 }
 // Show leaderboard (the left column) is ink while a leaderboard is open
-function paintBoardList(on) { const b = $("#hBoards"); if (b) b.setAttribute("aria-pressed", String(!!on)); }
-// Big Evolvers: All pitches, the latest season, the Uniqueness tab sorted by Evolution (largest first)
+function paintBoardList(on) {
+  const b = $("#hBoards"); if (b) b.setAttribute("aria-pressed", String(!!on));
+  const e = $("#hEvo"); if (e) e.setAttribute("aria-pressed", String(!!on && state.tblGroup === "Evolution"));   // Evolution: ink on its tab
+}
+// Big Evolvers: All pitches, the latest season, the Evolution tab sorted by Evolution (largest first)
 function openEvolvers() {
   if (state.sel !== null && state.sel !== undefined && !state.preview) select(null);
   if (state.view !== "all") setView("all", null);
-  state.lookTbl = null; state.seasons = new Set([Math.max(...D.seasons)]); syncSeasonChips(); render();
-  setTableGroup("Uniqueness", "t:evo");
+  state.lookTbl = null; state.tblMid = false; state.seasons = new Set([Math.max(...D.seasons)]); syncSeasonChips(); render();
+  setTableGroup("Evolution", "t:evo");
 }
 // a leaderboard opens on the latest season, as the home page's do; the same category again closes it
-function openBoard(g) {
+function openBoard(g, key) {
   if (state.tblGroup === g && (state.lookTbl === null || state.lookTbl === undefined)) { closeTableFocus(); return; }
   if (state.sel !== null && state.sel !== undefined && !state.preview) select(null);
   state.lookTbl = null; state.seasons = new Set([Math.max(...D.seasons)]); syncSeasonChips(); render();
-  setTableGroup(g);
+  setTableGroup(g, key);
 }
 function syncSeasonChips() {
   $("#seasonChips").querySelectorAll("[data-s]").forEach(c => c.setAttribute("aria-pressed", String(state.seasons.has(+c.dataset.s))));
@@ -7469,6 +7546,8 @@ function paintTableControls() {
   const ts = $("#mtTeam"); if (ts && ts.value !== state.tblTeam) ts.value = state.tblTeam;
   const press = (sel, f) => $(sel).querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(f(b))));
   press("#mtTabs", b => b.dataset.g === state.tblGroup);
+  $("#mtMode").hidden = !(D.mid && state.tblGroup === "Evolution");
+  press("#mtMode", b => (b.dataset.m === "1") === midOn());
   press("#mtTypes", b => b.dataset.tview === state.view);
   const one = state.seasons.size === 1 ? [...state.seasons][0] : null;
   press("#mtSeasons", b => b.dataset.tseason === "all" ? state.seasons.size === D.seasons.length : +b.dataset.tseason === one);
@@ -7525,6 +7604,7 @@ function renderTable() {
   const catCols = tableColumns();
   if (!catCols.length) return;
   paintTableControls();
+  if (midOn()) { renderMid(); return; }
   let sk = state.tblSort.key;
   if (sk !== "name" && !catCols.some(v => v.key === sk)) sk = catCols[0].key;
   // enough pitches to rank: TBL_MIN_N of the type. Sorted by a whole-pitcher measure (xERA, K%…), the board ranks
@@ -7577,7 +7657,7 @@ function renderTable() {
   const unitTxt = v => v.unit && !shortLabel(v).endsWith(v.unit) ? ` <span class="tm">(${esc(v.unit)})</span>` : "";   // no "Whiff% (%)"
   const sc = k => k === sk ? ` class="mt-sorted"` : "";
   $("#mtHeadRow").innerHTML = `<tr><th scope="col"${ariaSort("name")}><button type="button" data-k="name">${ci >= 0 ? `<span class="mt-rkh" aria-hidden="true">#</span>` : ""}Pitcher${arrow("name")}</button></th>` +
-    cols.map(v => `<th scope="col"${sc(v.key)}${ariaSort(v.key)}><button type="button" data-k="${esc(v.key)}" title="${esc(tipFor(v))}"><span class="mt-h">${esc(shortLabel(v))}${unitTxt(v)}</span>${arrow(v.key)}</button></th>`).join("") + "</tr>";
+    cols.map(v => `<th scope="col"${sc(v.key)}${ariaSort(v.key)}><button type="button" data-k="${esc(v.key)}" title="${esc(tipFor(v))}"><span class="mt-h">${esc(shortLabel(v))}${unitTxt(v)}</span>${arrow(v.key)}</button></th>`).join("") + (g === "Evolution" ? `<th scope="col" class="mid-l" title="The measure of this pitch that moved most since his season before, season by season">Biggest move</th>` : "") + "</tr>";
   const cell = (v, c, first) => {
     const cls = first ? ` class="mt-sorted"` : "";
     if (c === null) return `<td${cls}>—</td>`;
@@ -7590,7 +7670,7 @@ function renderTable() {
     const meta = `${T.season[r]} · ${esc(teamStr(r))}${view === "all" ? ` · <i class="psw" style="background:${SAVANT_PITCH[pt] || "#999"}"></i>${esc(PTN[pt])}` : ""}`;
     const who = `<div class="mt-name">${esc(T.name[r])}</div><div class="mt-meta">${meta}</div>`;
     return `<tr data-r="${r}" tabindex="0"${r === state.sel ? ' class="on"' : ""}><td>${ci >= 0 ? `<div class="mt-pl"><span class="mt-rk">${rank.get(r) ?? ""}</span><div>${who}</div></div>` : who}</td>`
-      + `${cols.map((v, k) => cell(v, vs[k], k === ci)).join("")}</tr>`;
+      + `${cols.map((v, k) => cell(v, vs[k], k === ci)).join("")}${g === "Evolution" ? `<td class="mid-l">${evoChart(r)}</td>` : ""}</tr>`;
   };
   // the whole list, drawn TABLE_CAP rows at a time as you scroll; a re-render with the same list
   // (e.g. clicking a row) keeps as many rows as were already drawn so the scroll position holds
@@ -7600,8 +7680,8 @@ function renderTable() {
   const keep = sig === tbl.sig ? tbl.shown : TABLE_CAP;
   Object.assign(tbl, { sig, sorted: shownRows, rowHTML, shown: Math.min(shownRows.length, keep) });
   $("#mtBody").innerHTML = shownRows.slice(0, tbl.shown).map(rowHTML).join("") +
-    (words.length && !shownRows.length ? `<tr><td class="mt-more" colspan="${cols.length + 1}">No pitcher named “${esc(state.tblQuery.trim())}” among these ${lit.length.toLocaleString()}.</td></tr>`
-      : !lit.length && team ? `<tr><td class="mt-more" colspan="${cols.length + 1}">No ${esc(TEAM_NAMES[team])} pitchers here with ${floorTxt}.</td></tr>` : "");
+    (words.length && !shownRows.length ? `<tr><td class="mt-more" colspan="${cols.length + (g === "Evolution" ? 2 : 1)}">No pitcher named “${esc(state.tblQuery.trim())}” among these ${lit.length.toLocaleString()}.</td></tr>`
+      : !lit.length && team ? `<tr><td class="mt-more" colspan="${cols.length + (g === "Evolution" ? 2 : 1)}">No ${esc(TEAM_NAMES[team])} pitchers here with ${floorTxt}.</td></tr>` : "");
   if (sig !== tbl.drawnSig) {
     const sc = $("#mtScroll"); sc.scrollTop = 0; tbl.drawnSig = sig;
     const th = $("#mtHeadRow").querySelector("th.mt-sorted"), name = $("#mtHeadRow").querySelector("th");
@@ -7612,6 +7692,137 @@ function renderTable() {
   }
 }
 const tbl = { sig: "", drawnSig: "", sorted: [], rowHTML: null, shown: 0 };
+// The Evolution tab's "Biggest move" (Every pitch): the measure of this pitch that moved most since his season before
+// (whatChanged's largest, in usual season-to-season moves), drawn season by season in the pitch's color, this season's
+// point ringed; the numbers on hover. Blank in his first season at this level.
+function evoChart(r) {
+  const w = whatChanged(r), pid = T.pitcher[r], lv = T.level[r], pt = T.pitch_type[r], s = T.season[r];
+  if (w.prevS === null) return "";
+  let x = w.items && w.items[0], pts;
+  if (x) pts = D.seasons.map(y => [y, tRow(pid, y, pt, lv)]).filter(([, q]) => q !== undefined && isNum(T[x.k][q])).map(([y, q]) => [y, T[x.k][q]]);
+  else {   // no row for this pitch last season (a new pitch, or too few to compare): his usage of it, season by season
+    const use = y => { const i = pRow(pid, y, lv); return i === undefined || !P["use_" + pt] ? null : P["use_" + pt][i] || 0; };
+    pts = D.seasons.map(y => [y, use(y)]).filter(([, v]) => v !== null);
+    const [u0, u1] = w.use(pt);
+    const many = PLURAL[pt] || PTN[pt].toLowerCase() + "s";
+    x = { k: "usage", unit: "%", dec: 0, z: NaN, text: u0 < 2 && u1 >= NEW_MIN_NOW ? `New pitch: ${fmt(u1, 0)}% of his pitches` : u0 < 2 ? `Thrown rarely: ${fmt(u1, 0)}% of his pitches (${fmt(u0, 0)}% in ${w.prevS})` : `Too few ${many} in ${w.prevS} to compare` };
+  }
+  if (pts.length < 2) return "";
+  const W = 120, H = 30, PAD = 5, lab = COL_SHORT[x.k] || x.k;
+  const y0 = Math.min(...pts.map(p => p[1])), y1 = Math.max(...pts.map(p => p[1])), sp = y1 - y0 || 1;
+  const X = y => PAD + (W - 2 * PAD) * (D.seasons.indexOf(y)) / Math.max(1, D.seasons.length - 1), Y = v => H - PAD - (H - 2 * PAD) * (v - y0) / sp;
+  const u = x.unit === "°" || x.unit === "%" ? x.unit : " " + x.unit;
+  const tip = `${lab}: ` + pts.map(([y, v]) => `${y} ${fmt(v, x.dec)}${u}`).join(", ") + (isNum(x.z) ? `. ${x.z.toFixed(1)}× the usual season-to-season move for this pitch.` : ". Share of his pitches.");
+  const c = SAVANT_PITCH[pt] || "currentColor";
+  const svg = `<svg class="mid-ch" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true">`
+    + `<path d="${pts.map(([y, v], k) => `${k ? "L" : "M"}${X(y).toFixed(1)} ${Y(v).toFixed(1)}`).join("")}" stroke="${c}" stroke-width="1.6" fill="none"/>`
+    + pts.map(([y, v]) => `<circle cx="${X(y).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="${y === s ? 3.6 : 2.4}" fill="${y === s ? "var(--field)" : c}" stroke="${c}" stroke-width="${y === s ? 1.8 : 0}"/>`).join("")
+    + `</svg>`;
+  return `<div class="evo-mv" title="${esc(tip)}"><span class="evo-lab">${esc(x.text || chgText(x, w.prevS))}</span>${svg}</div>`;
+}
+// ---- Midseason changes (the Evolution tab's second list): D.mid[level] rows, largest first, from
+// scripts/midseason_changes.py -- [pitcher, season, pt, date, lead measure, size, before, after, gap days, reason, tip,
+// games]. games = [day0, step, then per appearance: days since the previous one, value in steps] (atlas_build.midseason_blob).
+// A change is a measure that jumped and stayed for 5+ games either side.
+const midOn = () => !!(D.mid && state.tblGroup === "Evolution" && state.tblMid);
+const MID_MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const midDate = s => { const [, m, d] = s.split("-"); return `${MID_MON[+m - 1]} ${+d}`; };
+const midGames = c => { const g = []; let d = c[0]; for (let i = 2; i + 1 < c.length; i += 2) { d += c[i]; g.push([d, c[i + 1] * c[1]]); } return g; };
+// game by game: one dot per appearance (the pitch's color), the level before and after (ink), a dashed line on the date
+// A change that covers several pitches (e[16] members, e[17] kind) draws each in its color: a swap as both usages
+// with their own before and after; a delivery change as each pitch's move from its own earlier level, one ink step.
+function midChart(e) {
+  const mem = e[16], kind = e[17];
+  if (mem && mem.length > 1 && mem.every(x => x[3])) return midChartMany(e, mem, kind);
+  const [, s, pt, date, m, , b, a] = e, W = 168, H = 34, P = 3, g = e[11] ? midGames(e[11]) : [];
+  if (g.length < 2) return "";
+  const day = Math.round((Date.UTC(s, +date.slice(5, 7) - 1, +date.slice(8)) - Date.UTC(s, 0, 0)) / 864e5);
+  const xs = g.map(p => p[0]), ys = g.map(p => p[1]).concat([b, a]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  let y0 = Math.min(...ys), y1 = Math.max(...ys); if (y1 - y0 < 1e-9) { y0 -= 1; y1 += 1; }
+  const X = d => P + (W - 2 * P) * (d - x0) / Math.max(1, x1 - x0), Y = v => H - P - (H - 2 * P) * (v - y0) / (y1 - y0);
+  const dots = g.map(p => `<circle cx="${X(p[0]).toFixed(1)}" cy="${Y(p[1]).toFixed(1)}" r="1.7"/>`).join("");
+  const xc = X(day - 0.5).toFixed(1);
+  return `<svg class="mid-ch" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true">`
+    + `<g fill="${SAVANT_PITCH[pt] || "#888"}" fill-opacity="0.75">${dots}</g>`
+    + `<line x1="${xc}" x2="${xc}" y1="1" y2="${H - 1}" stroke="currentColor" stroke-opacity="0.45" stroke-dasharray="2 2"/>`
+    + `<path d="M${X(x0).toFixed(1)} ${Y(b).toFixed(1)}H${xc}M${xc} ${Y(a).toFixed(1)}H${X(x1).toFixed(1)}" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>`;
+}
+function midChartMany(e, mem, kind) {
+  const [, s, , date] = e, W = 168, H = 34, P = 3, rel = kind !== "swap";
+  const ser = mem.map(([pt, b, a, c]) => ({ pt, b: rel ? 0 : b, a: rel ? a - b : a, g: midGames(c).map(([d, v]) => [d, rel ? v - b : v]) }));
+  const day = Math.round((Date.UTC(s, +date.slice(5, 7) - 1, +date.slice(8)) - Date.UTC(s, 0, 0)) / 864e5);
+  const xs = ser.flatMap(q => q.g.map(p => p[0])), ys = ser.flatMap(q => q.g.map(p => p[1]).concat([q.b, q.a]));
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  let y0 = Math.min(...ys), y1 = Math.max(...ys); if (y1 - y0 < 1e-9) { y0 -= 1; y1 += 1; }
+  const X = d => P + (W - 2 * P) * (d - x0) / Math.max(1, x1 - x0), Y = v => H - P - (H - 2 * P) * (v - y0) / (y1 - y0), xc = X(day - 0.5).toFixed(1);
+  const step = (b, a, col, w) => `<path d="M${X(x0).toFixed(1)} ${Y(b).toFixed(1)}H${xc}M${xc} ${Y(a).toFixed(1)}H${X(x1).toFixed(1)}" stroke="${col}" stroke-width="${w}" fill="none"/>`;
+  const dots = ser.map(q => `<g fill="${SAVANT_PITCH[q.pt] || "#888"}" fill-opacity="0.75">${q.g.map(p => `<circle cx="${X(p[0]).toFixed(1)}" cy="${Y(p[1]).toFixed(1)}" r="1.5"/>`).join("")}</g>`).join("");
+  const mean = ser.reduce((t, q) => t + q.a, 0) / ser.length;
+  const lines = rel ? step(0, mean, "currentColor", 1.6) : ser.map(q => step(q.b, q.a, SAVANT_PITCH[q.pt] || "currentColor", 1.6)).join("");
+  return `<svg class="mid-ch" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true">${dots}`
+    + `<line x1="${xc}" x2="${xc}" y1="1" y2="${H - 1}" stroke="currentColor" stroke-opacity="0.45" stroke-dasharray="2 2"/>${lines}</svg>`;
+}
+// the pitch(es) a change covers, for the row's line: one swatch and name, or a swatch per pitch
+const midPitches = e => {
+  const mem = e[16], sw = t => `<i class="psw" style="background:${SAVANT_PITCH[t] || "#999"}"></i>`;
+  if (!mem || mem.length < 2) return `${sw(e[2])}${esc(PTN[e[2]])}`;
+  const names = mem.map(x => PTN[x[0]]);
+  // a swap: each pitch with its share of his pitches before and after ("Four-seam 22 → 45% · Sinker 24 → 7%")
+  return e[17] === "swap" ? mem.map(x => `${sw(x[0])}${esc(PTN[x[0]])} ${Math.round(x[1])} → ${Math.round(x[2])}%`).join(" · ")
+    : `<span class="mid-sws" title="${esc(names.join(", "))}">${mem.map(x => sw(x[0])).join("")}</span>${mem.length} pitches`;
+};
+function renderMid() {
+  const lv = state.level, list = (D.mid && D.mid[lv]) || [], view = state.view;
+  const team = state.tblTeam !== "all" && TEAM_NAMES[state.tblTeam] ? state.tblTeam : null;
+  const ss = D.seasons.filter(s => state.seasons.has(s));
+  // one entry per change that has a pitch on the page (rows below the page's own floor are left out)
+  const lit = [];
+  list.forEach((e, k) => {
+    const covers = t => e[2] === t || (e[16] || []).some(x => x[0] === t);   // a swap or delivery row shows under each of its pitches
+    if (!e[18] || !state.seasons.has(e[1]) || (view !== "all" && !covers(view))) return;   // the list: the largest D.mid.top a season
+    const r = tRow(e[0], e[1], e[2], lv);
+    if (r === undefined || r < 0 || (team && !tOrgs[r].includes(team))) return;
+    lit.push({ e, r, k });
+  });
+  const words = fold(state.tblQuery).split(/\s+/).filter(Boolean);
+  const shown = words.length ? lit.filter(x => { const n = fold(T.name[x.r]); return words.every(w => n.includes(w)); }) : lit;
+  const U = D.mid.units;
+  $("#mtTitle").textContent = "Midseason changes";
+  const seasonTxt = ss.length === D.seasons.length && ss.length > 1 ? seasonSpan() : ss.join(", ");
+  $("#mtSub").textContent = [view === "all" ? "All pitches" : PTN[view], seasonTxt, lv === "mlb" ? "" : LVL_NAME[lv] || lv,
+    team ? TEAM_NAMES[team] + (lv === "mlb" ? "" : " affiliates") : "",
+    `${lit.length.toLocaleString()} changes inside a season, largest first`].filter(Boolean).join(" · ");
+  $("#mtKey").hidden = false;
+  $("#mtKey").innerHTML = `<span>A change is a measure that jumped and stayed for at least five games either side, found game by game. `
+    + `Under each: whether it held to the end of that season and into the next. Largest first, sized against how much the same pitch usually moves from the first half of a season to the second: shown are changes of at least ${D.mid.min} standard deviations of that, `
+    + `the largest ${D.mid.top} a season. Hover a row for the numbers.</span>`;
+  $("#mtHeadRow").innerHTML = `<tr><th scope="col" class="mid-l"><span class="mt-rkh" aria-hidden="true">#</span>Pitcher</th><th scope="col" class="mid-l">What changed</th>`
+    + `<th scope="col" class="mid-l">From</th><th scope="col" class="mid-l">Game by game</th></tr>`;
+  const rowHTML = ({ e, r, k }) => {
+    const [, s, pt, date, m, size, b, a, gap, reason, tip, , now, next, kNow, kNext] = e, [lab, unit, dec] = U[m] || [m, "", 1];
+    const pctKept = k => `${Math.round(100 * k)}% of the jump`;
+    const meta = `${s} · ${esc(teamStr(r))}${view === "all" || e[16] ? ` · ${midPitches(e)}` : ""}`;
+    const who = `<div class="mt-name">${esc(T.name[r])}</div><div class="mt-meta">${meta}</div>`;
+    const title = `${tip}. ${lab}: ${b.toFixed(dec)} → ${a.toFixed(dec)} ${unit}, game-by-game averages before and after ${midDate(date)}. `
+      + `${size.toFixed(1)} SD of the usual first-half-to-second-half move for this pitch.${gap >= 20 ? ` He had not pitched for ${gap} days before it.` : ""}`
+      + (now ? ` Rest of ${s}: ${now}${isNum(kNow) ? ` (his last 10 games kept ${pctKept(kNow)})` : ""}.` : "")
+      + (next ? ` ${next[0].toUpperCase() + next.slice(1)}${isNum(kNext) ? ` (his ${s + 1} average kept ${pctKept(kNext)})` : ""}.` : "");
+    const fate = [now, next, gap >= 20 ? `after ${gap} days out` : ""].filter(Boolean).join(" · ");
+    return `<tr data-r="${r}" tabindex="0" title="${esc(title)}"${r === state.sel ? ' class="on"' : ""}>`
+      + `<td><div class="mt-pl"><span class="mt-rk">${k + 1}</span><div>${who}</div></div></td>`
+      + `<td class="mid-l"><div class="mid-why">${esc(reason)}</div>${fate ? `<div class="mt-meta">${esc(fate)}</div>` : ""}</td>`
+      + `<td class="mid-l">${midDate(date)}</td><td class="mid-l">${midChart(e)}</td></tr>`;
+  };
+  lit.forEach((x, i) => { x.k = i; });   // rank among the changes shown before a name search
+  const sig = ["mid", view, lit.length, words.join(" "), ss.join(","), lv, team].join("|");
+  const keep = sig === tbl.sig ? tbl.shown : TABLE_CAP;
+  Object.assign(tbl, { sig, sorted: shown, rowHTML, shown: Math.min(shown.length, keep) });
+  $("#mtBody").innerHTML = shown.slice(0, tbl.shown).map(rowHTML).join("") +
+    (!shown.length ? `<tr><td class="mt-more" colspan="4">${words.length ? `No pitcher named “${esc(state.tblQuery.trim())}” among these changes.`
+      : `No midseason changes here.`}</td></tr>` : "");
+  if (sig !== tbl.drawnSig) { const sc = $("#mtScroll"); sc.scrollTop = 0; sc.scrollLeft = 0; tbl.drawnSig = sig; }
+}
 const fold = s => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 function moreTableRows() {
   const box = $("#mtScroll");
@@ -7655,6 +7866,17 @@ function wireTable() {
     syncSeasonChips(); render();
   });
   $("#mtLvl").querySelectorAll("button").forEach(b => b.addEventListener("click", () => setLevel(b.dataset.v)));
+  // the Evolution tab's two lists: every pitch (Uniqueness, Evolution) or the midseason changes
+  document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-midgo]"); if (b) openMidFor(+b.dataset.midgo); });
+  // How he changed: All pitches or one pitch; only the box is drawn again
+  document.addEventListener("click", e => {
+    const b = e.target.closest && e.target.closest("[data-howtab]"); if (!b) return;
+    state.howTab = b.dataset.howtab; const box = b.closest(".sv-how"); if (!box) return;
+    const t = document.createElement("div"); t.innerHTML = howChangedHTML(+b.dataset.howr); box.replaceWith(t.firstElementChild);
+    const nb = document.querySelector(`.sv-how [data-howtab="${state.howTab}"]`); if (nb) nb.focus({ preventScroll: true });
+  });
+  $("#mtMode").addEventListener("click", e => { const b = e.target.closest("[data-m]"); if (!b) return;
+    const on = b.dataset.m === "1"; if (on === !!state.tblMid) return; state.tblMid = on; syncTable(); });
   // the left column's drop-down sections: a press opens (ink) or closes (white) the section under it
   // Big Evolvers (bottom right): every pitch on the latest season, ranked by how far it moved since the season before
   $("#evoBtn").addEventListener("click", () => openEvolvers());
@@ -7663,6 +7885,8 @@ function wireTable() {
     if (state.tblGroup && (state.lookTbl === null || state.lookTbl === undefined)) { closeTableFocus(); return; }
     openBoard(state.tblLast && tableGroups().includes(state.tblLast) ? state.tblLast : tableGroups()[0]);
   });
+  // Evolution (beside Leaderboard): the leaderboard on its Evolution tab, latest season; pressed again, it closes
+  $("#hEvo").addEventListener("click", () => openBoard("Evolution", "t:evo"));   // sorted by Evolution, as Big Evolvers
   $("#pnClusters").addEventListener("click", () => clustersRow());
   $("#mtBody").addEventListener("keydown", e => {
     const tr = e.target.closest("tr[data-r]"); if (!tr) return;
@@ -7905,12 +8129,13 @@ function homeSimRun() {
 // a 5-degree arm-angle change is big for anyone.
 const CHG_KEYS = [   // key, unit, decimals, words (up, down); ride/drop and run/sweep are worded by chgWord
   ["velo", "mph", 1, ["harder", "softer"]], ["ivb", "in", 1, null], ["hb", "in", 1, null], ["spin", "rpm", 0, ["more spin", "less spin"]],
-  ["spin_axis", "°", 0, ["new spin direction", "new spin direction"]], ["arm_angle", "°", 1, ["higher arm angle", "lower arm angle"]],
+  ["arm_angle", "°", 1, ["higher arm angle", "lower arm angle"]],   // no spin direction (user, 2026-11-15): Savant infers it from the movement, and it swings on pitches that barely move
   ["rel_height", "ft", 2, ["higher release", "lower release"]], ["rel_side", "ft", 2, ["wider release", "narrower release"]],
   ["extension", "ft", 2, ["more extension", "less extension"]], ["vaa", "°", 2, ["flatter approach", "steeper approach"]],
   ["usage", "%", 0, ["thrown more often", "thrown less often"]],
 ];
 const CHG_BIG = 2, CHG_SOME = 1.5;   // times the usual season-to-season move
+const NEW_MIN_NOW = 5;   // a new pitch: under 2% of his pitches last season and at least this % now (as "added a …"; atlas_build.CHANGE_ADD)
 const chgDelta = (k, a, b) => k === "spin_axis" ? ((b - a + 540) % 360) - 180 : b - a;   // spin axis: the short way round
 function chgWord(k, a, b, words) {   // worded as atlas_build._change_word (tip form): a pitch's "ride" is drop when it sinks
   const up = b > a;
@@ -7959,10 +8184,11 @@ const chgText = (x, prevS) => x.k === "usage" ? `${x.word}: ${fmt(x.b, 0)}% of h
 // The card's "What changed since <season>", under Defining Traits: a tag (Big change / Some change / About the same /
 // New pitch), the changes that count in words with their amounts (the tooltip has before and after, and how many usual
 // moves it is), or a plain sentence when nothing moved more than usual; then pitches added to or dropped from his arsenal
-function whatChangedHTML(r) {
+// (parts = true: {prev, tag, cls, body} for the card's "How he changed", which shows it as the winter step)
+function whatChangedHTML(r, parts = false) {
   const w = whatChanged(r), pt = T.pitch_type[r], one = SING[pt] || PTN[pt].toLowerCase(), many = PLURAL[pt] || one + "s";
-  const box = (prev, tag, cls, body) => `<section class="sv-chg" aria-label="What changed"><div class="chg-head"><h3>What changed${prev ? ` since ${prev}` : ""}</h3>`
-    + (tag ? `<span class="chg-tag ${cls}">${tag}</span>` : "") + `</div>${body}</section>`;
+  const box = (prev, tag, cls, body, ars = "") => parts ? { prev, tag, cls, body, ars } : `<section class="sv-chg" aria-label="What changed"><div class="chg-head"><h3>What changed${prev ? ` since ${prev}` : ""}</h3>`
+    + (tag ? `<span class="chg-tag ${cls}">${tag}</span>` : "") + `</div>${body}${ars}</section>`;
   if (w.prevS === null) {
     const else0 = D.seasons.some(x => x < w.s && pRow(T.pitcher[r], x, T.level[r] === "mlb" ? "aaa" : "mlb") !== undefined);
     return box(0, "", "", `<p class="chg-line">No earlier season ${T.level[r] === "mlb" ? "in the majors" : "in Triple-A"} on the map to compare with${else0 ? `; his earlier seasons here are ${T.level[r] === "mlb" ? "in Triple-A" : "in the majors"}` : ""}.</p>`);
@@ -7970,9 +8196,11 @@ function whatChangedHTML(r) {
   const ars = [...w.added.filter(t => t !== pt).map(t => `added a ${SING[t]} (${fmt(w.use(t)[1], 0)}% of his pitches)`), ...w.dropped.map(t => `dropped his ${SING[t]}`)];
   const arsLine = ars.length ? `<p class="chg-line">His arsenal: ${ars.join("; ")}.</p>` : "";
   if (w.q === undefined) {   // no row for this pitch in the earlier season: new, or too few to compare (under 40)
-    const [u0, u1] = w.use(pt), isNew = u0 < 2;
+    // new = under 2% last season and at least NEW_MIN_NOW% now (user, 2026-11-15: 2% -> 3% is no new pitch)
+    const [u0, u1] = w.use(pt), isNew = u0 < 2 && u1 >= NEW_MIN_NOW, rare = u0 < 2 && !isNew;
     return box(w.prevS, isNew ? "New pitch" : "", "chg-big", `<p class="chg-line">${isNew ? `He threw ${u0 >= 0.5 ? `only ${fmt(u0, 0)}% ${many}` : `no ${many}`} in ${w.prevS}; ${fmt(u1, 0)}% of his pitches in ${w.s}.`
-      : `He threw too few ${many} in ${w.prevS} to compare.`}</p>${arsLine}`);
+      : rare ? `Thrown rarely: ${fmt(u1, 0)}% of his pitches in ${w.s} (${fmt(u0, 0)}% in ${w.prevS}), too few to call a change.`
+      : `He threw too few ${many} in ${w.prevS} to compare.`}</p>`, arsLine);
   }
   const shown = w.big.concat(w.some).slice(0, 4);
   const [tag, cls] = w.big.length ? ["Big change", "chg-big"] : w.some.length ? ["Some change", "chg-some"] : ["About the same", "chg-same"];
@@ -7981,7 +8209,69 @@ function whatChangedHTML(r) {
   const body = shown.length
     ? `<ul class="chg-list">${shown.map(x => `<li title="${esc(tip(x))}">${esc(chgText(x, w.prevS))}</li>`).join("")}</ul>`
     : `<p class="chg-line">Nothing about his ${one} moved more than it usually does from one season to the next${w.items[0] ? `; the biggest move was ${esc(chgText(w.items[0], w.prevS))}` : ""}.</p>`;
-  return box(w.prevS, tag, cls, body + arsLine);
+  return box(w.prevS, tag, cls, body, arsLine);
+}
+
+// The card's "How he changed" (user, 2026-11-15: the season-to-season and the midseason changes are one story): a strip
+// of the winter and this season (month ticks; a dot per change in its pitch's color), then the changes in time order,
+// each headed by when and which pitch -- the winter (What changed since <season>, for this card's pitch) first, then
+// every midseason change he made this season at this level (all his pitches, by date) with how it ended up, its chart
+// and the numbers on hover. "Game by game" opens the Evolution tab's list on him.
+const HOW_D0 = 85, HOW_D1 = 275;   // the strip's season: late March to early October (day of year)
+const HOW_MONTHS = [["Apr", 91], ["May", 121], ["Jun", 152], ["Jul", 182], ["Aug", 213], ["Sep", 244]];
+function howChangedHTML(r) {
+  const s = T.season[r], pid = T.pitcher[r], lv = T.level[r], U = D.mid ? D.mid.units : {};
+  if (state.howFor !== r) { if (state.howTab !== "all") state.howTab = ""; state.howFor = r; }   // a new card opens on its pitch (All pitches stays)
+  // his pitches this season (most used first); the tab: All pitches, or one pitch (the card's own unless he picked another)
+  const ars = TYPES.map(x => [x, tRow(pid, s, x, lv)]).filter(x => x[1] !== undefined).sort((a, b) => T.usage[b[1]] - T.usage[a[1]]);
+  const tab = state.howTab === "all" ? "all" : ars.some(x => x[0] === state.howTab) ? state.howTab : T.pitch_type[r];
+  const covers = (e, t) => e[2] === t || (e[16] || []).some(x => x[0] === t);
+  const items = (D.mid ? (D.mid[lv] || []).filter(e => e[0] === pid && e[1] === s) : []).filter(e => tab === "all" || covers(e, tab))
+    .sort((a, b) => (a[3] < b[3] ? -1 : a[3] > b[3] ? 1 : 0));
+  // the winter: the chosen pitch's What changed; on All pitches, every pitch that changed more than usual
+  const wins = (tab === "all" ? ars : ars.filter(x => x[0] === tab)).map(([t, rr]) => ({ t, w: whatChangedHTML(rr, true) }))
+    .filter(x => tab !== "all" || (x.w.tag && x.w.cls !== "chg-same"));
+  const w0 = whatChangedHTML(r, true), prev = w0.prev;
+  const doy = d => Math.round((Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8)) - Date.UTC(+d.slice(0, 4), 0, 0)) / 864e5);
+  const pos = x => Math.max(0, Math.min(100, 100 * (x - HOW_D0) / (HOW_D1 - HOW_D0)));
+  const col = t => SAVANT_PITCH[t] || "var(--ink)";
+  const sw = t => `<i class="psw" style="background:${col(t)}"></i>`;
+  const winLbl = !prev ? "" : `${prev} to ${s}`;   // the season-to-season change, named by its seasons (user, 2026-11-15: not "Winter")
+  const moved = wins.filter(x => x.w.tag && x.w.cls !== "chg-same");
+  const dotCol = e => e[16] && e[16].length > 1 ? "var(--ink)" : col(e[2]);   // a dot is its pitch's color; several pitches, ink
+  const dots = items.map(e => `<i class="hs-dot" style="left:${pos(doy(e[3])).toFixed(1)}%;background:${dotCol(e)}" title="${esc(midDate(e[3]) + ": " + e[9])}"></i>`).join("");
+  const ticks = HOW_MONTHS.map(([m, d]) => `<span class="hs-tick" style="left:${pos(d).toFixed(1)}%">${m}</span>`).join("");
+  const strip = `<div class="how-strip" aria-hidden="true">`
+    + (prev ? `<span class="hs-win"><span class="hs-line hs-gap"></span>${moved.length ? `<i class="hs-dot hs-wdot" style="background:${moved.length > 1 ? "var(--ink)" : col(moved[0].t)}" title="${esc(winLbl + ": " + moved.map(x => PTN[x.t] + " " + x.w.tag.toLowerCase()).join(", "))}"></i>` : ""}<span class="hs-lbl">${prev} → ${s}</span></span>` : "")
+    + `<span class="hs-seg hs-cur"><span class="hs-line"></span>${dots}<span class="hs-ticks">${ticks}</span><span class="hs-lbl">${s}</span></span></div>`;
+  const tabs = ars.length > 1 ? `<div class="lvlseg how-tabs" role="group" aria-label="Which pitches">`
+    + [["all", "All pitches"], ...ars.map(([t]) => [t, PTN[t]])].map(([k, l]) => `<button type="button" data-howtab="${k}" data-howr="${r}" aria-pressed="${k === tab}">${k === "all" ? "" : sw(k)}${esc(l)}</button>`).join("") + `</div>` : "";
+  // every item: when, which pitch, then what changed
+  const head = (when, which, tag) => `<div class="how-when"><span class="mid-when">${when}</span><span class="how-which">${which}</span>${tag || ""}</div>`;
+  const winItems = !prev ? [`<li class="how-win">${head(`Before ${s}`, "")}${w0.body}</li>`]
+    : wins.length ? wins.map(({ t, w }) => `<li class="how-win">${head(winLbl, `${sw(t)}${esc(PTN[t])}`, w.tag ? `<span class="chg-tag ${w.cls}">${w.tag}</span>` : "")}${w.body}</li>`)
+    : [`<li class="how-win">${head(winLbl, "All pitches")}<p class="chg-line">No pitch of his moved more than usual from ${prev} to ${s}.</p></li>`];
+  const what = e => { const p = PTN[e[2]] + ": "; return e[9].startsWith(p) ? e[9][p.length].toUpperCase() + e[9].slice(p.length + 1) : e[9]; };
+  const li = e => {
+    const [, , , date, m, size, b, a, gap, , tip, , now, next] = e, [lab, unit, dec] = U[m] || [m, "", 1];
+    const title = `${tip}. ${lab}: ${b.toFixed(dec)} → ${a.toFixed(dec)} ${unit}, game-by-game averages before and after ${midDate(date)}. ${size.toFixed(1)} SD of the usual first-half-to-second-half move.`;
+    const fate = [now, next, gap >= 20 ? `after ${gap} days out` : ""].filter(Boolean).join(" · ");
+    return `<li title="${esc(title)}">${head(midDate(date), midPitches(e))}<div class="how-what">${esc(what(e))}</div>${fate ? `<span class="mid-fate">${esc(fate[0].toUpperCase() + fate.slice(1))}</span>` : ""}${e[11] ? midChart(e) : ""}</li>`;
+  };
+  const whose = tab === "all" ? "" : ` to his ${PTN[tab].toLowerCase()}`;
+  const none = D.mid && !items.length ? `<p class="chg-line">No midseason change${whose} of at least ${D.mid.min} SD of the usual within-season move in ${s}.</p>` : "";
+  const go = items.some(e => e[18]) ? `<div class="mid-acts"><button type="button" class="savebtn" data-midgo="${r}" title="The Evolution tab's midseason changes, on him">Game by game</button></div>` : "";
+  return `<section class="sv-chg sv-how" aria-label="How he changed"><div class="chg-head"><h3>How he changed</h3>${tabs}</div>${strip}`
+    + `<ul class="chg-list how-list">${winItems.join("")}${items.map(li).join("")}</ul>${none}${go}</section>`;   // no arsenal line: the tabs and usage say it (user)
+}
+// "Game by game": the Evolution tab's Midseason changes on his season, found by name (the card closes; Back reopens it)
+function openMidFor(r) {
+  const name = T.name[r], s = T.season[r];
+  if (state.sel !== null && state.sel !== undefined && !state.preview) select(null);
+  if (state.view !== "all") setView("all", null);
+  state.lookTbl = null; state.tblMid = true; state.seasons = new Set([s]); syncSeasonChips(); render();
+  state.tblQuery = name; $("#mtSearch").value = name;
+  setTableGroup("Evolution");
 }
 
 // Home from anywhere: an open lab or player card closes with it (one Back/Forward step, so Back returns to them as they were)
@@ -7996,7 +8286,8 @@ function goHome() {
 function buildStatic() {
   const syncSeasons = syncSeasonChips;
   buildTableControls();
-  $("#seasonChips").innerHTML = D.seasons.map(s => `<button type="button" id="season-${s}" data-s="${s}" data-label="${s}" aria-pressed="true" title="Show or hide ${s} pitches">${s}</button>`).join("");
+  // the header's seasons as ’24 ’25 ’26, for room (user, 2026-11-15); the full year is the tooltip and what a screen reader says
+  $("#seasonChips").innerHTML = D.seasons.map(s => `<button type="button" id="season-${s}" data-s="${s}" data-label="${s}" aria-pressed="true" aria-label="${s}" title="Show or hide ${s} pitches">’${String(s).slice(-2)}</button>`).join("");
   $("#seasonChips").querySelectorAll("[data-s]").forEach(b => b.addEventListener("click", () => {
     const s = +b.dataset.s;
     if (state.seasons.has(s) && state.seasons.size > 1) state.seasons.delete(s); else state.seasons.add(s);
@@ -8338,5 +8629,6 @@ async function refreshFreeAgents() {
   const q = window.__homeQ; window.__homeQ = null; homeWait("");
   if (q && state.home) homeAct(q);
   Object.keys(LAZY).forEach(l => ensureLevel(l));   // Triple-A in the background, now that the map is up
+  ensureMid();                                        // and the midseason changes (their own file on the deployed page)
 })();
 </script>

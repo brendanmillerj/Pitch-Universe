@@ -108,6 +108,11 @@ TYPE_FEATURES = [c for cs in TYPE_BLOCKS.values() for c in cs]
 # season movement in the old comps space). Cards, filters, colours and the heat table still show all 32 measures.
 MAP_BLOCKS = IDENTITY_BLOCKS
 MAP_FEATURES = [c for cs in MAP_BLOCKS.values() for c in cs]
+# Evolution (how far a pitch moved since last season; Big Evolvers; home's Biggest changes) measures the move on the map's
+# identity measures WITHOUT spin direction (user, 2026-11-15): Savant infers it from the movement, and it swings on pitches
+# that barely move. The maps keep it.
+EVO_BLOCKS = {b: [c for c in cs if c not in ("spin_sin", "spin_cos")] for b, cs in MAP_BLOCKS.items()}
+EVO_FEATURES = [c for cs in EVO_BLOCKS.values() for c in cs]
 LAYOUT_META = paths.META / f"atlas_layout_{RANGE}.json"   # how the cached layout was made; a restart needs a match
 EMBEDS = {}        # (map, dims) -> (openTSNE embedding fitted this run, its coordinates' mean as stored)
 
@@ -917,7 +922,7 @@ def look_deltas(types):
 
 def evolution(types):
     """Per pitch: how far it moved since the pitcher's previous season at the same level, on the all-pitches map's
-    15 identity measures scaled as that map scales them (fitted on MLB rows, as biggest_changes does): the distance
+    13 identity measures without spin direction (EVO_FEATURES), scaled as that map scales them (fitted on MLB rows, as biggest_changes does): the distance
     to the nearest pitch he threw >= CHANGE_THEN of the time the season before. A relabel (the same slider now called
     a sweeper) scores ~0 and a new pitch scores high. NaN in a pitcher's first season at that level. The home page's
     per-pitcher score is the usage-weighted mean of these over his pitches thrown >= CHANGE_NOW of the time."""
@@ -925,8 +930,8 @@ def evolution(types):
     lvl = (types.level if "level" in types else pd.Series("mlb", index=types.index)).to_numpy()
     mlb = lvl == "mlb"
     pt = types.pitch_type.to_numpy()
-    sc = scaler_fit(types.loc[mlb, MAP_FEATURES], pt[mlb], MAP_BLOCKS)
-    X = scaler_apply(sc, types[MAP_FEATURES], pt)
+    sc = scaler_fit(types.loc[mlb, EVO_FEATURES], pt[mlb], EVO_BLOCKS)
+    X = scaler_apply(sc, types[EVO_FEATURES], pt)
     key = pd.DataFrame({"lvl": lvl, "pid": types.pitcher.to_numpy(), "s": types.season.to_numpy(),
                         "u": types.usage.to_numpy(dtype="float64")})   # positional index 0..n-1, like X
     for _, g in key.groupby(["lvl", "pid"]):
@@ -937,6 +942,26 @@ def evolution(types):
             now = g.index[g.s == s].to_numpy()
             out[now] = np.linalg.norm(X[now][:, None, :] - X[then][None, :, :], axis=2).min(axis=1)
     return pd.Series(out, index=types.index)
+
+
+def evo_too_few(types, pitchers):
+    """Rows whose Evolution is left blank (user, 2026-11-15), all with no row for this pitch last season at this level:
+    he threw it (>= CHANGE_NEW of his pitches) but too few for a row (under profiles.MIN_PITCHES), so there is nothing of
+    the same pitch to compare with -- the distance to his nearest other pitch would rank an injury-shortened season's
+    curveball as a big mover; or it is under CHANGE_ADD of his pitches now, too rare to call a new pitch (2% -> 3%).
+    A pitch under CHANGE_NEW last season and at least CHANGE_ADD now is new, and keeps its Evolution (how unlike
+    anything he threw)."""
+    lvl = types.level if "level" in types else pd.Series("mlb", index=types.index)
+    have = set(zip(types.pitcher, types.season, types.pitch_type, lvl))
+    now_use = types.usage.to_numpy(dtype="float64")
+    pk = pitchers.set_index(["pitcher", "season", "level"])
+    out = np.zeros(len(types), dtype=bool)
+    for k, (pid, s, pt, lv) in enumerate(zip(types.pitcher, types.season, types.pitch_type, lvl)):
+        if (pid, s - 1, pt, lv) in have or (pid, s - 1, lv) not in pk.index:
+            continue
+        before = pk.at[(pid, s - 1, lv), f"{pt}_usage_all"] if f"{pt}_usage_all" in pk.columns else np.nan
+        out[k] = before >= CHANGE_NEW or now_use[k] < CHANGE_ADD
+    return out
 
 
 def uniqueness(types):
@@ -965,6 +990,7 @@ def uniqueness(types):
 # First-draft thresholds, to tune after reading analysis/biggest_changes.csv.
 CHANGE_MIN_N = {"mlb": 500, "aaa": 300}   # pitches thrown in each of the two seasons, at that level
 CHANGE_NOW, CHANGE_THEN, CHANGE_NEW = 0.10, 0.05, 0.02   # usage that counts this season / last season; under 2% last season = new
+CHANGE_ADD = 0.05   # ...and a new pitch needs at least 5% now (user, 2026-11-15: 2% -> 3% is no new pitch); the page's NEW_MIN_NOW
 CHANGE_TOP, CHANGE_REVIEW = 5, 25
 CHANGE_CSV = paths.ROOT / "analysis" / "biggest_changes.csv"
 PTN_NAME = {"FF": "Four-seam", "SI": "Sinker", "FC": "Cutter", "SL": "Slider", "ST": "Sweeper", "CU": "Curveball",
@@ -975,7 +1001,7 @@ CHANGE_WORDS = [
     ("ivb", lambda t: 12 * t.pfx_z, "in", 1, None),
     ("hb", lambda t: -12 * t.pfx_x, "in", 1, None),
     ("spin", lambda t: t.release_spin_rate, "rpm", 0, ("more spin", "less spin")),
-    ("spin_axis", lambda t: spin_axis_deg(t.spin_sin, t.spin_cos), "°", 0, ("new spin direction", "new spin direction")),
+    # no spin direction (user, 2026-11-15): Savant infers it from the movement, and it swings on pitches that barely move
     ("arm_angle", lambda t: t.arm_angle, "°", 1, ("higher arm angle", "lower arm angle")),
     ("rel_height", lambda t: t.release_pos_z, "ft", 2, ("higher release", "lower release")),
     ("rel_side", lambda t: -t.release_pos_x, "ft", 2, ("wider release", "narrower release")),   # arm-side +, as the page's rel_side
@@ -1030,7 +1056,7 @@ def _change_word(key, x0, x1, words, tip=False):
 def biggest_changes(types, pitchers, write_csv=True):
     """The pitchers whose pitches changed most since last season, five per level, for the home page.
 
-    In the all-pitches map's space (the 15 identity measures, scaled as that map scales them, fitted on MLB rows so
+    In the all-pitches map's space (the 13 identity measures without spin direction, scaled as that map scales them, fitted on MLB rows so
     Triple-A is measured the same way), each pitch he throws >= CHANGE_NOW of the time this season is matched to the
     nearest pitch he threw >= CHANGE_THEN of the time last season, and his score is those distances averaged by
     usage: how far his arsenal moved on the map. Matching to the nearest pitch means a relabel (the same slider now
@@ -1043,8 +1069,8 @@ def biggest_changes(types, pitchers, write_csv=True):
     S0 = S - 1
     t = types.reset_index(drop=True)
     mlb = (t.level == "mlb").to_numpy()
-    sc = scaler_fit(t.loc[mlb, MAP_FEATURES], t.loc[mlb, "pitch_type"].to_numpy(), MAP_BLOCKS)
-    X = scaler_apply(sc, t[MAP_FEATURES], t.pitch_type.to_numpy())
+    sc = scaler_fit(t.loc[mlb, EVO_FEATURES], t.loc[mlb, "pitch_type"].to_numpy(), EVO_BLOCKS)
+    X = scaler_apply(sc, t[EVO_FEATURES], t.pitch_type.to_numpy())
     W = {k: f(t).astype("float64") for k, f, *_ in CHANGE_WORDS}
     sd = _y2y_scale(t, W)
     pk = pitchers.set_index(["pitcher", "season", "level"])
@@ -1057,6 +1083,9 @@ def biggest_changes(types, pitchers, write_csv=True):
         if not (p0.n >= CHANGE_MIN_N.get(level, 500) and p1.n >= CHANGE_MIN_N.get(level, 500)):
             continue
         now, then = b[b.usage >= CHANGE_NOW], a[a.usage >= CHANGE_THEN]
+        # a pitch he threw last season but too rarely for a row has nothing to compare with (as evo_too_few): left out
+        few = [pt not in set(a.pitch_type) and p0.get(f"{pt}_usage_all", np.nan) >= CHANGE_NEW for pt in now.pitch_type]
+        now = now[~np.array(few, dtype=bool)]
         if now.empty or then.empty:
             continue
         D = np.linalg.norm(X[now.index.to_numpy()][:, None, :] - X[then.index.to_numpy()][None, :, :], axis=2)
@@ -1143,6 +1172,64 @@ def comps_columnar(rows, pct):
             for rr, qq in zip(rows, pct)]
 
 
+# ---- the Uniqueness tab's "Midseason changes" (user, 2026-11-15): events found by scripts/midseason_changes.py
+MID_UNITS = {"velo": ("Velocity", "mph", 1), "ivb": ("Induced vertical break", "in", 1),
+             "hb": ("Horizontal break, arm side +", "in", 1), "spin": ("Spin", "rpm", 0),
+             "arm_angle": ("Arm angle", "°", 1), "rel_height": ("Release height", "ft", 2),
+             "rel_side": ("Release side, arm side +", "ft", 2), "extension": ("Extension", "ft", 2),
+             "vaa": ("VAA vs expected", "°", 2), "usage": ("Usage", "%", 0)}
+MID_MIN, MID_TOP = 2.0, 250   # on the page: changes of 2+ SD of the usual within-season move (all on the player card,
+                              # each with its chart), the largest 250 per level-season in the Evolution tab's list
+
+
+def midseason_blob(levels):
+    """Per level, the page's midseason changes, largest first: [pitcher, season, pt, "YYYY-MM-DD", lead measure,
+    size, before, after, gap days, reason, tip, games, this season, next season, kept now, kept next, members, kind]:
+    members (a swap or a delivery change, which cover several pitches; else None) = [pitch type, before, after, games]
+    per pitch, largest first, kind "swap" | "delivery" | None, listed: one of the Evolution tab's list. this season ... kept next say whether it lasted ("steady to season end", "reverted Jul 11"; "kept in 2025") and the share of the jump
+    kept (1 = all, 0 = back where he started; None without a next season). games = [day0, step, x1, y1, x2, y2, ...]: day of year of
+    the first appearance, the value step (10^-dec of the unit), then per appearance the days since the previous
+    one and the value in steps -- the row's step chart. analysis/midseason_changes.csv keeps the full list.
+    None when the scan hasn't been run."""
+    tag = f"{SEASONS[0]}_{SEASONS[-1]}"
+    out = {"units": MID_UNITS, "min": MID_MIN, "top": MID_TOP}
+    for lv in levels:
+        f = paths.meta_dir(lv) / f"midseason_changes_{tag}.parquet"
+        if not f.exists():
+            log(f"no {f.name} for {lv}: run scripts/midseason_changes.py; Midseason changes left out")
+            return None
+        ev = pd.read_parquet(f)
+        ev = ev[ev["size"] >= MID_MIN].sort_values("size", ascending=False)
+        listed = set(ev.groupby("season").head(MID_TOP).index)   # the Evolution tab's list; the card shows them all
+        gm = pd.read_parquet(paths.meta_dir(lv) / f"midseason_changes_games_{tag}.parquet")
+        gm["doy"] = pd.to_datetime(gm.game_date).dt.dayofyear
+        series = {k: g for k, g in gm.groupby(["pitcher", "season", "pitch_type", "measure"])}
+        rows = []
+        for r in ev.itertuples():
+            dec = MID_UNITS[r.lead][2]
+            def compact(pt):   # [day0, step, then per appearance: days since the previous one, value in steps]
+                g = series.get((r.pitcher, r.season, pt, r.lead))
+                if g is None:
+                    return None
+                g = g[np.isfinite(g.value)]
+                q = np.round(g.value.to_numpy() * 10 ** dec).astype(int)
+                dd = np.diff(g.doy.to_numpy(), prepend=g.doy.iloc[0]).astype(int)
+                return [int(g.doy.iloc[0]), 10 ** -dec] + [int(v) for pair in zip(dd, q) for v in pair]
+            pts = compact(r.pitch_type)
+            mem = json.loads(r.members) if isinstance(getattr(r, "members", None), str) else []
+            kind = "swap" if isinstance(getattr(r, "swap_from", None), str) else "delivery" if len(mem) > 1 else None
+            mem = [[m[0], round(m[1], dec + 1), round(m[2], dec + 1), compact(m[0])]
+                   for m in mem] if len(mem) > 1 else None
+            rows.append([int(r.pitcher), int(r.season), r.pitch_type, str(pd.Timestamp(r.date).date()), r.lead,
+                         round(float(r.size), 2), round(float(r.before), dec + 1), round(float(r.after), dec + 1),
+                         int(r.gap_days), r.reason, r.tip, pts, r.lasted_now, r.lasted_next,
+                         None if pd.isna(r.kept_now) else round(float(r.kept_now), 2),
+                         None if pd.isna(r.kept_next) else round(float(r.kept_next), 2), mem, kind, r.Index in listed])
+        out[lv] = rows
+        log(f"midseason changes, {lv}: {len(rows):,} events")
+    return out
+
+
 def export(types, pitchers, t_space, lead, fa, spin, mv, tj, teams, levels, teams_aaa, quality=None, lb=None):
     """`types`, `pitchers`, `t_space`, `mv`, `tj` and `teams` carry a `level` column; Savant outcomes and
     spin are MLB-only and join on level too, so a call-up's Triple-A row never borrows his big-league xERA."""
@@ -1161,6 +1248,9 @@ def export(types, pitchers, t_space, lead, fa, spin, mv, tj, teams, levels, team
                    "tcluster", "comp_tol", "gx3", "gy3", "gz3", "tx3", "ty3", "tz3"]
                   + (["comp_tol_aaa"] if "comp_tol_aaa" in types else [])].copy()
     t_out = pd.concat([t_out, type_display(types), look_deltas(types)], axis=1)
+    few = evo_too_few(types, pitchers)   # thrown last season, but too few to compare: no Evolution
+    t_out.loc[few, "evo"] = np.nan
+    log(f"Evolution left blank for {int(few.sum()):,} pitches: too rare last season to compare, or too rare now to call new")
     pcl = pitch_clusters(types, t_out)
     heat_grid = None
     if lb is not None:   # location heat map + batted-ball mix (location_bb), by key, in the types' order
@@ -1191,11 +1281,13 @@ def export(types, pitchers, t_space, lead, fa, spin, mv, tj, teams, levels, team
                     for l in levels))
 
     home = biggest_changes(types, pitchers)   # the home page's "Biggest changes since <last season>"
+    mid = midseason_blob(levels)              # the Uniqueness tab's "Midseason changes" (scripts/midseason_changes.py)
 
     data = {
         "seasons": list(SEASONS),
         "levels": list(levels),
         **({"home": home} if home else {}),
+        **({"mid": mid} if mid else {}),
         "teams_aaa": {c: v for c, v in teams_aaa.items() if c in set(",".join(teams.teams).split(","))},
         "pitchers": columnar(p_out),
         "types": columnar(t_out),

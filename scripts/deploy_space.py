@@ -135,6 +135,10 @@ def split_data(page: str) -> tuple[str, dict[str, bytes]]:
     tag = hashlib.sha256(m.group(1).encode()).hexdigest()[:10]
     main, part = split_level(data, "aaa")
     files = {}
+    if "mid" in main:   # the midseason changes: their own file, fetched in the background (the page's ensureMid)
+        base = f"data/atlas-{tag}-mid"
+        files[base] = {"mid": main.pop("mid")}
+        main["lazy_mid"] = base
     if part:
         base = f"data/atlas-{tag}-aaa"
         main["lazy"] = {"aaa": [base]}

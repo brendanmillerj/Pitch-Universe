@@ -249,7 +249,7 @@ const J = JSON.stringify;
   // ---- layout
   const hEnd = markup.indexOf("</header>");
   const at = id => markup.indexOf(`id="${id}"`), r2 = hEnd;
-  const order = ["navBack", "homeLink", "search", "hBoards", "lvlSeg", "seasonChips", "throwsSeg", "minIP", "fa", "startOver", "navFwd"];
+  const order = ["navBack", "homeLink", "search", "hBoards", "hEvo", "lvlSeg", "seasonChips", "throwsSeg", "minIP", "fa", "startOver", "navFwd"];
   ok(order.every((id, k) => at(id) > 0 && at(id) < hEnd && (k === 0 || at(id) > at(order[k - 1]))) && at("hClu") < 0 && !markup.includes('class="hdrow hdrow2') && (markup.slice(markup.indexOf('<header class="head">'), hEnd).match(/class="hdrow /g) || []).length === 1,
     "one header row: Back, title, search, Leaderboard, Level, Season, Hand, Innings, Free agents, Start over, Forward (user, 2026-11-14)");
   ok(at("hSim") < 0 && at("typeCol") < 0 && at("universe") > at("mapTools") && at("universe") > at("dimSeg") && at("universe") < markup.indexOf('<div id="plot"'), "no Simulate pitch, no side column: the pitch types sit on the map's right edge, under its top row");
@@ -677,7 +677,7 @@ const J = JSON.stringify;
   const wp = run(`(() => { const rs = ${J(br)}, ps = rs.map(r => pOfT[r]); return { uniq: new Set(ps).size === ps.length, ip: rs.every(r => tIP[r] >= 30),
     asc: rs.every((r, k) => k === 0 || !isNum(P.xera[pOfT[r]]) || P.xera[pOfT[rs[k - 1]]] <= P.xera[pOfT[r]]) }; })()`);
   ok(br.length > 50 && wp.uniq && wp.ip && wp.asc && getEl("#mtSub").textContent.endsWith("30+ innings"), `sorted by a whole-pitcher measure (xERA): ${br.length} pitchers, each once, 30+ innings, best xERA first`);
-  ok(!run("tableGroups()").includes("Whole pitcher") && run("tableGroups()").includes("Uniqueness") && run(`tableColumns().some(v => v.key === "t:whiff")`) && run(`tableColumns().some(v => v.key === "P:k_pct")`),
+  ok(!run("tableGroups()").includes("Whole pitcher") && run("tableGroups()").includes("Evolution") && run(`tableColumns().some(v => v.key === "t:whiff")`) && run(`tableColumns().some(v => v.key === "P:k_pct")`),
     "Results holds the pitch and the whole-pitcher results; no Whole pitcher tab (user, 2026-11-14)");
   ok(!run(`VARS.t.some(v => /^P:look_(xera|era|gap_3y)$/.test(v.key))`), "no Lookalikes' xERA or ERA, no 3-year xERA gap");
   // the drawer closing leaves the table; a row shows him on the map; Back returns to the table as it was
@@ -782,7 +782,7 @@ const J = JSON.stringify;
   ok(Number.isInteger(wSame) && /About the same/.test(run(`whatChangedHTML(${wSame})`)) && /Nothing about his/.test(run(`whatChangedHTML(${wSame})`)), "no big change says so: " + plain(run(`whatChangedHTML(${wSame})`)).slice(0, 110));
   const firstRow = run(`ALL_ROWS.find(r => T.level[r] === "mlb" && T.season[r] === Math.min(...D.seasons))`);
   ok(/No earlier season/.test(run(`whatChangedHTML(${firstRow})`)), "a first season says there is nothing to compare");
-  ok(run(`typeCard("FF", ${hr}).includes('class="sv-chg"')`), "the player card carries it (under Defining Traits)");
+  ok(run(`typeCard("FF", ${hr}).includes('class="sv-chg sv-how"')`), "the player card carries it, in How he changed (under Defining Traits)");
   const hancock = run(`tRow(676106, Math.max(...D.seasons), "FF", "mlb")`);
   if (Number.isInteger(hancock)) ok(run(`whatChanged(${hancock}).big.some(x => x.k === "arm_angle" && x.dl < 0)`), "Emerson Hancock's four-seamer: a big drop in arm angle, as on the home list");
 
@@ -852,16 +852,101 @@ const J = JSON.stringify;
   ok(/\.capbar \{ display: flex; justify-content: flex-end;/.test(html), "Glossary and Contact sit at the bottom right");
 
   // ---- Uniqueness tab, Evolution and Big Evolvers (user, 2026-11-14)
-  ok(run(`VARS.t.filter(v => v.group === "Uniqueness").map(v => v.key).join()`) === "t:uniq_z,t:evo", "a Uniqueness tab: Uniqueness and Evolution");
+  ok(run(`VARS.t.filter(v => v.group === "Evolution").map(v => v.key).join()`) === "t:uniq_z,t:evo" && run("tableGroups()[0]") === "Evolution" && !run("tableGroups()").includes("Uniqueness"),
+    "the first tab is Evolution (user, 2026-11-15): Uniqueness and Evolution");
   const nEvo = run(`ALL_ROWS.filter(r => isNum(T.evo && T.evo[r])).length`), nFirst = run(`ALL_ROWS.filter(r => T.season[r] === Math.min(...D.seasons) && isNum(T.evo && T.evo[r])).length`);
+  const fewEvo = run(`ALL_ROWS.filter(r => { if (!isNum(T.evo[r])) return false; const pid = T.pitcher[r], s = T.season[r], pt = T.pitch_type[r], lv = T.level[r];
+    if (tRow(pid, s - 1, pt, lv) !== undefined) return false; const i = pRow(pid, s - 1, lv); return i !== undefined && ((P["use_" + pt] && (P["use_" + pt][i] || 0) >= 2) || (T.usage[r] || 0) < NEW_MIN_NOW); }).length`);
+  ok(fewEvo === 0, "no Evolution for a pitch thrown too rarely last season to compare, or too rarely now to call new (user, 2026-11-15): " + fewEvo);
   ok(nEvo > 1000 && nFirst === 0, `Evolution for ${nEvo} pitches; none in the first season (nothing to compare)`);
   getEl("#evoBtn")._h.click[0]({}); await tick();
-  ok(run("state.tblGroup") === "Uniqueness" && run("state.tblSort.key") === "t:evo" && run("state.tblSort.dir") === -1 && run("state.view") === "all" && run("state.seasons.size") === 1 && getEl("#mTable").hidden === false,
-    "Big Evolvers (bottom right of the map) opens the Uniqueness board on All pitches, the latest season, biggest movers first");
+  ok(run("state.tblGroup") === "Evolution" && run("state.tblSort.key") === "t:evo" && run("state.tblSort.dir") === -1 && run("state.view") === "all" && run("state.seasons.size") === 1 && getEl("#mTable").hidden === false,
+    "Big Evolvers (bottom right of the map) opens the Evolution board on All pitches, the latest season, biggest movers first");
   ok(markup.indexOf('id="evoBtn"') > markup.indexOf('id="panelNav"') && markup.indexOf('id="evoBtn"') < markup.indexOf('id="pnPitchers"'), "Big Evolvers sits on the map's bottom right, beside Pitchers and Groups");
   const evRows = [...getEl("#mtBody").innerHTML.matchAll(/<tr data-r="(\d+)"/g)].map(m => +m[1]);
   ok(evRows.length > 50 && run(`${J(evRows.slice(0, 40))}.every((r, k, a) => k === 0 || !isNum(T.evo[r]) || T.evo[a[k - 1]] >= T.evo[r])`), "…sorted by Evolution, largest first");
+  // Every pitch: a Biggest move chart per row (the measure that moved most, season by season); no spin direction anywhere
+  // in the season-to-season comparison, and no arsenal line in How he changed (user, 2026-11-15)
+  const evHTML = getEl("#mtBody").innerHTML;
+  ok(/>Biggest move</.test(getEl("#mtHeadRow").innerHTML) && (evHTML.match(/class="evo-mv"/g) || []).length > 40 && !/spin direction/.test(evHTML),
+    "the Evolution tab's Every pitch rows each carry a Biggest move chart, with no spin direction");
+  ok(!run("CHG_KEYS.some(k => k[0] === 'spin_axis')") && !/His arsenal/.test(run(`howChangedHTML(${evRows[0]})`)), "the season-to-season comparison leaves out spin direction; How he changed has no arsenal line");
+  // ---- Midseason changes: the Uniqueness tab's second list (D.mid from scripts/midseason_changes.py; data built
+  // before it gets a stand-in of three real pitches, so the switch, rows and chart are still checked)
+  if (!run("!!(D.mid && D.mid.mlb && D.mid.mlb.length)"))
+    run(`(() => { const S = Math.max(...D.seasons), rs = ALL_ROWS.filter(r => T.level[r] === "mlb" && T.season[r] === S && T.n[r] >= 300).slice(0, 3);
+      D.mid = { units: { velo: ["Velocity", "mph", 1] }, min: 2, top: 250, mlb: rs.map((r, k) => [T.pitcher[r], S, T.pitch_type[r], S + "-06-1" + k, "velo", 3 - k, 93, 95, k ? 3 : 30,
+        PTN[T.pitch_type[r]] + ": harder", "2.0 mph harder", [120, 1, ...Array.from({ length: 20 }, (_, i) => [i ? 5 : 0, i < 10 ? 93 : 95]).flat()], "steady to season end", "", 1, null, null, null, true]) }; })()`);
+  run("renderTable()"); await tick();   // the open board repaints its controls
+  ok(getEl("#mtMode").hidden === false && run("state.tblMid") === false, "the Evolution tab shows its Every pitch | Midseason changes switch, on Every pitch");
+  getEl("#mtMode")._h.click[0]({ target: { closest: () => ({ dataset: { m: "1" } }) } }); await tick();
+  const midRows = [...getEl("#mtBody").innerHTML.matchAll(/<tr data-r="(\d+)"/g)].map(m => +m[1]);
+  const midWant = run(`D.mid.mlb.filter(e => e[18] && state.seasons.has(e[1])).map(e => tRow(e[0], e[1], e[2], "mlb")).filter(r => r !== undefined && r >= 0).slice(0, TABLE_CAP)`);
+  ok(run("midOn()") && getEl("#mtTitle").textContent === "Midseason changes" && midRows.length > 0 && J(midRows) === J(midWant),
+    `Midseason changes: ${midRows.length} rows, each a pitch on the map, largest first`);
+  const midHTML = getEl("#mtBody").innerHTML;
+  ok(/<svg class="mid-ch"/.test(midHTML) && /<td class="mid-l">[A-Z][a-z]{2} \d+<\/td>/.test(midHTML) && /title="[^"]+→[^"]+"/.test(midHTML), "…with what changed, the date, a game-by-game chart and the numbers on hover");
+  ok(/<div class="mid-why">[^<]+<\/div><div class="mt-meta">(steady to season end|kept going|held, with later shifts|settled partway back|reverted)/.test(midHTML)
+    && /Rest of \d{4}: /.test(midHTML), "…and under each, whether it lasted (the rest of the season, then the next)");
+  ok(getEl("#mtSub").textContent.includes("changes inside a season"), "…and a line saying what the list is: " + getEl("#mtSub").textContent);
+  // a change that covers several pitches (a delivery change, a swap) shows each pitch: swatches, a chart dot color per
+  // pitch, and the row under every one of its pitch types (user, 2026-11-15)
+  const midMulti = run(`D.mid.mlb.find(e => e[18] && e[17] === "delivery" && e[16] && e[16].every(x => x[3]) && state.seasons.has(e[1]))`);
+  if (midMulti) {
+    const other = midMulti[16].find(x => x[0] !== midMulti[2])[0], mr = run(`tRow(${midMulti[0]}, ${midMulti[1]}, ${J(midMulti[2])}, "mlb")`);
+    run(`setView(${J(other)}, null)`); await tick(); run("renderTable()"); await tick();
+    const mh = getEl("#mtBody").innerHTML, rowRe = new RegExp(`<tr data-r="${mr}"[\\s\\S]*?</tr>`), row = (mh.match(rowRe) || [""])[0];
+    const fills = new Set([...row.matchAll(/<g fill="(#[0-9a-fA-F]{3,6})"/g)].map(m => m[1]));
+    ok(row && row.includes(`${midMulti[16].length} pitches`) && (row.match(/class="psw"/g) || []).length >= midMulti[16].length && fills.size === new Set(midMulti[16].map(x => run(`SAVANT_PITCH[${J(x[0])}]`))).size,
+      `a delivery change (${midMulti[9]}) is listed under ${other} too, with a swatch and chart color for each of its ${midMulti[16].length} pitches`);
+    run(`setView("all", null)`); await tick(); run("renderTable()"); await tick();
+  }
+  getEl("#mtTeam")._h.change[0]({ target: { value: "LAD" } }); await tick();
+  ok([...getEl("#mtBody").innerHTML.matchAll(/<tr data-r="(\d+)"/g)].every(m => run(`tOrgs[${m[1]}].includes("LAD")`)), "…the Team drop-down filters it");
+  getEl("#mtTeam")._h.change[0]({ target: { value: "all" } }); await tick();
+  run("setTableGroup('Results')"); await tick();
+  ok(!run("midOn()") && getEl("#mtMode").hidden === true && /<tr data-r="\d+"/.test(getEl("#mtBody").innerHTML) && !/mid-ch/.test(getEl("#mtBody").innerHTML), "another tab: no switch, the usual columns");
+  getEl("#evoBtn")._h.click[0]({}); await tick();
+  ok(!run("midOn()") && run("state.tblSort.key") === "t:evo", "Big Evolvers always opens Every pitch, by Evolution");
   run("closeTable()"); await tick();
+  // the header's Evolution button, beside Leaderboard (user, 2026-11-15)
+  ok(markup.indexOf('id="hEvo"') > markup.indexOf('id="hBoards"') && markup.indexOf('id="hEvo"') < markup.indexOf('class="hfilt"'), "Evolution sits beside Leaderboard in the header's first row");
+  ok(/aria-label="2024"[^>]*>’24<\/button>/.test(getEl("#seasonChips").innerHTML) && /\.hdrow1 \.navback \.btxt, \.hdrow1 #navFwd \.btxt \{ position: absolute;/.test(html),
+    "the header's seasons read ’24 ’25 ’26 (2024… to a screen reader); Back and Forward are arrows only (user, 2026-11-15)");
+  getEl("#hEvo")._h.click[0]({}); await tick();
+  ok(run("state.tblGroup") === "Evolution" && getEl("#mTable").hidden === false && getEl("#hEvo").getAttribute("aria-pressed") === "true" && run("state.tblSort.key") === "t:evo", "Evolution opens the leaderboard on its tab, sorted by Evolution, and is ink while it is");
+  run("setTableGroup('Results')"); await tick();
+  ok(getEl("#hEvo").getAttribute("aria-pressed") === "false" && getEl("#hBoards").getAttribute("aria-pressed") === "true", "…on another tab, Leaderboard is the ink one");
+  getEl("#hEvo")._h.click[0]({}); await tick(); getEl("#hEvo")._h.click[0]({}); await tick();
+  ok(getEl("#mTable").hidden === true, "…Evolution again (on its tab) closes it");
+  // the card's "How he changed": the season-to-season change and his midseason changes (D.mid), with how each ended up;
+  // a pitcher who pitched the season before, so the box has a season-to-season item
+  const midE = run("D.mid.mlb.find(e => e[18] && pRow(e[0], e[1] - 1, 'mlb') !== undefined)"), midR = run(`tRow(${midE[0]}, ${midE[1]}, ${J(midE[2])}, "mlb")`);
+  const cardMid = run(`howChangedHTML(${midR})`);
+  ok(cardMid.includes("How he changed") && /class="how-strip"/.test(cardMid) && (cardMid.match(/class="hs-dot"/g) || []).length >= 1
+    && /class="how-which"/.test(cardMid) && /class="hs-tick"/.test(cardMid) && /<span class="mid-fate">/.test(cardMid) && /data-midgo="\d+"/.test(cardMid)
+    && (l => l.indexOf('class="how-win"') >= 0 && l.indexOf('class="how-win"') < l.indexOf(`>${run(`midDate(${J(midE[3])})`)}<`))(cardMid.slice(cardMid.indexOf('how-list')))
+    && (cardMid.match(/<svg class="mid-ch"/g) || []).length === run(`D.mid.mlb.filter(e => e[0] === ${midE[0]} && e[1] === ${midE[1]} && (e[2] === ${J(midE[2])} || (e[16] || []).some(x => x[0] === ${J(midE[2])}))).length`)
+    && /\d{4} to \d{4}<\/span>/.test(cardMid) && !/>Winter</.test(cardMid),
+    "the card: How he changed, one box: last season to this one and the season (month ticks, a dot per change), each item headed by when and which pitch, the season-to-season change first, a chart on every midseason change, and Game by game");
+  // the box's tabs: All pitches, then his pitches; a pitch's tab keeps only the changes that involve it (user, 2026-11-15)
+  const howMany = run(`(() => { const by = {}; D.mid.mlb.forEach(e => { const k = e[0] + "|" + e[1]; (by[k] = by[k] || new Set()).add(e[2]); });
+    const k = Object.keys(by).find(k => by[k].size >= 2); const [p, s] = k.split("|").map(Number); return [p, s, [...by[k]]]; })()`);
+  const howR = run(`tRow(${howMany[0]}, ${howMany[1]}, ${J(howMany[2][0])}, "mlb")`);
+  run(`state.howTab = ""; state.howFor = null`);
+  const howOne = run(`howChangedHTML(${howR})`);
+  run(`state.howTab = "all"`); const howAll = run(`howChangedHTML(${howR})`); run(`state.howTab = ""`);
+  const howN = h => (h.match(/<li title=/g) || []).length;
+  const howWant = run(`D.mid.mlb.filter(e => e[0] === ${howMany[0]} && e[1] === ${howMany[1]} && (e[2] === ${J(howMany[2][0])} || (e[16] || []).some(x => x[0] === ${J(howMany[2][0])}))).length`);
+  ok(/data-howtab="all"/.test(howOne) && new RegExp(`data-howtab="${howMany[2][0]}" data-howr="\\d+" aria-pressed="true"`).test(howOne)
+    && howN(howOne) === howWant && howN(howAll) === run(`D.mid.mlb.filter(e => e[0] === ${howMany[0]} && e[1] === ${howMany[1]}).length`) && howN(howAll) > howN(howOne),
+    `How he changed has All pitches and a tab per pitch; it opens on the card's pitch (${howN(howOne)} changes) and All pitches shows every one (${howN(howAll)})`);
+  const quiet = run(`ALL_ROWS.find(r => T.level[r] === "mlb" && !D.mid.mlb.some(e => e[0] === T.pitcher[r] && e[1] === T.season[r]))`);
+  ok(/No midseason change( to his [a-z-]+)? of at least/.test(run(`howChangedHTML(${quiet})`)), "…and a plain line when he made none");
+  run(`openMidFor(${midR})`); await tick();
+  ok(run("midOn()") && run("state.seasons.size") === 1 && run("[...state.seasons][0]") === midE[1] && [...getEl("#mtBody").innerHTML.matchAll(/<tr data-r="(\d+)"/g)].every(m => run(`T.pitcher[${m[1]}]`) === midE[0]),
+    "Game by game: the Evolution tab's Midseason changes, on him");
+  run("state.tblQuery = ''; closeTable()"); await tick();
   ok(run(`fitOf(0.1)[1]`) === "Very close" && run(`fitOf(0.5)[1]`) === "Close" && run(`fitOf(0.8)[1]`) === "Loose" && run(`fitOf(0.97)[1]`) === "Far", "fit bands: Very close, Close, Loose, Far");
   const fitShare = run(`(() => { const n = {}; ALL_ROWS.forEach(r => { if (T.level[r] !== "mlb") return; (compsOf ? compsOf(T.pitch_type[r], r) : []).slice(0, 10).forEach(([c, q]) => { const f = fitOf(q)[1]; n[f] = (n[f] || 0) + 1; }); }); return n; })()`);
   const tot = Object.values(fitShare).reduce((a, b) => a + b, 0);
