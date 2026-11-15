@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pitch-omics has moved</title>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;600&family=Newsreader:opsz,wght@6..72,600&display=swap" rel="stylesheet">
+<style>
+  /* The old Hugging Face Space after the move to Cloudflare Pages (2026-11-15). Opened on its own it forwards to
+     pitchomics.com keeping the #pitch/pitcher address; inside Hugging Face's frame, which blocks redirects, it shows
+     the button. Light theme, atlas tokens. */
+  :root { --bg: #f0f3f7; --field: #fbfcfd; --ink: #1b2430; --muted: #576270; --line: #d1d8e1; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--bg); color: var(--ink);
+         font: 400 17px/1.5 "Libre Franklin", "Helvetica Neue", Arial, sans-serif; padding: 24px; box-sizing: border-box; }
+  main { background: var(--field); border: 1px solid var(--line); border-radius: 12px; padding: 36px 40px; max-width: 460px; text-align: center; }
+  h1 { font: 600 40px/1.1 Newsreader, Georgia, serif; margin: 0 0 12px; }
+  p { margin: 0 0 22px; color: var(--muted); }
+  a.go { display: inline-block; border: 1.5px solid var(--ink); border-radius: 8px; padding: 10px 22px; color: var(--ink);
+         background: var(--field); font-weight: 600; text-decoration: none; }
+  a.go:hover { background: #dde3ea; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Pitch-omics has moved</h1>
+  <p>The atlas now lives at pitchomics.com.</p>
+  <a class="go" id="go" href="https://pitchomics.com/" target="_top">Go to pitchomics.com</a>
+</main>
+<script>
+  var dest = "https://pitchomics.com/" + (location.hash || "");
+  document.getElementById("go").href = dest;
+  if (window.top === window.self) location.replace(dest);   // opened directly: forward, keeping the pitcher address
+</script>
+</body>
+</html>
